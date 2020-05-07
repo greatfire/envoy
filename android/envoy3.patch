@@ -1,0 +1,130 @@
+diff --git a/envoy/build.gradle b/envoy/build.gradle
+index ebb6d30..e39fbf4 100644
+--- a/envoy/build.gradle
++++ b/envoy/build.gradle
+@@ -29,7 +29,7 @@ android {
+
+ dependencies {
+     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.3.72"
+-    implementation("com.squareup.okhttp3:okhttp:4.6.0")
++    implementation("com.squareup.okhttp3:okhttp:3.14.8")
+     releaseImplementation project(path:':cronet', configuration: 'release')
+     debugImplementation project(path: ':cronet', configuration: 'debug')
+ }
+diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt
+index fb201e5..fa733c6 100644
+--- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt
++++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt
+@@ -16,11 +16,11 @@ class CronetInterceptor : Interceptor {
+     @Throws(IOException::class)
+     override fun intercept(chain: Interceptor.Chain): Response {
+         return if (CronetNetworking.cronetEngine() != null) {
+-            Log.d(TAG, "hit interceptor for " + chain.request().url)
++            Log.d(TAG, "hit interceptor for " + chain.request().url())
+             // This will stop later interceptors
+             proxyToCronet(chain.request(), chain.call())
+         } else {
+-            Log.d(TAG, "bypass interceptor for " + chain.request().url)
++            Log.d(TAG, "bypass interceptor for " + chain.request().url())
+             chain.proceed(chain.request())
+         }
+     }
+diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt
+index 3d9e1b1..5c752ff 100644
+--- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt
++++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt
+@@ -69,17 +69,21 @@ object CronetNetworking {
+     @JvmStatic
+     @Throws(IOException::class)
+     fun buildRequest(request: Request, callback: UrlRequest.Callback?): UrlRequest {
+-        val url = request.url.toString()
++        val url = request.url().toString()
+         val requestBuilder = cronetEngine!!.newUrlRequestBuilder(url, callback, executorService)
+-        requestBuilder.setHttpMethod(request.method)
+-        request.headers.forEach {
+-            if (it.first.toLowerCase(Locale.ENGLISH) != "accept-encoding") {
+-               // Log.d(TAG, "add header for url $url: ${it.first}, ${it.second}")
+-               requestBuilder.addHeader(it.first, it.second)
+-           }
++        requestBuilder.setHttpMethod(request.method())
++        request.headers().toMultimap().forEach {
++             val headerKey = it.key
++             val headerValues = it.value
++             headerValues.forEach {value ->
++                 if (headerKey.toLowerCase(Locale.ENGLISH) != "accept-encoding") {
++                     // Log.d(TAG, "add header for url $url: $headerKey, $value")
++                     requestBuilder.addHeader(headerKey, value)
++                 }
++              }
+         }
+
+-        val requestBody = request.body
++        val requestBody = request.body()
+         if (requestBody != null) {
+             val contentType = requestBody.contentType()
+             if (contentType != null) {
+diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetOkHttpCall.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetOkHttpCall.kt
+index 1737fd0..e610a37 100644
+--- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetOkHttpCall.kt
++++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetOkHttpCall.kt
+@@ -13,7 +13,7 @@ internal class CronetOkHttpCall(
+         private val client: OkHttpClient,
+         private val engine: CronetEngine,
+         private val mOriginRequest: Request) : Call {
+-    private val mEventListener: EventListener = client.eventListenerFactory.create(this)
++    private val mEventListener: EventListener = client.eventListenerFactory().create(this)
+     private var mUrlRequest: UrlRequest? = null
+     private var mIsExecuted = false
+     private var mIsCanceled = false
+@@ -24,7 +24,7 @@ internal class CronetOkHttpCall(
+     }
+
+     init {
+-        mTimeout.timeout(client.callTimeoutMillis.toLong(), TimeUnit.MILLISECONDS)
++        mTimeout.timeout(client.callTimeoutMillis().toLong(), TimeUnit.MILLISECONDS)
+     }
+
+     override fun request(): Request {
+diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetUrlRequestCallback.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetUrlRequestCallback.kt
+index 30522b5..b39178e 100644
+--- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetUrlRequestCallback.kt
++++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetUrlRequestCallback.kt
+@@ -4,8 +4,7 @@ import android.os.ConditionVariable
+ import android.util.Log
+ import okhttp3.*
+ import okhttp3.EventListener
+-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+-import okhttp3.ResponseBody.Companion.toResponseBody
++import okhttp3.MediaType
+ import org.chromium.net.CronetException
+ import org.chromium.net.UrlRequest
+ import org.chromium.net.UrlResponseInfo
+@@ -53,11 +52,11 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
+         }
+         mRedirectCount += 1
+         val client = OkHttpClient.Builder().build()
+-        if (mOriginRequest.url.isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects) {
++        if (mOriginRequest.url().isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects()) {
+             request.followRedirect()
+-        } else if (!mOriginRequest.url.isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects) {
++        } else if (!mOriginRequest.url().isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects()) {
+             request.followRedirect()
+-        } else if (client.followRedirects) {
++        } else if (client.followRedirects()) {
+             request.followRedirect()
+         } else {
+             request.cancel()
+@@ -90,10 +89,9 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
+         eventListener?.responseBodyEnd(mCall, responseInfo.receivedByteCount)
+
+         // set the default value for empty content type?
+-        val contentType = mResponse.header("content-type", "text/html")
+-        val mediaType: MediaType? = (contentType
+-                ?: """text/plain; charset="utf-8"""").toMediaTypeOrNull()
+-        val responseBody = mReceivedByteArrayOutputStream.toByteArray().toResponseBody(mediaType)
++        val contentTypeString = mResponse.header("content-type", "text/html")
++        val contentType = MediaType.parse(contentTypeString!!)
++        val responseBody: ResponseBody = ResponseBody.create(contentType, mReceivedByteArrayOutputStream.toByteArray())
+         val newRequest = mOriginRequest.newBuilder()
+                 .url(responseInfo.url)
+                 .build()

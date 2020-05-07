@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">Demo App</string>
+    <string name="url">https://httpbin.org/ip</string>
+    <string name="url_hint">Proxy via(https://example.com/envoy/)</string>
+    <string name="http_hint">Header1: Value1\n\nhello=there</string>
+    <string name="result">Result goes here</string>
+    <string name="load">Load</string>
+    <string name="msg">Messages go here</string>
+    <string name="nuke_instruction">
+        <![CDATA[
+        URL.setURLStreamHandlerFactory(engine.createURLStreamHandlerFactory());\n
+        \n
+        // or\n
+        \n
+        CronetNetworking.initializeCronetEngine(context, envoyUrl);
+        ]]>
+    </string>
+    <string name="begin_request_msg">Begin to request %1$s</string>
+
+    <string-array name="http_method">
+        <item>GET</item>
+        <item>POST</item>
+        <item>DELETE</item>
+        <item>PATCH</item>
+        <item>PUT</item>
+        <item>HEAD</item>
+        <item>OPTIONS</item>
+    </string-array>
+
+    <string-array name="webview_http_method">
+        <item>GET</item>
+        <item>POST</item>
+    </string-array>
+
+</resources>

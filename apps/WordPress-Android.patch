@@ -1,0 +1,270 @@
+From 8e48d9afae93dda84d8932a659f5ae956a7c8f98 Mon Sep 17 00:00:00 2001
+From: h <h@localhost>
+Date: Sun, 8 Mar 2020 22:50:54 +0800
+Subject: [PATCH 1/1] Use updated fluxc library to proxy all requests
+
+---
+ WordPress/build.gradle                        | 24 +++++-
+ .../android/ui/WPLaunchActivity.java          |  2 +
+ .../ui/reader/views/ReaderWebView.java        | 82 ++++++++++++++++++-
+ build.gradle                                  | 13 +++
+ cronet/build.gradle                           |  2 +
+ envoy/build.gradle                            |  2 +
+ fluxc/build.gradle                            |  2 +
+ settings.gradle                               |  2 +-
+ 8 files changed, 121 insertions(+), 8 deletions(-)
+ create mode 100644 cronet/build.gradle
+ create mode 100644 envoy/build.gradle
+ create mode 100644 fluxc/build.gradle
+
+diff --git a/WordPress/build.gradle b/WordPress/build.gradle
+index 74183f89d7..7acace9a85 100644
+--- a/WordPress/build.gradle
++++ b/WordPress/build.gradle
+@@ -265,9 +265,22 @@ dependencies {
+     implementation "com.google.dagger:dagger-android-support:$daggerVersion"
+     kapt "com.google.dagger:dagger-android-processor:$daggerVersion"
+
+-    implementation ("com.github.wordpress-mobile.WordPress-FluxC-Android:fluxc:$fluxCVersion") {
+-        exclude group: "com.android.volley"
+-    }
++    implementation files('libs/fluxc-annotations.jar')
++    implementation files('libs/fluxc-processor.jar')
++    implementation 'com.google.auto.service:auto-service:1.0-rc4'
++    kapt 'com.google.auto.service:auto-service:1.0-rc4'
++    implementation 'com.squareup:javapoet:1.7.0'
++
++    // Custom WellSql version
++    api "org.wordpress:wellsql:$wellSqlVersion"
++    kapt "org.wordpress:wellsql-processor:$wellSqlVersion"
++
++    // External libs
++    api 'com.squareup.okhttp3:okhttp:3.9.0'
++    implementation 'com.squareup.okhttp3:okhttp-urlconnection:3.9.0'
++    api "androidx.paging:paging-runtime:2.1.0"
++
++    implementation 'com.google.guava:guava:27.0.1-android'
+
+     implementation ('com.github.indexos.media-for-mobile:android:43a9026f0973a2f0a74fa813132f6a16f7499c3a')
+
+@@ -305,6 +318,11 @@ dependencies {
+
+     implementation 'com.github.joshjdevl.libsodiumjni:libsodium-jni-aar:2.0.1'
+     implementation "org.jsoup:jsoup:1.10.3"
++    implementation 'androidx.paging:paging-runtime-ktx:2.1.1'
++
++    implementation project(path:':cronet')
++    implementation project(path:':envoy')
++    implementation project(path:':fluxc')
+ }
+
+ configurations.all {
+diff --git a/WordPress/src/main/java/org/wordpress/android/ui/WPLaunchActivity.java b/WordPress/src/main/java/org/wordpress/android/ui/WPLaunchActivity.java
+index e40238b566..36771a33c2 100644
+--- a/WordPress/src/main/java/org/wordpress/android/ui/WPLaunchActivity.java
++++ b/WordPress/src/main/java/org/wordpress/android/ui/WPLaunchActivity.java
+@@ -12,6 +12,7 @@ import org.wordpress.android.ui.main.WPMainActivity;
+ import org.wordpress.android.util.LocaleManager;
+ import org.wordpress.android.util.ProfilingUtils;
+ import org.wordpress.android.util.ToastUtils;
++import org.greatfire.envoy.CronetNetworking;
+
+ public class WPLaunchActivity extends AppCompatActivity {
+     /*
+@@ -29,6 +30,7 @@ public class WPLaunchActivity extends AppCompatActivity {
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         ProfilingUtils.split("WPLaunchActivity.onCreate");
++        CronetNetworking.initializeCronetEngine(getApplicationContext(), ""); // set envoy url here
+         launchWPMainActivity();
+     }
+
+diff --git a/WordPress/src/main/java/org/wordpress/android/ui/reader/views/ReaderWebView.java b/WordPress/src/main/java/org/wordpress/android/ui/reader/views/ReaderWebView.java
+index 51d85024a1..3c4b7dc0a1 100644
+--- a/WordPress/src/main/java/org/wordpress/android/ui/reader/views/ReaderWebView.java
++++ b/WordPress/src/main/java/org/wordpress/android/ui/reader/views/ReaderWebView.java
+@@ -9,23 +9,34 @@ import android.view.View;
+ import android.view.ViewGroup;
+ import android.webkit.CookieManager;
+ import android.webkit.WebChromeClient;
++import android.webkit.WebResourceRequest;
+ import android.webkit.WebResourceResponse;
+ import android.webkit.WebView;
+ import android.webkit.WebViewClient;
+
++import org.greatfire.envoy.CronetInterceptor;
+ import org.wordpress.android.WordPress;
+ import org.wordpress.android.fluxc.store.AccountStore;
+ import org.wordpress.android.util.AppLog;
+ import org.wordpress.android.util.UrlUtils;
+ import org.wordpress.android.util.WPUrlUtils;
+
++import java.io.ByteArrayInputStream;
+ import java.io.IOException;
+ import java.net.HttpURLConnection;
+ import java.net.MalformedURLException;
+ import java.net.URL;
++import java.nio.charset.Charset;
++import java.util.HashMap;
++import java.util.Map;
+
+ import javax.inject.Inject;
+
++import okhttp3.Headers;
++import okhttp3.OkHttpClient;
++import okhttp3.Request;
++import okhttp3.Response;
++
+ /*
+  * WebView descendant used by ReaderPostDetailFragment - handles
+  * displaying fullscreen video and detecting url/image clicks
+@@ -237,9 +248,7 @@ public class ReaderWebView extends WebView {
+                    && mReaderWebView.getUrlClickListener().onUrlClick(url);
+         }
+
+-        @SuppressWarnings("deprecation")
+-        @Override
+-        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
++        private WebResourceResponse shouldInterceptImage(String url) {
+             URL imageUrl = null;
+             if (mIsPrivatePost && mBlogSchemeIsHttps && UrlUtils.isImageUrl(url)) {
+                 try {
+@@ -265,8 +274,73 @@ public class ReaderWebView extends WebView {
+                     AppLog.e(AppLog.T.READER, e);
+                 }
+             }
++            return null;
++        }
++
++        @Override
++        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request)  {
++            android.util.Log.d("WP", "ReaderWebViewClient.shouldInterceptRequest: " + request.getUrl().toString());
++            String url = request.getUrl().toString();
++            WebResourceResponse response = shouldInterceptImage(url);
++            if (response != null) {
++                return response;
++            }
++
++            // java.lang.IllegalArgumentException: unexpected url: data:text/html;charset=utf-8;base64,
++            if (url.startsWith("http://") || url.startsWith("https://")) {
++                return proceedWithOkHttp(view, request);
++            } else {
++                return super.shouldInterceptRequest(view, request);
++            }
++        }
++
++        @SuppressWarnings("deprecation")
++        @Override
++        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
++            android.util.Log.d("WP", "ReaderWebViewClient.shouldInterceptRequest(deprecated): " + url);
++
++            WebResourceResponse response = shouldInterceptImage(url);
++            if (response != null) {
++                return response;
++            } else {
++                return super.shouldInterceptRequest(view, url);
++            }
++        }
+ 
+-            return super.shouldInterceptRequest(view, url);
++        private WebResourceResponse proceedWithOkHttp(WebView view, WebResourceRequest request) {
++            OkHttpClient client = new OkHttpClient.Builder()
++                    .addInterceptor(new CronetInterceptor())
++                    .build();
++            Headers headers = Headers.of(request.getRequestHeaders());
++            Request wrappedRequest = new Request.Builder().url(request.getUrl().toString()).headers(headers).build();
++
++            android.util.Log.i("WP", "okhttp request sent for url " + request.getUrl() + ", headers: " + headers.toString());
++            try {
++                Response response = client.newCall(wrappedRequest).execute();
++                android.util.Log.i("WP", "okhttp headers for " + request.getUrl() + ": " + response.headers());
++                String contentType = response.body().contentType().toString().split("; ")[0];
++                Charset charset = response.body().contentType().charset();
++                String charsetStr = "";
++                if (charset != null) {
++                    charsetStr = charset.toString();
++                }
++                android.util.Log.i("WP", String.format("okhttp return for %s: %s %s", request.getUrl(), contentType, charsetStr));
++                // TODO concatenate values? see app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java
++                Map<String, String> responseHeaders = new HashMap<>();
++                for (int i = 0; i < response.headers().size(); ++i) {
++                    responseHeaders.put(response.headers().name(i), response.headers().value(i));
++                }
++                String message = response.message();
++                if (message.isEmpty()) {
++                    message = "Unknown error";
++                }
++                return new WebResourceResponse(contentType, charsetStr, response.code(), message, responseHeaders,
++                        response.body().byteStream());
++            } catch (IOException e) {
++                android.util.Log.e("WP", "proceedWithOkHttp failed", e);
++            }
++            // new WebResourceResponse(null, null, 404, "Unknown error", null, null)
++            return new WebResourceResponse("", "", new ByteArrayInputStream("".getBytes()));
+         }
+     }
+
+diff --git a/build.gradle b/build.gradle
+index 40696e81a5..c1c4c264b2 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,4 +1,7 @@
+ buildscript {
++    ext.kotlinVersion = '1.3.21'
++    ext.kotlinCoroutinesVersion = '1.2.2'
++
+     ext.kotlin_version = '1.3.61'
+     ext.kotlin_coroutines_version = '1.3.3'
+     ext.androidx_work_version = "2.0.1"
+@@ -162,3 +165,13 @@ tasks.register("prodDeps") {
+         println("Done")
+     }
+ }
++
++ext {
++    daggerVersion = '2.22.1'
++    wellSqlVersion = '1.5.0'
++    supportLibraryVersion = '27.1.1'
++    arch_paging_version = '1.0.1'
++    arch_lifecycle_version = '1.1.1'
++    arch_core_version = '2.0.1'
++    appcompat_version = '1.0.2'
++}
+diff --git a/cronet/build.gradle b/cronet/build.gradle
+new file mode 100644
+index 0000000000..20766abdaf
+--- /dev/null
++++ b/cronet/build.gradle
+@@ -0,0 +1,2 @@
++configurations.maybeCreate("default")
++artifacts.add("default", file('cronet.aar'))
+\ No newline at end of file
+diff --git a/envoy/build.gradle b/envoy/build.gradle
+new file mode 100644
+index 0000000000..3e2a22f595
+--- /dev/null
++++ b/envoy/build.gradle
+@@ -0,0 +1,2 @@
++configurations.maybeCreate("default")
++artifacts.add("default", file('envoy.aar'))
+diff --git a/fluxc/build.gradle b/fluxc/build.gradle
+new file mode 100644
+index 0000000000..23e7a870c6
+--- /dev/null
++++ b/fluxc/build.gradle
+@@ -0,0 +1,2 @@
++configurations.maybeCreate("default")
++artifacts.add("default", file('fluxc.aar'))
+diff --git a/settings.gradle b/settings.gradle
+index 3c013b9874..3b5e2fd455 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -1,4 +1,4 @@
+-include ':WordPress'
++include ':WordPress', ':envoy', ':fluxc', ':cronet'
+ include ':libs:utils:WordPressUtils'
+ include ':libs:networking:WordPressNetworking'
+ include ':libs:analytics:WordPressAnalytics'
+-- 
+2.26.0
+

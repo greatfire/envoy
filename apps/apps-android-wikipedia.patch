@@ -1,0 +1,101 @@
+From fc158414672e6bd26327a45eab2762cf74dd1015 Mon Sep 17 00:00:00 2001
+From: h <h@localhost>
+Date: Fri, 7 Feb 2020 22:03:43 +0800
+Subject: [PATCH] Add library envoy to proxy all requests
+
+---
+ app/build.gradle                                            | 6 ++++++
+ app/src/main/java/org/wikipedia/activity/BaseActivity.java  | 2 ++
+ .../main/java/org/wikipedia/dataclient/ServiceFactory.java  | 5 ++++-
+ .../wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt  | 2 ++
+ 4 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/app/build.gradle b/app/build.gradle
+index 8b3f6c4b9..f3047f704 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -43,6 +43,10 @@ android {
+         testApplicationId 'org.wikipedia.test'
+         testInstrumentationRunner "org.wikipedia.WikipediaTestRunner"
+         vectorDrawables.useSupportLibrary = true
++
++        packagingOptions {
++            doNotStrip '**/libcronet*.so'
++        }
+     }
+ 
+     sourceSets {
+@@ -226,6 +230,8 @@ dependencies {
+     androidTestImplementation "androidx.test.espresso:espresso-core:$espressoVersion"
+     androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
+ 
++    implementation files('libs/cronet.aar')
++    implementation files('libs/envoy.aar')
+ }
+ 
+ private setSigningConfigKey(config, Properties props) {
+diff --git a/app/src/main/java/org/wikipedia/activity/BaseActivity.java b/app/src/main/java/org/wikipedia/activity/BaseActivity.java
+index b4f144966..2ae00c912 100644
+--- a/app/src/main/java/org/wikipedia/activity/BaseActivity.java
++++ b/app/src/main/java/org/wikipedia/activity/BaseActivity.java
+@@ -23,6 +23,7 @@ import androidx.appcompat.app.AlertDialog;
+ import androidx.appcompat.app.AppCompatActivity;
+ import androidx.core.content.ContextCompat;
+ 
++import org.greatfire.envoy.CronetNetworking;
+ import com.google.android.material.snackbar.Snackbar;
+ 
+ import org.wikipedia.Constants;
+@@ -70,6 +71,7 @@ public abstract class BaseActivity extends AppCompatActivity {
+ 
+     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
++        CronetNetworking.initializeCronetEngine(getApplicationContext(), ""); // set envoy url here
+         exclusiveBusMethods = new ExclusiveBusConsumer();
+         disposables.add(WikipediaApp.getInstance().getBus().subscribe(new NonExclusiveBusConsumer()));
+         setTheme();
+diff --git a/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java b/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java
+index 699c4f613..aa95797cb 100644
+--- a/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java
++++ b/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java
+@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
+ import androidx.collection.LruCache;
+ 
++import org.greatfire.envoy.CronetInterceptor;
+ import org.wikipedia.WikipediaApp;
+ import org.wikipedia.dataclient.okhttp.OkHttpConnectionFactory;
+ import org.wikipedia.json.GsonUtil;
+@@ -61,7 +62,9 @@ public final class ServiceFactory {
+     private static Retrofit createRetrofit(@NonNull WikiSite wiki, @NonNull String baseUrl) {
+         return new Retrofit.Builder()
+                 .client(OkHttpConnectionFactory.getClient().newBuilder()
+-                        .addInterceptor(new LanguageVariantHeaderInterceptor(wiki)).build())
++                        .addInterceptor(new LanguageVariantHeaderInterceptor(wiki))
++                        .addInterceptor(new CronetInterceptor())
++                        .build())
+                 .baseUrl(baseUrl)
+                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                 .addConverterFactory(GsonConverterFactory.create(GsonUtil.getDefaultGson()))
+diff --git a/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt b/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt
+index 64205cb3c..83ecb6bf3 100644
+--- a/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt
++++ b/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt
+@@ -1,5 +1,6 @@
+ package org.wikipedia.dataclient.okhttp
+ 
++import org.greatfire.envoy.CronetInterceptor
+ import okhttp3.Cache
+ import okhttp3.CacheDelegate
+ import okhttp3.OkHttpClient
+@@ -29,6 +30,7 @@ object OkHttpConnectionFactory {
+                 .addInterceptor(DefaultMaxStaleRequestInterceptor())
+                 .addInterceptor(OfflineCacheInterceptor(SAVE_CACHE))
+                 .addInterceptor(TestStubInterceptor())
++                .addInterceptor(CronetInterceptor())
+                 .build()
+     }
+ }
+-- 
+2.25.0
+

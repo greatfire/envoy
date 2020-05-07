@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- https://stackoverflow.com/a/22397191/325224 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:bottom="0dp"
+        android:left="-6dp"
+        android:right="-6dp"
+        android:top="-6dp">
+
+        <shape android:shape="rectangle">
+            <solid android:color="#F7070700" />
+            <stroke
+                android:width="5dp"
+                android:color="#FF000000" />
+        </shape>
+    </item>
+</layer-list>

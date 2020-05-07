@@ -1,0 +1,200 @@
+From 0dc1e03ad0de7809148fa927da6a973b9f0adbbe Mon Sep 17 00:00:00 2001
+From: h <h@localhost>
+Date: Wed, 11 Mar 2020 12:44:37 +0800
+Subject: [PATCH 1/1] Add library envoy to proxy all requests
+
+---
+ app/build.gradle                              |  3 ++
+ .../app/browser/WebViewRequestInterceptor.kt  | 38 ++++++++++++++++++-
+ .../com/duckduckgo/app/di/NetworkModule.kt    |  3 ++
+ .../app/global/DuckDuckGoActivity.kt          |  2 +
+ .../app/survey/ui/SurveyActivity.kt           | 35 ++++++++++++++++-
+ 5 files changed, 78 insertions(+), 3 deletions(-)
+
+diff --git a/app/build.gradle b/app/build.gradle
+index 96663cfe..dd404cc5 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -212,4 +212,7 @@ dependencies {
+ 
+     kapt "com.android.tools.build.jetifier:jetifier-core:$jetifier"
+     annotationProcessor "com.android.tools.build.jetifier:jetifier-core:$jetifier"
++
++    implementation files("libs/envoy.aar")
++    implementation files("libs/cronet.aar")
+ }
+diff --git a/app/src/main/java/com/duckduckgo/app/browser/WebViewRequestInterceptor.kt b/app/src/main/java/com/duckduckgo/app/browser/WebViewRequestInterceptor.kt
+index 01e8d020..7df86d31 100644
+--- a/app/src/main/java/com/duckduckgo/app/browser/WebViewRequestInterceptor.kt
++++ b/app/src/main/java/com/duckduckgo/app/browser/WebViewRequestInterceptor.kt
+@@ -20,6 +20,7 @@ import android.webkit.WebResourceRequest
+ import android.webkit.WebResourceResponse
+ import android.webkit.WebView
+ import androidx.annotation.WorkerThread
++import org.greatfire.envoy.CronetInterceptor
+ import com.duckduckgo.app.global.isHttp
+ import com.duckduckgo.app.httpsupgrade.HttpsUpgrader
+ import com.duckduckgo.app.privacy.db.PrivacyProtectionCountDao
+@@ -28,7 +29,11 @@ import com.duckduckgo.app.surrogates.ResourceSurrogates
+ import com.duckduckgo.app.trackerdetection.TrackerDetector
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.withContext
++import okhttp3.Headers
++import okhttp3.OkHttpClient
++import okhttp3.Request
+ import timber.log.Timber
++import java.io.IOException
+ 
+ interface RequestInterceptor {
+ 
+@@ -82,7 +87,8 @@ class WebViewRequestInterceptor(
+         if (documentUrl == null) return null
+ 
+         if (TrustedSites.isTrusted(documentUrl)) {
+-            return null
++            // return null
++            return proceedWithOkHttp(request, documentUrl)
+         }
+ 
+         if (url != null && url.isHttp) {
+@@ -101,7 +107,35 @@ class WebViewRequestInterceptor(
+             return WebResourceResponse(null, null, null)
+         }
+ 
+-        return null
++        // return null
++        return proceedWithOkHttp(request, documentUrl)
++    }
++
++    private fun proceedWithOkHttp(request: WebResourceRequest, documentUrl: String?) : WebResourceResponse {
++        val client = OkHttpClient.Builder()
++                .addInterceptor(CronetInterceptor())
++                .build()
++        val headers = Headers.of(request.requestHeaders.toMap())
++        val wrappedRequest: Request = Request.Builder()
++                .url(request.url.toString())
++                // TODO set .method
++                .headers(headers)
++                .build()
++        android.util.Log.i("DG", "okhttp request sent for url ${request.url} document $documentUrl with headers: $headers")
++        try {
++            val response = client.newCall(wrappedRequest).execute()
++            val contentType = response.body()!!.contentType().toString().split("; ").first()
++            val charset = response.body()!!.contentType()!!.charset().toString()
++            android.util.Log.i("DG", "okhttp return for ${wrappedRequest.url()}: $contentType, $charset")
++            // TODO concatenate values? see app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java
++            val responseHeaders = response.headers().toMultimap().map {
++                (key, value) -> (key to value.firstOrNull())
++            }.toMap()
++            return WebResourceResponse(contentType, charset, response.code(), response.message().ifEmpty { "Unknown error" }, responseHeaders, response.body()!!.byteStream())
++        } catch (e: IOException) {
++            android.util.Log.e("DG", "proceedWithOkHttp failed", e)
++        }
++        return WebResourceResponse("", "", "".byteInputStream())
+     }
+ 
+     private fun shouldUpgrade(request: WebResourceRequest) =
+diff --git a/app/src/main/java/com/duckduckgo/app/di/NetworkModule.kt b/app/src/main/java/com/duckduckgo/app/di/NetworkModule.kt
+index 2c29abe3..6ca51a1d 100644
+--- a/app/src/main/java/com/duckduckgo/app/di/NetworkModule.kt
++++ b/app/src/main/java/com/duckduckgo/app/di/NetworkModule.kt
+@@ -18,6 +18,7 @@ package com.duckduckgo.app.di
+ 
+ import android.app.job.JobScheduler
+ import android.content.Context
++import org.greatfire.envoy.CronetInterceptor
+ import com.duckduckgo.app.autocomplete.api.AutoCompleteService
+ import com.duckduckgo.app.brokensite.api.BrokenSiteSender
+ import com.duckduckgo.app.brokensite.api.BrokenSiteSubmitter
+@@ -64,6 +65,7 @@ class NetworkModule {
+         val cache = Cache(cacheLocation, CACHE_SIZE)
+         return OkHttpClient.Builder()
+             .addInterceptor(apiRequestInterceptor)
++            .addInterceptor(CronetInterceptor())
+             .cache(cache)
+             .build()
+     }
+@@ -74,6 +76,7 @@ class NetworkModule {
+     fun pixelOkHttpClient(apiRequestInterceptor: ApiRequestInterceptor): OkHttpClient {
+         return OkHttpClient.Builder()
+             .addInterceptor(apiRequestInterceptor)
++            .addInterceptor(CronetInterceptor())
+             .build()
+     }
+ 
+diff --git a/app/src/main/java/com/duckduckgo/app/global/DuckDuckGoActivity.kt b/app/src/main/java/com/duckduckgo/app/global/DuckDuckGoActivity.kt
+index 91f28d1b..2cfb4356 100644
+--- a/app/src/main/java/com/duckduckgo/app/global/DuckDuckGoActivity.kt
++++ b/app/src/main/java/com/duckduckgo/app/global/DuckDuckGoActivity.kt
+@@ -26,6 +26,7 @@ import androidx.lifecycle.ViewModelProviders
+ import androidx.localbroadcastmanager.content.LocalBroadcastManager
+ import com.duckduckgo.app.settings.db.SettingsDataStore
+ import dagger.android.AndroidInjection
++import org.greatfire.envoy.CronetNetworking;
+ import javax.inject.Inject
+ 
+ 
+@@ -52,6 +53,7 @@ abstract class DuckDuckGoActivity : AppCompatActivity() {
+         if (daggerInject) daggerInject()
+         themeChangeReceiver = applyTheme()
+         super.onCreate(savedInstanceState)
++        CronetNetworking.initializeCronetEngine(applicationContext, ""); // set envoy url here
+     }
+ 
+     protected fun daggerInject() {
+diff --git a/app/src/main/java/com/duckduckgo/app/survey/ui/SurveyActivity.kt b/app/src/main/java/com/duckduckgo/app/survey/ui/SurveyActivity.kt
+index c608d908..1715518d 100644
+--- a/app/src/main/java/com/duckduckgo/app/survey/ui/SurveyActivity.kt
++++ b/app/src/main/java/com/duckduckgo/app/survey/ui/SurveyActivity.kt
+@@ -33,6 +33,11 @@ import com.duckduckgo.app.survey.model.Survey
+ import com.duckduckgo.app.survey.ui.SurveyViewModel.Command
+ import com.duckduckgo.app.survey.ui.SurveyViewModel.Command.*
+ import kotlinx.android.synthetic.main.activity_user_survey.*
++import okhttp3.Headers
++import okhttp3.OkHttpClient
++import okhttp3.Request
++import org.greatfire.envoy.CronetInterceptor
++import java.io.IOException
+ import javax.inject.Inject
+ 
+ 
+@@ -159,7 +164,35 @@ class SurveyActivity : DuckDuckGoActivity() {
+                     viewModel.onSurveyCompleted()
+                 }
+             }
+-            return null
++            // return null
++            return proceedWithOkHttp(request)
++        }
++
++        private fun proceedWithOkHttp(request: WebResourceRequest) : WebResourceResponse {
++            val client = OkHttpClient.Builder()
++                    .addInterceptor(CronetInterceptor())
++                    .build()
++            val headers = Headers.of(request.requestHeaders.toMap())
++            val wrappedRequest: Request = Request.Builder()
++                    .url(request.url.toString())
++                    .headers(headers)
++                    .build()
++
++            android.util.Log.i("DG", "survey okhttp request sent for url ${request.url} with headers: $headers")
++            try {
++                val response = client.newCall(wrappedRequest).execute()
++                val contentType = response.body()!!.contentType().toString().split("; ").first()
++                val charset = response.body()!!.contentType()!!.charset().toString()
++                android.util.Log.i("DG", "survey okhttp return for ${wrappedRequest.url()}: $contentType, $charset")
++                // TODO concatenate values? see app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java
++                val responseHeaders = response.headers().toMultimap().map {
++                    (key, value) -> (key to value.firstOrNull())
++                }.toMap()
++                return WebResourceResponse(contentType, charset, response.code(), response.message().ifEmpty { "Unknown error" }, responseHeaders, response.body()!!.byteStream())
++            } catch (e: IOException) {
++                android.util.Log.e("DG", "proceedWithOkHttp failed", e)
++            }
++            return WebResourceResponse("", "", "".byteInputStream())
+         }
+ 
+         @Suppress("OverridingDeprecatedMember")
+-- 
+2.25.0
+
