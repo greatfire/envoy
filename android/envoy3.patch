@@ -2,44 +2,57 @@ diff --git a/envoy/build.gradle b/envoy/build.gradle
 index ebb6d30..e39fbf4 100644
 --- a/envoy/build.gradle
 +++ b/envoy/build.gradle
-@@ -29,7 +29,7 @@ android {
-
- dependencies {
-     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.3.72"
--    implementation("com.squareup.okhttp3:okhttp:4.6.0")
-+    implementation("com.squareup.okhttp3:okhttp:3.14.8")
-     releaseImplementation project(path:':cronet', configuration: 'release')
-     debugImplementation project(path: ':cronet', configuration: 'debug')
- }
+@@ -41,11 +41,11 @@ android {
+     //androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+ 
+     //implementation 'com.google.android.gms:play-services-cronet:17.0.0'
+-    implementation('com.squareup.okhttp3:okhttp:4.6.0')
+-    implementation('com.squareup.okhttp3:okhttp-urlconnection:4.4.1')
++    //implementation('com.squareup.okhttp3:okhttp:4.6.0')
++    //implementation('com.squareup.okhttp3:okhttp-urlconnection:4.4.1')
+     //noinspection GradleDependency
+-    //implementation('com.squareup.okhttp3:okhttp:3.14.8')
+-    //implementation('com.squareup.okhttp3:okhttp-urlconnection:3.14.8')
++    implementation('com.squareup.okhttp3:okhttp:3.14.8')
++    implementation('com.squareup.okhttp3:okhttp-urlconnection:3.14.8')
+ 
+     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.3.72'
+     //embed project(path: ':cronet', configuration: 'release')
 diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt
 index fb201e5..fa733c6 100644
 --- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt
 +++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetInterceptor.kt
-@@ -16,11 +16,11 @@ class CronetInterceptor : Interceptor {
-     @Throws(IOException::class)
+@@ -20,16 +20,16 @@ class CronetInterceptor : Interceptor {
      override fun intercept(chain: Interceptor.Chain): Response {
-         return if (CronetNetworking.cronetEngine() != null) {
--            Log.d(TAG, "hit interceptor for " + chain.request().url)
-+            Log.d(TAG, "hit interceptor for " + chain.request().url())
-             // This will stop later interceptors
-             proxyToCronet(chain.request(), chain.call())
-         } else {
--            Log.d(TAG, "bypass interceptor for " + chain.request().url)
-+            Log.d(TAG, "bypass interceptor for " + chain.request().url())
-             chain.proceed(chain.request())
+         return when {
+             mCronetEngine != null -> {
+-                Log.d(TAG, "hit interceptor for " + chain.request().url)
++                Log.d(TAG, "hit interceptor for " + chain.request().url())
+                 proxyToCronet(chain.request(), chain.call(), mCronetEngine!!)
+             }
+             CronetNetworking.cronetEngine() != null -> {
+-                Log.d(TAG, "hit global interceptor for " + chain.request().url)
++                Log.d(TAG, "hit global interceptor for " + chain.request().url())
+                 // This will stop later interceptors
+                 proxyToCronet(chain.request(), chain.call())
+             }
+             else -> {
+-                Log.d(TAG, "bypass interceptor for " + chain.request().url)
++                Log.d(TAG, "bypass interceptor for " + chain.request().url())
+                 chain.proceed(chain.request())
+             }
          }
-     }
 diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt
 index 3d9e1b1..5c752ff 100644
 --- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt
 +++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetNetworking.kt
-@@ -69,17 +69,21 @@ object CronetNetworking {
+@@ -71,17 +71,21 @@ object CronetNetworking {
      @JvmStatic
      @Throws(IOException::class)
-     fun buildRequest(request: Request, callback: UrlRequest.Callback?): UrlRequest {
+     fun buildRequest(request: Request, callback: UrlRequest.Callback?, cronetEngine: CronetEngine, executorService: ExecutorService): UrlRequest {
 -        val url = request.url.toString()
 +        val url = request.url().toString()
-         val requestBuilder = cronetEngine!!.newUrlRequestBuilder(url, callback, executorService)
+         val requestBuilder = cronetEngine.newUrlRequestBuilder(url, callback, executorService)
 -        requestBuilder.setHttpMethod(request.method)
 -        request.headers.forEach {
 -            if (it.first.toLowerCase(Locale.ENGLISH) != "accept-encoding") {
@@ -57,7 +70,7 @@ index 3d9e1b1..5c752ff 100644
 +                 }
 +              }
          }
-
+ 
 -        val requestBody = request.body
 +        val requestBody = request.body()
          if (requestBody != null) {
@@ -70,20 +83,20 @@ index 1737fd0..e610a37 100644
 @@ -13,7 +13,7 @@ internal class CronetOkHttpCall(
          private val client: OkHttpClient,
          private val engine: CronetEngine,
-         private val mOriginRequest: Request) : Call {
+         private val originalRequest: Request) : Call {
 -    private val mEventListener: EventListener = client.eventListenerFactory.create(this)
 +    private val mEventListener: EventListener = client.eventListenerFactory().create(this)
      private var mUrlRequest: UrlRequest? = null
      private var mIsExecuted = false
      private var mIsCanceled = false
-@@ -24,7 +24,7 @@ internal class CronetOkHttpCall(
+@@ -24,7 +24,7 @@
      }
-
+ 
      init {
 -        mTimeout.timeout(client.callTimeoutMillis.toLong(), TimeUnit.MILLISECONDS)
 +        mTimeout.timeout(client.callTimeoutMillis().toLong(), TimeUnit.MILLISECONDS)
      }
-
+ 
      override fun request(): Request {
 diff --git a/envoy/src/main/kotlin/org/greatfire/envoy/CronetUrlRequestCallback.kt b/envoy/src/main/kotlin/org/greatfire/envoy/CronetUrlRequestCallback.kt
 index 30522b5..b39178e 100644
@@ -99,25 +112,25 @@ index 30522b5..b39178e 100644
  import org.chromium.net.CronetException
  import org.chromium.net.UrlRequest
  import org.chromium.net.UrlResponseInfo
-@@ -53,11 +52,11 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
+@@ -53,11 +52,11 @@
          }
          mRedirectCount += 1
          val client = OkHttpClient.Builder().build()
--        if (mOriginRequest.url.isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects) {
-+        if (mOriginRequest.url().isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects()) {
+-        if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects) {
++        if (mOriginalRequest.url().isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects()) {
              request.followRedirect()
--        } else if (!mOriginRequest.url.isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects) {
-+        } else if (!mOriginRequest.url().isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects()) {
+-        } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects) {
++        } else if (!mOriginalRequest.url().isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects()) {
              request.followRedirect()
 -        } else if (client.followRedirects) {
 +        } else if (client.followRedirects()) {
              request.followRedirect()
          } else {
              request.cancel()
-@@ -90,10 +89,9 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
-         eventListener?.responseBodyEnd(mCall, responseInfo.receivedByteCount)
-
+@@ -91,10 +90,9 @@
+ 
          // set the default value for empty content type?
+         // also set ; charset="utf-8" ?
 -        val contentType = mResponse.header("content-type", "text/html")
 -        val mediaType: MediaType? = (contentType
 -                ?: """text/plain; charset="utf-8"""").toMediaTypeOrNull()
@@ -125,6 +138,65 @@ index 30522b5..b39178e 100644
 +        val contentTypeString = mResponse.header("content-type", "text/html")
 +        val contentType = MediaType.parse(contentTypeString!!)
 +        val responseBody: ResponseBody = ResponseBody.create(contentType, mReceivedByteArrayOutputStream.toByteArray())
-         val newRequest = mOriginRequest.newBuilder()
+         val newRequest = mOriginalRequest.newBuilder()
                  .url(responseInfo.url)
                  .build()
+diff --git a/envoy/build.gradle b/envoy/build.gradle
+index ebb6d30..e39fbf4 100644
+--- a/envoy/src/main/kotlin/org/greatfire/envoy/CronetWebViewClient.kt
++++ b/envoy/src/main/kotlin/org/greatfire/envoy/CronetWebViewClient.kt
+@@ -5,7 +5,7 @@ import android.util.Log
+ import android.webkit.WebResourceResponse
+ import android.webkit.WebView
+ import android.webkit.WebViewClient
+-import okhttp3.Headers.Companion.toHeaders
++import okhttp3.Headers
+ import okhttp3.OkHttpClient
+ import okhttp3.Request
+ import okhttp3.Response
+@@ -25,26 +25,35 @@
+                 .addInterceptor(interceptor)
+                 .build()
+         // val client = CronetOkHttpConnectionFactory.client
+-        val headers = request!!.requestHeaders.toMap().toHeaders()
+-        val wrappedRequest: Request = Request.Builder().url(request.url.toString()).headers(headers).build()
++        val headers = request!!.requestHeaders
++        val headerBuilder = Headers.Builder()
++        for ((key, value) in headers) {
++            try {
++                headerBuilder.add(key, value)
++            } catch (e: Exception) {
++                Log.w(TAG, "Invalid header, $key: $value")
++                e.printStackTrace()
++            }
++        }
++        val wrappedRequest: Request = Request.Builder().url(request.url.toString()).headers(headerBuilder.build()).build()
+ 
+         Log.i(TAG, "okhttp request sent for url " + request.url.toString() + ", headers: " + headers.toString())
+         try {
+             val response: Response = client.newCall(wrappedRequest).execute()
+-            Log.i(TAG, "okhttp headers for " + request.url.toString() + ": " + response.headers)
+-            val contentType = response.body!!.contentType().toString().split("; ").first()
+-            val charsetStr = response.body!!.contentType()!!.charset().toString()
++            Log.i(TAG, "okhttp headers for " + request.url.toString() + ": " + response.headers())
++            val contentType = response.body()!!.contentType().toString().split("; ").first()
++            val charsetStr = response.body()!!.contentType()!!.charset().toString()
+             Log.i(TAG, java.lang.String.format("okhttp return for %s: %s %s", request.url, contentType, charsetStr))
+             val responseHeaders: MutableMap<String, String> = HashMap()
+-            for (i in 0 until response.headers.size) {
+-                responseHeaders[response.headers.name(i)] = response.headers.value(i)
++            for (i in 0 until response.headers().size()) {
++                responseHeaders[response.headers().name(i)] = response.headers().value(i)
+             }
+-            var message: String = response.message
++            var message: String = response.message()
+             if (message.isEmpty()) {
+                 message = "Unknown error"
+             }
+-            return WebResourceResponse(contentType, charsetStr, response.code, message, responseHeaders,
+-                    response.body!!.byteStream())
++            return WebResourceResponse(contentType, charsetStr, response.code(), message, responseHeaders,
++                    response.body()!!.byteStream())
+         } catch (e: IOException) {
+             Log.e(TAG, "request failed", e)
+         }

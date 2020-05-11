@@ -4,7 +4,7 @@ Download `cronet-$BUILD.aar`(BUILD: debug or release) from release page.
 ### How to use
 1. [Quick Start Guide to Using Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/README.md), [native API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/test_instructions.md), [Android API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/test_instructions.md)
 3. [Perform network operations using Cronet](https://developer.android.com/guide/topics/connectivity/cronet)
-3. Samples with test: [native sample](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/sample), [Android sample](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/sample/README)
+3. Samples with test: [native sample](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/sample), [Android sample](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/sample/README), [GoogleChromeLabs / cronet_sample](https://github.com/GoogleChromeLabs/cronet-sample/blob/master/android/app/src/main/java/com/google/samples/cronet_sample/ViewAdapter.java#L80)
 
 The key point is `Cronet_EngineParams_envoy_url_set(engine_params, "ENVOY_URL")` for native 
 or `cronetEngineBuilder.setEnvoyUrl("ENVOY_URL")` for android.
@@ -14,9 +14,10 @@ or `cronetEngineBuilder.setEnvoyUrl("ENVOY_URL")` for android.
 In one Format of `https://DOMAIN/PATH` or `envoy://?k1=v1&k2=v2`
 
 ### Parameters
+
 keys for `envoy://?k1=v1&k2=v2` format:
 
-* url: proxy URL, for example, https://example.com/path/
+* url: proxy URL, for example, https://allowed.example.com/path/
 * header_xxx: HTTP header, header_Host=my-host` will send Host header with value my-host
 * address: IP address for domain in proxy URL, to replace IP from DNS resolving
 * resolve: resolve map, same as `--host-resolver-rules` command line for chromium, [Chromium docs](https://www.chromium.org/developers/design-documents/network-stack/socks-proxy), [lighthouse issue #2817](https://github.com/GoogleChrome/lighthouse/issues/2817), [firefox bug #1523367](https://bugzilla.mozilla.org/show_bug.cgi?id=1523367)
@@ -24,13 +25,15 @@ keys for `envoy://?k1=v1&k2=v2` format:
 
 ### Examples
 
-1. a simple URL: `https://example.com/envoy_path/`
-2. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=subdomain.example.com`
-3. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=subdomain.example.com&address=1.2.3.4`
-4. custom host override: `envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=subdomain.example.com&resolve=MAP%20example.com%201.2.3.4`
+1. a simple URL: `https://allowed.example.com/envoy_path/`
+2. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com`
+3. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4`
+4. custom host override: `envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&resolve=MAP%20example.com%201.2.3.4`
 5. disable some cipher suites:  `envoy://?url=https%3A%2F%2Fallowed.example.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f`
 
-Note: `?_hash=HASH` will be appended to url in all cases for cache ~~invalidation~~.
+In example 5: allowed.example.com will be TLS SNI, forbidden.example.com will be Host HTTP header, 1.2.3.4 will be IP for allowed.example.com.
+
+Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~~.
 
 ## Setup
 ### Backend

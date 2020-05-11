@@ -20,10 +20,11 @@ class CronetInterceptor(private var mCronetEngine: CronetEngine?) : Interceptor 
     override fun intercept(chain: Interceptor.Chain): Response {
         return when {
             mCronetEngine != null -> {
+                Log.d(TAG, "hit interceptor for " + chain.request().url)
                 proxyToCronet(chain.request(), chain.call(), mCronetEngine!!)
             }
             CronetNetworking.cronetEngine() != null -> {
-                Log.d(TAG, "hit interceptor for " + chain.request().url)
+                Log.d(TAG, "hit global interceptor for " + chain.request().url)
                 // This will stop later interceptors
                 proxyToCronet(chain.request(), chain.call())
             }
