@@ -5,10 +5,10 @@ C and Java Library derived from chromium [cronet](https://chromium.googlesource.
 
 ## App examples
 
-See patches for each application in directory `apps`.
+Go to patches for each application in directory `apps` to learn how to integrate `envoy` library, or test with our demo apk files.
 
-1. [Wikipedia](https://github.com/wikimedia/apps-android-wikipedia): `./gradlew clean assembleDevDebug`
-2. [DuckDuckGo](https://github.com/duckduckgo/Android): `./gradlew assembleDebug`
+1. [Wikipedia](https://github.com/wikimedia/apps-android-wikipedia): `./gradlew clean assembleDevDebug`, [demo apk](https://en.greatfire.org/demos/wikipedia-dev-debug.apk)
+2. [DuckDuckGo](https://github.com/duckduckgo/Android): `./gradlew assembleDebug`, [demo apk](https://en.greatfire.org/demos/duckduckgo-5.41.0-debug.apk)
 3. Wordpress:
    1. [WordPress-FluxC-Android](https://github.com/wordpress-mobile/WordPress-FluxC-Android): `echo "sdk.dir=YOUR_SDK_DIR" > local.properties && ./gradlew fluxc:build`
    2. [WordPress-Android](https://github.com/wordpress-mobile/WordPress-Android): set `wp.oauth.app_id` and `wp.oauth.app_secret`, then `cp gradle.properties-example gradle.properties && ./gradlew assembleVanillaDebug`

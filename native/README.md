@@ -11,7 +11,7 @@ or `cronetEngineBuilder.setEnvoyUrl("ENVOY_URL")` for android.
 
 ### Envoy URL
 
-In one Format of `https://DOMAIN/PATH` or `envoy://?k1=v1&k2=v2`
+In one format of `https://DOMAIN/PATH` or `envoy://?k1=v1&k2=v2`
 
 ### Parameters
 
