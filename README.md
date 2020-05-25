@@ -18,3 +18,4 @@ You can submit more apps with `git -c diff.noprefix=false format-patch --numbere
 ## History
 1. [Google to reimplement curl in libcrurl | daniel.haxx.se](https://daniel.haxx.se/blog/2019/06/19/google-to-reimplement-curl-in-libcrurl/), [谷歌想实现自己的 curl，为什么？](https://www.oschina.net/news/107711/google-to-reimplement-curl-in-libcrurl)
 2. [973603 - [Cronet] libcurl wrapper library using Cronet API - chromium](https://bugs.chromium.org/p/chromium/issues/detail?id=973603)
+
