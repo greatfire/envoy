@@ -1,5 +1,5 @@
 
-Download `cronet-$BUILD.aar`(BUILD: debug or release) from release page.
+Download this aar release [cronet-release-v1.0.0.aar](https://en.greatfire.org/demos/cronet-release.aar).
 
 ### How to use
 1. [Quick Start Guide to Using Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/README.md), [native API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/test_instructions.md), [Android API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/test_instructions.md)
@@ -33,6 +33,13 @@ keys for `envoy://?k1=v1&k2=v2` format:
 
 In example 5: allowed.example.com will be TLS SNI, forbidden.example.com will be Host HTTP header, 1.2.3.4 will be IP for allowed.example.com.
 
+The equivalent curl command(see below for nginx conf):
+
+`curl --resolve allowed.example.com:443:1.2.3.4 \
+      --header 'Host: forbidden.example.com' \
+      --header 'Url-Orig: https://forbidden.example.com' --header 'Host-Orig: forbidden.example.com' \
+      https://allowed.example.com/envoy_path/ # --ciphers ECDHE-RSA-AES128-GCM-SHA256 `
+
 Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~~.
 
 ## Setup
@@ -41,7 +48,7 @@ Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~
 Use Nginx as a`reverse proxy`
 
 ```
-location ~ ^/path/ {
+location ~ ^/envoy_path/ {
     proxy_ssl_server_name on;
     proxy_pass $http_url_orig;
     proxy_buffering off; # disable buffer for stream
@@ -51,15 +58,6 @@ location ~ ^/path/ {
     proxy_pass_request_headers on;
 }
 ```
-
-equivalent curl cmd:
-
-   `curl -H "Url-Orig: https://en.wikipedia.org/wiki/Wikipedia" -H 'Host-Orig: en.wikipedia.org' https://allowed.example.com/path/`
-
-with domain fronting
-
-   `curl -H "Url-Orig: https://en.wikipedia.org/wiki/Wikipedia" -H 'Host-Orig: en.wikipedia.org' -H 'Host: forbidden.example.com' https://allowed.example.com/path/`
-
 
 ### Native
 [sample main.cc](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/sample/main.cc)
