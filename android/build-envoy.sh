@@ -27,8 +27,8 @@ yes | android-sdk-linux/tools/bin/sdkmanager --licenses
 
 BUILD=${1:-release}
 cp "../native/cronet-$BUILD.aar" ./cronet/
-if [[ $BUILD == "debug" ]]; then
-    ./gradlew assembleDebug
-else
+if [[ $BUILD == "release" ]]; then
     ./gradlew assembleRelease
+else
+    ./gradlew assembleDebug
 fi

@@ -9,7 +9,7 @@ Technical details are explained [here](native/README.md).
 
 Go to patches for each application in directory `apps` to learn how to integrate `envoy` library, or test with our demo apk files.
 
-1. [Wikipedia](https://github.com/wikimedia/apps-android-wikipedia): `./gradlew clean assembleDevDebug`, [demo apk](https://en.greatfire.org/demos/wikipedia-dev-debug.apk)
+1. [Wikipedia](https://github.com/wikimedia/apps-android-wikipedia): `./gradlew clean assembleDevDebug`, [demo apk](https://en.greatfire.org/demos/wikipedia-dev-debug.apk), and the [migration guide](apps/wikipedia.md).
 2. [DuckDuckGo](https://github.com/duckduckgo/Android): `./gradlew assembleDebug`, [demo apk](https://en.greatfire.org/demos/duckduckgo-5.41.0-debug.apk)
 3. Wordpress:
    1. [WordPress-FluxC-Android](https://github.com/wordpress-mobile/WordPress-FluxC-Android): `echo "sdk.dir=YOUR_SDK_DIR" > local.properties && ./gradlew fluxc:build`
