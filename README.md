@@ -2,7 +2,7 @@ C and Java Library derived from chromium [cronet](https://chromium.googlesource.
 
 Technical details are explained [here](native/README.md).
 
-* for pure c and java cornet library, see directory `native/`.
+* for pure c and java cronet library, see directory `native/`.
 * for the android library, import directory `android/` from android studio or build with gradle from the command line.
 
 ## App examples
