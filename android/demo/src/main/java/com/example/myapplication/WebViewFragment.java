@@ -49,9 +49,7 @@ public class WebViewFragment extends BaseFragment {
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
                     final String msg = "Completed";
-                    WebViewFragment.this.getActivity().runOnUiThread(() -> {
-                        mMsgTextView.setText(msg);
-                    });
+                    WebViewFragment.this.getActivity().runOnUiThread(() -> mMsgTextView.setText(msg));
                 }
             });
             mResultWebView.loadUrl(urlEditText.getText().toString());
