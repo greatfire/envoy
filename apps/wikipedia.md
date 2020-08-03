@@ -1,16 +1,16 @@
 1. Download cronet.aar  
    Cronet.aar has the sample API as Google's cronet(except for one extra method `setEnvoyUrl`).
-   Download the aar release [cronet-release-v1.0.0.aar](https://en.greatfire.org/demos/cronet-release.aar).
+   Download these aar files [cronet-release-v1.0.0.aar](https://envoy.greatfire.org/static/cronet-release.aar) or [cronet-debug-v1.0.0.aar](https://djy1j2o9tpazn.cloudfront.net/static/cronet-debug.aar).
 2. **Optional**  
    for apps which use OkHttp 3.12.x(not OkHttp 4.x), patch the `android/envoy` directory by cd into it first,
    then run `patch --forward --force -p1 --reject-file=- < envoy3.patch`.  
    So is the case for Wikipedia which uses OkHttp 3.14.0 .
-3. Build or download envoy.aar, see `android/build-envoy.sh`  
+3. Build or download envoy-$BUILD.aar or envoy-okhttp3-$BUILD.aar, see `android/build-envoy.sh`  
    Envoy is the bootstrapping library that has adapters for serval popular libraries(OkHttp/Retrofit, Volley, etc).
    - Import the sub `android` directory as an android project, then put cronet.aar to `android/cronet/cronet-$BUILD.aar`.
       BUILD is debug or release which depends on your build variant.
-   - Or just download the aar release [envoy-release-v1.0.0.aar](https://en.greatfire.org/demos/envoy-release.aar) or
-   [cronet-okhttp3-v1.0.0.aar](https://en.greatfire.org/demos/envoy-okhttp3-release.aar).
+   - Or just download the aar release [envoy-release-v1.0.0.aar](https://envoy.greatfire.org/static/envoy-release.aar) or
+   [envoy-okhttp3-release-v1.0.0.aar](https://envoy.greatfire.org/static/envoy-okhttp3-release.aar).
 4. Update Wikipedia source code, see `apps/apps-android-wikipedia.patch`.
     1. add aar configurations to app/build.gradle.
     2. call `CronetNetworking.initializeCronetEngine(getApplicationContext(), "YOUR-ENVOY-URL")` in the main/base class' `onCreate` method, i.e. `org.wikipedia.activity.BaseActivity`.  

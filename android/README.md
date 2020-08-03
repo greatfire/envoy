@@ -1,6 +1,12 @@
+
+## Download
+
+- [cronet-release.aar](https://envoy.greatfire.org/static/cronet-release.aar)
+- [cronet-debug.aar](https://envoy.greatfire.org/static/cronet-debug.aar)
+
 ## Build
 
-copy `cronet-$BUILD.aar` to cronet/cronet.aar, then run `./gradlew assembleDebug` to build the library.
+Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./gradlew assembleDebug` or `./gradlew assemble` to build the project.
 
 ## Get Started
 

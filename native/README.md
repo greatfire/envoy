@@ -1,5 +1,5 @@
 
-Download this aar release [cronet-release-v1.0.0.aar](https://en.greatfire.org/demos/cronet-release.aar).
+Download these aar files [cronet-release-v1.0.0.aar](https://envoy.greatfire.org/static/cronet-release.aar) or [cronet-debug-v1.0.0.aar](https://djy1j2o9tpazn.cloudfront.net/static/cronet-debug.aar).
 
 ### How to use
 1. [Quick Start Guide to Using Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/README.md), [native API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/test_instructions.md), [Android API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/test_instructions.md)
@@ -22,14 +22,15 @@ keys for `envoy://?k1=v1&k2=v2` format:
 * address: IP address for domain in proxy URL, to replace IP from DNS resolving
 * resolve: resolve map, same as `--host-resolver-rules` command line for chromium, [Chromium docs](https://www.chromium.org/developers/design-documents/network-stack/socks-proxy), [lighthouse issue #2817](https://github.com/GoogleChrome/lighthouse/issues/2817), [firefox bug #1523367](https://bugzilla.mozilla.org/show_bug.cgi?id=1523367)
 * disable_cipher_suites: cipher suites list to disable, same as `--cipher-suite-blacklist` command line, [chromium bug #58831](https://bugs.chromium.org/p/chromium/issues/detail?id=58831), [Firefox Support Forum](https://support.mozilla.org/en-US/questions/1119007#answer-867850)
+* salt: a 16 characters long random string, unique to each combination of app-signing key, user, and device, such [ANDROID_ID}(https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID).
 
 ### Examples
 
-1. a simple URL: `https://allowed.example.com/envoy_path/`
-2. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com`
-3. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4`
-4. custom host override: `envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&resolve=MAP%20example.com%201.2.3.4`
-5. disable some cipher suites:  `envoy://?url=https%3A%2F%2Fallowed.example.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f`
+1. a simple URL: `https://allowed.example.com/app1/`
+2. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com`
+3. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4`
+4. custom host override: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&resolve=MAP%20example.com%201.2.3.4`
+5. disable some cipher suites:  `envoy://?url=https%3A%2F%2Fallowed.example.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f`
 
 In example 5: allowed.example.com will be TLS SNI, forbidden.example.com will be Host HTTP header, 1.2.3.4 will be IP for allowed.example.com.
 
@@ -38,7 +39,7 @@ The equivalent curl command(see below for nginx conf):
 `curl --resolve allowed.example.com:443:1.2.3.4 \
       --header 'Host: forbidden.example.com' \
       --header 'Url-Orig: https://forbidden.example.com' --header 'Host-Orig: forbidden.example.com' \
-      https://allowed.example.com/envoy_path/ # --ciphers ECDHE-RSA-AES128-GCM-SHA256 `
+      https://allowed.example.com/app1/ # --ciphers ECDHE-RSA-AES128-GCM-SHA256 `
 
 Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~~.
 
@@ -48,7 +49,7 @@ Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~
 Use Nginx as a`reverse proxy`
 
 ```
-location ~ ^/envoy_path/ {
+location ~ ^/app1/ {
     proxy_ssl_server_name on;
     proxy_pass $http_url_orig;
     proxy_buffering off; # disable buffer for stream
