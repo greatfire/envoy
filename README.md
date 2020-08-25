@@ -5,6 +5,44 @@ Technical details are explained [here](native/README.md).
 * for pure c and java cronet library, see directory `native/`.
 * for the android library, import directory `android/` from android studio or build with gradle from the command line.
 
+Please note that this project is unrelated to the [Envoy Proxy project](https://www.envoyproxy.io/).
+
+# ENVOY Developer Guide
+
+Welcome to the envoy developer guide.
+These document will teach you how to build Android apps using
+APIs in the Android framework and other libraries.
+
+## What is Cronet
+Cronet is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in the Chrome browser by over a billion people. It offers an easy-to-use, high performance, standards-compliant, and secure way to perform HTTP requests.. On Android, Cronet offers its own Java asynchronous API as well as support for the java.net.HttpURLConnection API. Cronet takes advantage of multiple technologies that reduce the latency and increase the throughput of the network requests that your app needs to work.
+
+## All About Envoy
+Envoy is built on top of cronet which offers support for Okhttp, Volley, WebView, Cronet basic and java.net.HttpURLConnection. 
+
+We have built robust, unique, censorship-defeating tools and services that are having a big impact in some country where some website and their content are censored
+
+This tool is derived from [Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/).
+
+[Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/) is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in chrome browser by over a billion user.
+
+So it will work with all request type which is mostly used in developement.
+It is used to make app which is resistant to **censorship**
+
+## What is Envoy And Where It can be used
+
+As name suggest envoy is a **representative** or  **messenger**
+
+Like it our tool will work as messenger or representative for certain website or web content access without worrying of censorship as our tool will work as representative.
+
+As earlier said it can be used to make app resistant to  **censorship**.
+
+Also it can be used as proxy tool communication for secure web access to your app.
+E.g. if facebook and youtube is not accessible to country like china and you want to make app which shows facebook content or youtube content then you can use this tool to show your content.
+
+It can be used as partial content showing or can be used to make whole server communication with this tool depending upon your requirement.
+
+Also if you don't want to use envoy proxy then also you can use this tool to get benifit of cronet library hasselfree. And in future if you want then you just have to simply define envoy url to bypass censorship.
+
 ## App examples
 
 Go to patches for each application in directory `apps` to learn how to integrate `envoy` library, or test with our demo apk files.
