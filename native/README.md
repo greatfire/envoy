@@ -21,8 +21,10 @@ keys for `envoy://?k1=v1[&<more-pairs>...]` format:
 * header_xxx: HTTP header, header_Host=my-host` will send Host header with value my-host
 * address: IP address for domain in proxy URL, to replace IP from DNS resolving
 * resolve: resolve map, same as `--host-resolver-rules` command line for chromium, [Chromium docs](https://www.chromium.org/developers/design-documents/network-stack/socks-proxy), [lighthouse issue #2817](https://github.com/GoogleChrome/lighthouse/issues/2817), [firefox bug #1523367](https://bugzilla.mozilla.org/show_bug.cgi?id=1523367)
-* disable_cipher_suites: cipher suites list to disable, same as `--cipher-suite-blacklist` command line, [chromium bug #58831](https://bugs.chromium.org/p/chromium/issues/detail?id=58831), [Firefox Support Forum](https://support.mozilla.org/en-US/questions/1119007#answer-867850)
-* salt: a 16 characters long random string, unique to each combination of app-signing key, user, and device, such [ANDROID_ID](https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID).
+* disabled_cipher_suites: cipher suites to be disabled, same as `--cipher-suite-blacklist` command line for chromium, [chromium bug #58831](https://bugs.chromium.org/p/chromium/issues/detail?id=58831), [Firefox Support Forum](https://support.mozilla.org/en-US/questions/1119007#answer-867850)
+* salt: a 16 characters long random string, unique to each combination of app-signing key, user, and device, such [ANDROID_ID](https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID)
+
+All keys except url are optional, for example, only `resolve` without `url` will just override the DNS setting.
 
 ### Examples
 
@@ -46,7 +48,7 @@ Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~
 ## Setup
 ### Backend
 
-Use Nginx as a`reverse proxy`
+Use Nginx as a`reverse proxy`, see [security](security.md) for more.
 
 ```
 location ~ ^/app1/ {

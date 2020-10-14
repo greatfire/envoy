@@ -17,7 +17,7 @@ APIs in the Android framework and other libraries.
 Cronet is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in the Chrome browser by over a billion people. It offers an easy-to-use, high performance, standards-compliant, and secure way to perform HTTP requests.. On Android, Cronet offers its own Java asynchronous API as well as support for the java.net.HttpURLConnection API. Cronet takes advantage of multiple technologies that reduce the latency and increase the throughput of the network requests that your app needs to work.
 
 ## All About Envoy
-Envoy is built on top of cronet which offers support for Okhttp, Volley, WebView, Cronet basic and java.net.HttpURLConnection. 
+Envoy is built on top of cronet which offers support for OkHttp, Volley, WebView, Cronet basic and java.net.HttpURLConnection.
 
 We have built robust, unique, censorship-defeating tools and services that are having a big impact in some country where some website and their content are censored
 
@@ -25,7 +25,7 @@ This tool is derived from [Cronet](https://chromium.googlesource.com/chromium/sr
 
 [Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/) is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in chrome browser by over a billion user.
 
-So it will work with all request type which is mostly used in developement.
+So it will work with all request type which is mostly used in development.
 It is used to make app which is resistant to **censorship**
 
 ## What is Envoy And Where It can be used
@@ -37,11 +37,11 @@ Like it our tool will work as messenger or representative for certain website or
 As earlier said it can be used to make app resistant to  **censorship**.
 
 Also it can be used as proxy tool communication for secure web access to your app.
-E.g. if facebook and youtube is not accessible to country like china and you want to make app which shows facebook content or youtube content then you can use this tool to show your content.
+E.g. if facebook and YouTube is not accessible to country like china and you want to make app which shows facebook content or YouTube content then you can use this tool to show your content.
 
 It can be used as partial content showing or can be used to make whole server communication with this tool depending upon your requirement.
 
-Also if you don't want to use envoy proxy then also you can use this tool to get benifit of cronet library hasselfree. And in future if you want then you just have to simply define envoy url to bypass censorship.
+Also if you don't want to use envoy proxy then also you can use this tool to get benefit of cronet library hassle-free. And in future if you want then you just have to simply define envoy url to bypass censorship.
 
 ## App examples
 
@@ -49,7 +49,7 @@ Go to patches for each application in directory `apps` to learn how to integrate
 
 1. [Wikipedia](https://github.com/wikimedia/apps-android-wikipedia): `./gradlew clean assembleDevDebug`, [demo apk](https://envoy.greatfire.org/static/wikipedia-prod.apk), and the [migration guide](apps/wikipedia.md).
 2. [DuckDuckGo](https://github.com/duckduckgo/Android): `./gradlew assembleDebug`, [demo apk](https://envoy.greatfire.org/static/duckduckgo-5.41.0-debug.apk)
-3. Wordpress:
+3. WordPress:
    1. [WordPress-FluxC-Android](https://github.com/wordpress-mobile/WordPress-FluxC-Android): `echo "sdk.dir=YOUR_SDK_DIR" > local.properties && ./gradlew fluxc:build`
    2. [WordPress-Android](https://github.com/wordpress-mobile/WordPress-Android): set `wp.oauth.app_id` and `wp.oauth.app_secret`, then `cp gradle.properties-example gradle.properties && ./gradlew assembleVanillaDebug`
 

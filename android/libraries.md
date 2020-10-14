@@ -1,3 +1,10 @@
+[Demo application](https://github.com/greatfire/envoy/tree/master/android/demo/src/main/java/com/example/myapplication)
+
+## HttpURLConnection
+1. Crate a CronetEngine.Builder with `new CronetEngine.Builder(context)`.
+2. Set envoy URL to the engine: `engineBuilder.setEnvoyUrl("MY_ENVOY_URL")`.
+3. Build an engine by calling `engineBuilder.build()`.
+4. Cast the result to HttpURLConnection type after invoking `engine.openConnection(url)`.
 
 ## Retrofit
 1. Create the retrofit client using the retrofit service and build the client.

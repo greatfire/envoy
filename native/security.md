@@ -9,7 +9,7 @@ Two way to deal with this:
 2. Make sure upstream hosts are whitelisted, see below.
 
 ## Limit response headers
-Now all headers are passed through the CDN/Nginx backend, this may leak informations, such as origin server IP.
+Now all headers are passed through the CDN/Nginx backend, this may leak information, such as origin server IP.
 You should contact the upstream provider about this, and filter sensitive headers(whitelist/blacklist certain headers).
 
 ## Protect backend ip
