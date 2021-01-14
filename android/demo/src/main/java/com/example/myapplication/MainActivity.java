@@ -1,5 +1,7 @@
 package com.example.myapplication;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -11,6 +13,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
@@ -20,6 +23,7 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 import org.chromium.net.CronetEngine;
+import org.greatfire.envoy.ShadowsocksService;
 import org.jetbrains.annotations.NotNull;
 
 
@@ -29,13 +33,25 @@ public class MainActivity extends FragmentActivity {
 
     private ViewPager2 viewPager;
 
-    private static final String[] titles = new String[]{"Cronet", "OKHttp",  "WebView", "Volley", "HttpConn", "Nuke"};
+    private static final String[] titles = new String[]{"Cronet", "OKHttp", "WebView", "Volley", "HttpConn", "Nuke"};
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        String ssUri = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234";
+        Intent shadowsocksIntent = new Intent(this, ShadowsocksService.class);
+        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", ssUri);
+        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_ADDRESS", "127.0.0.1");
+        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1080);
+        ContextCompat.startForegroundService(getApplicationContext(), shadowsocksIntent);
+
+        // https://developer.android.com/guide/components/bound-services#java
+        //Intent intent = new Intent(this, ShadowsocksService.class);
+        //private ServiceConnection connection = new ServiceConnection() { }
+        //bindService(intent, connection, Context.BIND_AUTO_CREATE);
 
         viewPager = findViewById(R.id.pager);
         // viewPager.setPageTransformer();
@@ -47,9 +63,9 @@ public class MainActivity extends FragmentActivity {
                 (tab, position) -> tab.setText(titles[position])
         ).attach();
 
-        String url = "https://ifconfig.co/ip";
+        // String url = "https://ifconfig.co/ip";
         // url = "https://httpbin.org/ip";
-        String envoyUrl = "";
+        String envoyUrl = "socks5://127.0.0.1:1080"; // Keep this if no port conflicts
 
         CronetEngine.Builder engineBuilder = new CronetEngine.Builder(getApplication());
         engineBuilder.setUserAgent("curl/7.66.0");
@@ -121,6 +137,7 @@ public class MainActivity extends FragmentActivity {
             public SimpleFragment() {
                 // Required empty public constructor
             }
+
             @Nullable
             @Override
             public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {

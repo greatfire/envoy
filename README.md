@@ -1,5 +1,9 @@
 C and Java Library derived from chromium [cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/).
 
+We are looking for developers to improve envoy together, please contact support@greatfire.org.
+
+我们正在寻找开发者一同改进envoy，详情联系support@greatfire.org。
+
 Technical details are explained [here](native/README.md).
 
 * for pure c and java cronet library, see directory `native/`.
@@ -10,8 +14,17 @@ Please note that this project is unrelated to the [Envoy Proxy project](https://
 # ENVOY Developer Guide
 
 Welcome to the envoy developer guide.
-These document will teach you how to build Android apps using
+This document will teach you how to build Android apps using
 APIs in the Android framework and other libraries.
+
+## Protocols which Envoy supports
+
+- HTTPS: proxy all traffic through regular web servers (or use Content Delivery Network(s) as middleboxes).
+- Shadowsocks: use the socks5 proxy provided by shadowsocks client/server.
+
+All you need is to call `Cronet_EngineParams_envoy_url_set(engine_params, "ENVOY_URL")` where ENVOY_URL is your HTTPS URL or shadowsocks' socks5 proxy address.
+
+Visit native/README.md and android/README.md for more technical details.
 
 ## What is Cronet
 Cronet is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in the Chrome browser by over a billion people. It offers an easy-to-use, high performance, standards-compliant, and secure way to perform HTTP requests.. On Android, Cronet offers its own Java asynchronous API as well as support for the java.net.HttpURLConnection API. Cronet takes advantage of multiple technologies that reduce the latency and increase the throughput of the network requests that your app needs to work.
@@ -57,9 +70,9 @@ You can submit more apps with `git -c diff.noprefix=false format-patch --numbere
 
 ## Release steps
 1. Rebuild cronet-debug.aar and cronet-release.aar: run `./native/build_cronet.sh debug` and `./native/build_cronet.sh release`
-2. Rebuild envoy: ./android/build-envoy.sh
-3. Rebuild demo apps: ./apps/build-apps.sh
+2. Rebuild envoy: `./android/build-envoy.sh`
+3. Rebuild demo apps: `./apps/build-apps.sh`
 
 ## History
-1. [Google to reimplement curl in libcrurl | daniel.haxx.se](https://daniel.haxx.se/blog/2019/06/19/google-to-reimplement-curl-in-libcrurl/), [谷歌想实现自己的 curl，为什么？](https://www.oschina.net/news/107711/google-to-reimplement-curl-in-libcrurl)
+1. [Google to reimplement curl in libcrurl | daniel.haxx.se](https://daniel.haxx.se/blog/2019/06/19/google-to-reimplement-curl-in-libcrurl/), [Simplified Chinese](https://www.oschina.net/news/107711/google-to-reimplement-curl-in-libcrurl)
 2. [973603 - [Cronet] libcurl wrapper library using Cronet API - chromium](https://bugs.chromium.org/p/chromium/issues/detail?id=973603)

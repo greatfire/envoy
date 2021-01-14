@@ -1,6 +1,6 @@
 1. Download cronet.aar  
    Cronet.aar has the sample API as Google's cronet(except for one extra method `setEnvoyUrl`).
-   Download these aar files [cronet-release-v1.0.0.aar](https://envoy.greatfire.org/static/cronet-release.aar) or [cronet-debug-v1.0.0.aar](https://djy1j2o9tpazn.cloudfront.net/static/cronet-debug.aar).
+   Download these aar files [cronet-release-v1.0.0.aar](https://envoy.greatfire.org/static/cronet-release.aar) or [cronet-debug-v1.0.0.aar](https://envoy.greatfire.org/static/cronet-debug.aar).
 2. **Optional**  
    for apps which use OkHttp 3.12.x(not OkHttp 4.x), patch the `android/envoy` directory by cd into it first,
    then run `patch --forward --force -p1 --reject-file=- < envoy3.patch`.  

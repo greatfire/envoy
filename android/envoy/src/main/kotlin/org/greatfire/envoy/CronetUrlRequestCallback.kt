@@ -111,7 +111,7 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
         }
     }
 
-    override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
+    override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error?: CronetException) {
         val wrappedError = IOException("Cronet Exception Occurred", error)
         mIOException = wrappedError
         mResponseConditionVariable.open()

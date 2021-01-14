@@ -8,7 +8,8 @@ object CronetOkHttpConnectionFactory {
     // private const val CACHE_DIR_NAME = "okhttp-cache"
     // private const val NET_CACHE_SIZE = (64 * 1024 * 1024).toLong()
 
-    @JvmStatic val client = createClient()
+    @JvmStatic
+    val client = createClient()
 
     private fun createClient(): OkHttpClient {
         //val cache = Cache(File(context.cacheDir, CACHE_DIR_NAME), NET_CACHE_SIZE)

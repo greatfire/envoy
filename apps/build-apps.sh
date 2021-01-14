@@ -14,14 +14,13 @@ echo build apps-android-wikipedia ...
 cd ../android || exit 1
 # make it work with okhttp3
 git checkout envoy
-patch --forward --force -p1 --reject-file=- < envoy3.patch
+patch --forward --force -p1 --reject-file=- <envoy3.patch
 bash build-envoy.sh "$BUILD"
-
 
 cd ../apps || exit 2
 [[ ! -d apps-android-wikipedia ]] && git clone https://github.com/wikimedia/apps-android-wikipedia
-cd apps-android-wikipedia && git checkout 1067302cd39a4fc9228cc7b034488f2bda5202b7 && git checkout .
-patch --forward --force -p1 --reject-file=- < ../apps-android-wikipedia.patch
+cd apps-android-wikipedia && git fetch && git checkout . && git checkout 5fd7eeff960ae51ca891cf46e8595391aa8eb9b5
+patch --forward --force -p1 --reject-file=- <../apps-android-wikipedia.patch
 
 mkdir -p app/libs/
 cp "../../android/envoy/build/outputs/aar/envoy-$BUILD.aar" app/libs/envoy.aar
@@ -32,14 +31,13 @@ else
     mkdir -p ~/.sign
     ./gradlew assembleRelease || echo 'update values in ~/.sign/signing.properties, see app/signing.properties.sample'
 fi
-ls "$(pwd)"/app/build/outputs/apk/*/"$BUILD"/*.apk
-
+ls "$(pwd)"/app/build/outputs/apk/*/"$BUILD"/*.apk # app-prod-release.apk
 
 cd .. || exit 3
 [[ ! -d Android ]] && git clone https://github.com/duckduckgo/Android
-cd Android && git checkout 2d2daa7d4fa89e405d9e726abf9908aa168f5166 && git checkout .
+cd Android && git fetch && git checkout . && git checkout 2d2daa7d4fa89e405d9e726abf9908aa168f5166
 git submodule update --init
-patch --forward --force -p1 --reject-file=- < ../DuckDuckGo-Android.patch
+patch --forward --force -p1 --reject-file=- <../DuckDuckGo-Android.patch
 
 mkdir -p app/libs/
 cp "../../android/envoy/build/outputs/aar/envoy-$BUILD.aar" app/libs/envoy.aar
@@ -49,4 +47,4 @@ if [[ $BUILD == "debug" ]]; then
 else
     ./gradlew assembleRelease
 fi
-ls "$(pwd)/app/build/outputs/apk/$BUILD/duckduckgo-5.41.0-$BUILD.apk"
+ls "$(pwd)/app/build/outputs/apk/$BUILD/"*.apk

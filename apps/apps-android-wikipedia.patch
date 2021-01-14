@@ -4,20 +4,21 @@ Date: Fri, 7 Feb 2020 22:03:43 +0800
 Subject: [PATCH] Add library envoy to proxy all requests
 
 ---
- app/build.gradle                                            | 6 ++++++
- app/src/main/java/org/wikipedia/activity/BaseActivity.java  | 2 ++
- .../main/java/org/wikipedia/dataclient/ServiceFactory.java  | 5 ++++-
- .../wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt  | 2 ++
- 4 files changed, 14 insertions(+), 1 deletion(-)
+ app/build.gradle                                                   | 7 +++++++
+ app/src/main/java/org/wikipedia/activity/BaseActivity.java         | 2 ++
+ app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java     | 5 ++++-
+ .../org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt     | 2 ++
+ .../java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java  | 5 +++++
+ 5 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/app/build.gradle b/app/build.gradle
-index 8b3f6c4b9..f3047f704 100644
+index bf652dd7e..ec61a1a43 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
-@@ -43,6 +43,10 @@ android {
-         testApplicationId 'org.wikipedia.test'
-         testInstrumentationRunner "org.wikipedia.WikipediaTestRunner"
-         vectorDrawables.useSupportLibrary = true
+@@ -48,6 +48,10 @@ android {
+         signingConfig signingConfigs.debug
+ 
+         buildConfigField "String", "DEFAULT_RESTBASE_URI_FORMAT", '"%1$s://%2$s/api/rest_v1/"'
 +
 +        packagingOptions {
 +            doNotStrip '**/libcronet*.so'
@@ -25,17 +26,18 @@ index 8b3f6c4b9..f3047f704 100644
      }
  
      sourceSets {
-@@ -226,6 +230,8 @@ dependencies {
-     androidTestImplementation "androidx.test.espresso:espresso-core:$espressoVersion"
-     androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
+@@ -221,6 +225,9 @@ dependencies {
  
+     androidTestImplementation "androidx.test:rules:1.2.0" // JUnit Rules
+     androidTestImplementation "androidx.test:runner:1.2.0" // Android JUnit Runner
++
 +    implementation files('libs/cronet.aar')
 +    implementation files('libs/envoy.aar')
  }
  
  private setSigningConfigKey(config, Properties props) {
 diff --git a/app/src/main/java/org/wikipedia/activity/BaseActivity.java b/app/src/main/java/org/wikipedia/activity/BaseActivity.java
-index b4f144966..2ae00c912 100644
+index ee4ecf9fd..abdf111bc 100644
 --- a/app/src/main/java/org/wikipedia/activity/BaseActivity.java
 +++ b/app/src/main/java/org/wikipedia/activity/BaseActivity.java
 @@ -23,6 +23,7 @@ import androidx.appcompat.app.AlertDialog;
@@ -55,7 +57,7 @@ index b4f144966..2ae00c912 100644
          disposables.add(WikipediaApp.getInstance().getBus().subscribe(new NonExclusiveBusConsumer()));
          setTheme();
 diff --git a/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java b/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java
-index 699c4f613..aa95797cb 100644
+index e67ebb514..1ffe416e4 100644
 --- a/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java
 +++ b/app/src/main/java/org/wikipedia/dataclient/ServiceFactory.java
 @@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
@@ -66,7 +68,7 @@ index 699c4f613..aa95797cb 100644
  import org.wikipedia.WikipediaApp;
  import org.wikipedia.dataclient.okhttp.OkHttpConnectionFactory;
  import org.wikipedia.json.GsonUtil;
-@@ -61,7 +62,9 @@ public final class ServiceFactory {
+@@ -81,7 +82,9 @@ public final class ServiceFactory {
      private static Retrofit createRetrofit(@NonNull WikiSite wiki, @NonNull String baseUrl) {
          return new Retrofit.Builder()
                  .client(OkHttpConnectionFactory.getClient().newBuilder()
@@ -78,7 +80,7 @@ index 699c4f613..aa95797cb 100644
                  .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                  .addConverterFactory(GsonConverterFactory.create(GsonUtil.getDefaultGson()))
 diff --git a/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt b/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt
-index 64205cb3c..83ecb6bf3 100644
+index e22380c18..a93748640 100644
 --- a/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt
 +++ b/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpConnectionFactory.kt
 @@ -1,5 +1,6 @@
@@ -86,16 +88,32 @@ index 64205cb3c..83ecb6bf3 100644
  
 +import org.greatfire.envoy.CronetInterceptor
  import okhttp3.Cache
- import okhttp3.CacheDelegate
+ import okhttp3.CacheControl
  import okhttp3.OkHttpClient
-@@ -29,6 +30,7 @@ object OkHttpConnectionFactory {
-                 .addInterceptor(DefaultMaxStaleRequestInterceptor())
-                 .addInterceptor(OfflineCacheInterceptor(SAVE_CACHE))
+@@ -32,6 +33,7 @@ object OkHttpConnectionFactory {
+                 .addInterceptor(OfflineCacheInterceptor())
                  .addInterceptor(TestStubInterceptor())
+                 .addInterceptor(TitleEncodeInterceptor())
 +                .addInterceptor(CronetInterceptor())
                  .build()
      }
  }
+diff --git a/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java b/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java
+index ec9b8bf38..f62cd68e6 100644
+--- a/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java
++++ b/app/src/main/java/org/wikipedia/dataclient/okhttp/OkHttpWebViewClient.java
+@@ -138,6 +138,11 @@ public abstract class OkHttpWebViewClient extends WebViewClient {
+                 .url(request.getUrl().toString())
+                 .cacheControl(getModel().getCacheControl());
+         for (String header : request.getRequestHeaders().keySet()) {
++            // remove override user agent from webview
++            // https://stackoverflow.com/questions/47165973/what-does-the-wv-means-on-an-user-agent-string
++            if (header.equals("User-Agent")) {
++                continue;
++            }
+             if (header.equals("If-None-Match") || header.equals("If-Modified-Since")) {
+                 // Strip away conditional headers from the request coming from the WebView, since
+                 // we want control of caching for ourselves (it can break OkHttp's caching internals).
 -- 
 2.25.0
 

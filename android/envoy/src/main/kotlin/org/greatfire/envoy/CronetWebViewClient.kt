@@ -12,7 +12,7 @@ import okhttp3.Response
 import org.chromium.net.CronetEngine
 import java.io.IOException
 
-open class CronetWebViewClient(private var mCronetEngine : CronetEngine?) : WebViewClient() {
+open class CronetWebViewClient(private var mCronetEngine: CronetEngine?) : WebViewClient() {
     companion object {
         private const val TAG = "Envoy"
     }
@@ -20,7 +20,7 @@ open class CronetWebViewClient(private var mCronetEngine : CronetEngine?) : WebV
     constructor() : this(null)
 
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-        val interceptor =  if (mCronetEngine == null) CronetInterceptor() else CronetInterceptor(mCronetEngine!!)
+        val interceptor = if (mCronetEngine == null) CronetInterceptor() else CronetInterceptor(mCronetEngine!!)
         val client: OkHttpClient = OkHttpClient.Builder()
                 .addInterceptor(interceptor)
                 .build()

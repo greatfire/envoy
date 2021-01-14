@@ -1,5 +1,10 @@
 
-Download these aar files [cronet-release-v1.0.0.aar](https://envoy.greatfire.org/static/cronet-release.aar) or [cronet-debug-v1.0.0.aar](https://djy1j2o9tpazn.cloudfront.net/static/cronet-debug.aar).
+## How to build
+1. follow these instructions [here](https://www.chromium.org/developers/how-tos/get-the-code) to get the code.
+2. export CHROMIUM_SRC_ROOT and DEPOT_TOOLS_ROOT to their separate directories,
+   such as `export CHROMIUM_SRC_ROOT=/root/chromium/src DEPOT_TOOLS_ROOT=/root/depot_tools`
+3. run `checkout-to-tag.sh` to checkout specified tag, for example, `81.0.4020.0`.
+4. run `build_cronet.sh [debug|release]` to build native and java bindings, then package into `cronet-$BUILD.aar`(BUILD: debug or release).
 
 ### How to use
 1. [Quick Start Guide to Using Cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/README.md), [native API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/native/test_instructions.md), [Android API](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/test_instructions.md)
@@ -11,7 +16,10 @@ or `cronetEngineBuilder.setEnvoyUrl("ENVOY_URL")` for android.
 
 ### Envoy URL
 
-In one format of `https://DOMAIN/PATH` or `envoy://?k1=v1&k2=v2`
+In one format of
+
+- `https://DOMAIN/PATH` which can be backed up by http servrs or even CDN. The full format for this mode is `envoy://?k1=v1&k2=v2`, see Parameters section below for more.
+- `socks5://HOST:PORT` which can be any socks5 proxy, and we have a built-in shadowsocks service for the android platform.
 
 ### Parameters
 
@@ -29,10 +37,11 @@ All keys except url are optional, for example, only `resolve` without `url` will
 ### Examples
 
 1. the simples form, a simple HTTP/HTTPS URL: `https://allowed.example.com/app1/`
-2. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com`
-3. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4`
-4. custom host override: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&resolve=MAP%20example.com%201.2.3.4,%20example2.com%201.2.3.5:443`
-5. disable some cipher suites:  `envoy://?url=https%3A%2F%2Fallowed.example.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f`
+1. or via socks5 provided by any proxy server or builtin shadowsocks service(go to android/README.md for shadowsocks integration): `socks5://127.0.0.1:1080`.
+1. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com`
+1. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4`
+1. custom host override: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&resolve=MAP%20example.com%201.2.3.4,%20example2.com%201.2.3.5:443`
+1. disable some cipher suites:  `envoy://?url=https%3A%2F%2Fallowed.example.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f`
 
 In example 5: allowed.example.com will be TLS SNI, forbidden.example.com will be Host HTTP header, 1.2.3.4 will be IP for allowed.example.com.
 
@@ -84,3 +93,27 @@ sed -i s#https://example.com/enovy_path/#$ENVOY_URL#g components/cronet/android/
 autoninja -C out/Cronet cronet_sample_apk
 adb install out/Cronet/apks/CronetSample.apk
 ```
+
+## Update API version
+
+### Update IDL API
+1. Update chromium code then run `git ls-files -m|grep -E '.cc|.java' |xargs git cl format # --diff` to format changeset(or `git
+   diff --patch-with-stat`).
+
+2. Update api bindings:
+
+     if components/cronet/cronet.idl is updated, run
+
+    * `components/cronet/tools/generate_idl_bindings.py`
+    * `components/cronet/tools/update_api.py --api_jar out/Cronet/lib.java/components/cronet/android/cronet_api_java.jar`
+### Update translation xtb file
+Generate xtb translation id
+
+```bash
+cd tools/grit && python
+>>> from grit.extern.tclib import GenerateMessageId
+>>> GenerateMessageId("English string to translate")
+```
+
+## TODO
+1. JavaCronetEngine.java has no member `envoy_url`.?

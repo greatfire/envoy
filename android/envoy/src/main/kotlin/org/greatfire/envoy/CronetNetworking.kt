@@ -38,9 +38,9 @@ object CronetNetworking {
 
     @JvmStatic
     @Synchronized
-    fun initializeCronetEngine(context: Context, envoyUrl: String?) {
-        if (this.mCronetEngine != null) {
-            // TODO re-init
+    fun initializeCronetEngine(context: Context, envoyUrl: String?, reInitializeIfNeeded: Boolean = false) {
+        if (this.mCronetEngine != null && !reInitializeIfNeeded) {
+            Log.d(TAG, "cronet engine is initialized already, and reInitializeIfNeeded is $reInitializeIfNeeded")
             return
         }
         if (mCustomCronetBuilder != null) {
@@ -76,9 +76,9 @@ object CronetNetworking {
         requestBuilder.setHttpMethod(request.method)
         request.headers.forEach {
             if (it.first.toLowerCase(Locale.ENGLISH) != "accept-encoding") {
-               // Log.d(TAG, "add header for url $url: ${it.first}, ${it.second}")
-               requestBuilder.addHeader(it.first, it.second)
-           }
+                // Log.d(TAG, "add header for url $url: ${it.first}, ${it.second}")
+                requestBuilder.addHeader(it.first, it.second)
+            }
         }
 
         val requestBody = request.body

@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,6 +22,7 @@ public class WebViewFragment extends BaseFragment {
     private TextView mMsgTextView;
     private String mUrl;
 
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -44,7 +46,7 @@ public class WebViewFragment extends BaseFragment {
             CronetEngine engine = engineBuilder.build();
 
             mResultWebView.getSettings().setJavaScriptEnabled(true);
-            mResultWebView.setWebViewClient(new CronetWebViewClient(engine){
+            mResultWebView.setWebViewClient(new CronetWebViewClient(engine) {
                 @Override
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);

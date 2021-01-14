@@ -51,8 +51,7 @@ public class VolleyFragment extends BaseFragment {
             mUrl = urlEditText.getText().toString();
             String envoyUrl = envoyUrlEditText.getText().toString();
 
-            new VolleyFragment.VolleyRequestTask(new WeakReference<>(getActivity())).execute(mUrl, envoyUrl);
-
+            new VolleyFragment.VolleyRequestTask(new WeakReference<>(this)).execute(mUrl, envoyUrl);
         });
     }
 
@@ -77,23 +76,21 @@ public class VolleyFragment extends BaseFragment {
         }
     }
 
-    // TODO This 'AsyncTask' class should be static or leaks might occur
-    class VolleyRequestTask extends AsyncTask<String, String, String> {
+    static class VolleyRequestTask extends AsyncTask<String, String, String> {
         private static final String TAG = "VolleyFragment";
+        private final WeakReference<VolleyFragment> activityReference;
 
-        private final WeakReference<Context> contextRef;
-
-        VolleyRequestTask(WeakReference<Context> contextRef) {
-            this.contextRef = contextRef;
+        VolleyRequestTask(WeakReference<VolleyFragment> activityReference) {
+            this.activityReference = activityReference;
         }
 
         @Override
         protected String doInBackground(String... uri) {
-            if (this.contextRef.get() == null) {
+            if (this.activityReference.get() == null) {
                 return null;
             }
 
-            RequestQueue queue = Volley.newRequestQueue(this.contextRef.get(), new CronetStack(uri[1], this.contextRef.get()));
+            RequestQueue queue = Volley.newRequestQueue(activityReference.get().getActivity(), new CronetStack(uri[1], activityReference.get().getActivity()));
             StringRequest stringRequest = new StringRequest(Request.Method.GET, uri[0],
                     response -> Log.d(TAG, "volley returns " + response),
                     error -> Log.e(TAG, "volley error:", error));
@@ -108,15 +105,20 @@ public class VolleyFragment extends BaseFragment {
                 Log.d(TAG, "volley(sync) returns " + response);
                 final String bytesReceived = future.get();
                 final String msg = "Completed";
-                VolleyFragment.this.getActivity().runOnUiThread(() -> {
-                    mMsgTextView.setText(msg);
-                    mResultTextView.setText(bytesReceived);
+                this.activityReference.get().getActivity().runOnUiThread(() -> {
+                    TextView msgTextView = activityReference.get().getActivity().findViewById(R.id.msgTextView);
+                    msgTextView.setText(msg);
+                    TextView resultTextView = activityReference.get().getActivity().findViewById(R.id.resultTextView);
+                    resultTextView.setText(bytesReceived);
                 });
                 return bytesReceived;
             } catch (InterruptedException | ExecutionException e) {
                 Log.e(TAG, "volley(sync) error:", e);
                 final String msg = String.format(Locale.US, "Failed with %s", e.getMessage());
-                VolleyFragment.this.getActivity().runOnUiThread(() -> mMsgTextView.setText(msg));
+                activityReference.get().getActivity().runOnUiThread(() -> {
+                    TextView msgTextView = activityReference.get().getActivity().findViewById(R.id.msgTextView);
+                    msgTextView.setText(msg);
+                });
             }
 
             return null;

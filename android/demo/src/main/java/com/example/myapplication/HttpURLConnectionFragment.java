@@ -17,6 +17,7 @@ import org.chromium.net.CronetEngine;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -45,20 +46,30 @@ public class HttpURLConnectionFragment extends BaseFragment {
             mUrl = urlEditText.getText().toString();
             String envoyUrl = envoyUrlEditText.getText().toString();
 
-            new HttpURLConnectionFragment.HttpURLConnectionRequestTask().execute(mUrl, envoyUrl);
+            new HttpURLConnectionFragment.HttpURLConnectionRequestTask(this).execute(mUrl, envoyUrl);
         });
     }
 
-    class HttpURLConnectionRequestTask extends AsyncTask<String, String, String> {
+    static class HttpURLConnectionRequestTask extends AsyncTask<String, String, String> {
         private static final String TAG = "HttpURLConnFragment";
+        private WeakReference<HttpURLConnectionFragment> activityReference;
+
+        // only retain a weak reference to the activity
+        HttpURLConnectionRequestTask(HttpURLConnectionFragment context) {
+            activityReference = new WeakReference<>(context);
+        }
 
         @Override
         protected String doInBackground(String... uri) {
+            if (this.activityReference.get() == null) {
+                return null;
+            }
+
             HttpURLConnection con = null;
             BufferedReader in = null;
             String errorMsg;
             try {
-                CronetEngine.Builder engineBuilder = new CronetEngine.Builder(HttpURLConnectionFragment.this.getActivity());
+                CronetEngine.Builder engineBuilder = new CronetEngine.Builder(activityReference.get().getActivity());
                 engineBuilder.setEnvoyUrl(uri[1]);
                 CronetEngine engine = engineBuilder.build();
 
@@ -80,9 +91,11 @@ public class HttpURLConnectionFragment extends BaseFragment {
 
                 final String bytesReceived = content.toString();
                 final String msg = "Completed";
-                HttpURLConnectionFragment.this.getActivity().runOnUiThread(() -> {
-                    mMsgTextView.setText(msg);
-                    mResultTextView.setText(bytesReceived);
+                activityReference.get().getActivity().runOnUiThread(() -> {
+                    TextView msgTextView = activityReference.get().getActivity().findViewById(R.id.msgTextView);
+                    msgTextView.setText(msg);
+                    TextView resultTextView = activityReference.get().getActivity().findViewById(R.id.resultTextView);
+                    resultTextView.setText(bytesReceived);
                 });
 
                 return bytesReceived;
@@ -110,7 +123,10 @@ public class HttpURLConnectionFragment extends BaseFragment {
             }
 
             final String msg = String.format(Locale.US, "Failed with %s", errorMsg);
-            HttpURLConnectionFragment.this.getActivity().runOnUiThread(() -> mMsgTextView.setText(msg));
+            activityReference.get().getActivity().runOnUiThread(() -> {
+                TextView msgTextView = activityReference.get().getActivity().findViewById(R.id.msgTextView);
+                msgTextView.setText(msg);
+            });
             return null;
         }
 

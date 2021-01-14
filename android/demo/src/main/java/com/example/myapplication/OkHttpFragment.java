@@ -17,6 +17,7 @@ import org.greatfire.envoy.CronetOkHttpCallFactory;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -48,17 +49,27 @@ public class OkHttpFragment extends BaseFragment {
             mUrl = urlEditText.getText().toString();
             String envoyUrl = envoyUrlEditText.getText().toString();
 
-            new OkHttpRequestTask().execute(mUrl, envoyUrl);
+            new OkHttpRequestTask(this).execute(mUrl, envoyUrl);
         });
         return view;
     }
 
-    class OkHttpRequestTask extends AsyncTask<String, String, String> {
+    static class OkHttpRequestTask extends AsyncTask<String, String, String> {
         private static final String TAG = "OkHttpFragment";
+        private WeakReference<OkHttpFragment> activityReference;
+
+        // only retain a weak reference to the activity
+        OkHttpRequestTask(OkHttpFragment context) {
+            activityReference = new WeakReference<>(context);
+        }
 
         @Override
         protected String doInBackground(String... uri) {
-            CronetEngine.Builder engineBuilder = new CronetEngine.Builder(OkHttpFragment.this.getActivity());
+            if (this.activityReference.get() == null) {
+                return null;
+            }
+
+            CronetEngine.Builder engineBuilder = new CronetEngine.Builder(activityReference.get().getActivity());
             engineBuilder.setEnvoyUrl(uri[1]);
 
             CronetEngine engine = engineBuilder.build();
@@ -92,7 +103,10 @@ public class OkHttpFragment extends BaseFragment {
                 public void onFailure(@NotNull Call call, @NotNull IOException e) {
                     Log.e(TAG, "okhttp(async) error:", e);
                     final String msg = String.format(Locale.US, "Failed with %s", e.getMessage());
-                    OkHttpFragment.this.getActivity().runOnUiThread(() -> mMsgTextView.setText(msg));
+                    activityReference.get().getActivity().runOnUiThread(() -> {
+                        TextView msgTextView = activityReference.get().getActivity().findViewById(R.id.msgTextView);
+                        msgTextView.setText(msg);
+                    });
                 }
 
                 @Override
@@ -101,9 +115,11 @@ public class OkHttpFragment extends BaseFragment {
 
                     final String bytesReceived = Objects.requireNonNull(response.body()).string();
                     final String msg = String.format(Locale.US, "Completed with  status=%d", response.code());
-                    OkHttpFragment.this.getActivity().runOnUiThread(() -> {
-                        mMsgTextView.setText(msg);
-                        mResultTextView.setText(bytesReceived);
+                    activityReference.get().getActivity().runOnUiThread(() -> {
+                        TextView msgTextView = activityReference.get().getActivity().findViewById(R.id.msgTextView);
+                        msgTextView.setText(msg);
+                        TextView resultTextView = activityReference.get().getActivity().findViewById(R.id.resultTextView);
+                        resultTextView.setText(bytesReceived);
                     });
                 }
             });
