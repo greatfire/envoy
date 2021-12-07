@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd $(dirname $0)
+
 # for android studio: export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk/
 export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$PWD/../android/android-sdk-linux}
 ENVOY_URL=${1:-https://example.com/f/}

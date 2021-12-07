@@ -1,0 +1,7 @@
+
+*.aar
+*.jar
+
+# Vagrant setup
+.vagrant
+

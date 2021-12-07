@@ -1,0 +1,107 @@
+
+# set up apt for automated use
+.apt-template: &apt-template
+- export LC_ALL=C.UTF-8
+- export DEBIAN_FRONTEND=noninteractive
+- echo Etc/UTC > /etc/timezone
+- echo 'quiet "1";'
+       'APT::Install-Recommends "0";'
+       'APT::Install-Suggests "0";'
+       'APT::Acquire::Retries "20";'
+       'APT::Get::Assume-Yes "true";'
+       'Dpkg::Use-Pty "0";'
+      > /etc/apt/apt.conf.d/99gitlab
+- apt-get update
+- apt-get dist-upgrade
+
+.test-template: &test-template
+  artifacts:
+    name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
+    paths:
+      - client/client
+    expire_in: 1 day
+    when: always
+  after_script:
+    - echo "Download debug artifacts from https://gitlab.com/${CI_PROJECT_PATH}/-/jobs"
+
+
+# -- jobs ------------------------------------------------------------
+
+android:
+  image: ubuntu:20.04
+  cache:
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+  artifacts:
+    name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_JOB_ID}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
+    paths:
+      - "*/*.aar"
+      - "*/*.jar"
+    expire_in: 1 week
+    when: on_success
+  variables:
+    ANDROID_SDK_ROOT: /opt/android-sdk
+    LANG: C.UTF-8
+  before_script:  # things that need root go here, to support the Vagrant setup
+    - *apt-template
+    - apt-get install
+        build-essential
+        curl
+        git
+        gnupg
+        lbzip2
+        libx11-dev
+        ninja-build
+        openjdk-8-jdk-headless
+        pkg-config
+        python3
+        python3-requests
+        unzip
+        wget
+
+  script:
+    # build cronet binaries
+    - git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+    - export DEPOT_TOOLS_ROOT=`pwd`/depot_tools
+    - export PATH=$PATH:$DEPOT_TOOLS_ROOT
+    - git config --global user.name "John Doe"
+    - git config --global user.email "jdoe@email.com"
+    - git config --global core.autocrlf false
+    - git config --global core.filemode false
+
+    - git clone --depth=1 --branch=0.4 https://gitlab.com/fdroid/sdkmanager.git
+    - git -C sdkmanager checkout -B master b5a5640fc4cdc151696b2d27a5886119ebd3a8b7
+    - export sdkmanager=`pwd`/sdkmanager/sdkmanager.py
+    - $sdkmanager tools
+    - ndkVersion=$(sed -En 's,^ *ndkVersion *\W([0-9.]+)\W.*,\1,p' android/envoy/build.gradle)
+    - $sdkmanager "ndk;$ndkVersion" "platforms;android-29"
+
+    - mkdir -p chromium
+    - cd chromium
+    - export CHROMIUM_SRC_ROOT=`pwd`/src
+    - fetch --no-history android
+    - cd src
+    - build/install-build-deps-android.sh
+    - gclient runhooks
+    - gclient sync
+    - ./components/cronet/tools/cr_cronet.py gn --out_dir=out/Cronet
+
+    - ninja -C out/Cronet cronet_package
+    - ./components/cronet/tools/cr_cronet.py gn --release
+    - ninja -C out/Release cronet_package
+
+    # set up dev env in case manual work is needed
+    - echo >> /etc/profile.d/env.sh
+    - echo "export DEPOT_TOOLS_ROOT=$DEPOT_TOOLS_ROOT" >> /etc/profile.d/env.sh
+    - echo "export CHROMIUM_SRC_ROOT=$CHROMIUM_SRC_ROOT" >> /etc/profile.d/env.sh
+    - echo 'export PATH=$PATH:$DEPOT_TOOLS_ROOT' >> /etc/profile.d/env.sh
+
+    - cd $CI_PROJECT_DIR
+    - sed -i 's,/bin/bash$,/bin/bash -x,' a*/*.sh # show commands as they run
+    - ./native/checkout-to-tag.sh 81.0.4020.0
+    - ./native/build_cronet.sh release
+    - ./native/build_cronet.sh debug  # build-envoy.sh wants both release and debug
+    - cp native/cronet-debug.aar android/cronet/
+    - ./android/build-envoy.sh
+    - ./apps/build-apps.sh
