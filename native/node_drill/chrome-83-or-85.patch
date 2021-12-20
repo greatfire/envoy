@@ -1,0 +1,331 @@
+diff --git a/native/node_drill/BUILD.gn b/native/node_drill/BUILD.gn
+index 14aa2b2..cf30a58 100644
+--- a/native/node_drill/BUILD.gn
++++ b/native/node_drill/BUILD.gn
+@@ -16,9 +16,10 @@ import("//third_party/protobuf/proto_library.gni")
+ import("//tools/grit/grit_rule.gni")
+ import("//url/features.gni")
+ 
+-if (!is_proto_quic) {
+-  import("//v8/gni/v8.gni")
+-}
++# r83
++#if (!is_proto_quic) {
++#  import("//v8/gni/v8.gni")
++#}
+ 
+ if (is_android) {
+   import("//build/config/android/config.gni")
+diff --git a/native/node_drill/common.cc b/native/node_drill/common.cc
+index 0faefb7..fec5cc6 100644
+--- a/native/node_drill/common.cc
++++ b/native/node_drill/common.cc
+@@ -84,15 +84,19 @@ IPTURLRequestContextGetter::GetNetworkTaskRunner() const {
+ }
+ 
+ // void GetSSLConfig(SSLConfig* config) override { *config = config_; }
+-void IPTSSLConfigService::GetSSLConfig(net::SSLConfig* config) {
+-  *config = config_;
++net::SSLContextConfig IPTSSLConfigService::GetSSLContextConfig() {
++  return context_config_;
+ }
+-
+ bool IPTSSLConfigService::CanShareConnectionWithClientCerts(
+     const std::string& hostname) const {
+   return false;
+ }
+ 
++bool IPTSSLConfigService::ShouldSuppressLegacyTLSWarning(
++    const std::string& hostname) const {
++  return false;
++}
++
+ int IPTCertVerifier::Verify(const RequestParams& params,
+                             net::CertVerifyResult* verify_result,
+                             net::CompletionOnceCallback callback,
+@@ -110,6 +114,7 @@ void IPTCertVerifier::SetConfig(const Config& config) {
+   config_ = config;
+ }
+ 
++/*
+ IPTHostResolver::IPTHostResolver() {}
+ IPTHostResolver::IPTHostResolver(const net::IPAddress& ip_address)
+     : ip_address_(ip_address) {}
+@@ -159,6 +164,8 @@ bool IPTHostResolver::HasCached(
+ void IPTHostResolver::SetDnsConfigOverrides(
+     const net::DnsConfigOverrides& overrides) {}
+ 
++*/
++
+ IPTURLFetcherDelegate::IPTURLFetcherDelegate(
+     const base::Closure& quit_loop_func)
+     : quit_loop_func_(quit_loop_func) {}
+diff --git a/native/node_drill/common.h b/native/node_drill/common.h
+index 672473c..94c2958 100644
+--- a/native/node_drill/common.h
++++ b/native/node_drill/common.h
+@@ -141,20 +141,27 @@ class IPTURLRequestContextGetter : public net::URLRequestContextGetter {
+ 
+ class IPTSSLConfigService : public net::SSLConfigService {
+  public:
++  explicit IPTSSLConfigService(net::SSLContextConfig context_config)
++      : context_config_(context_config) {}
+   IPTSSLConfigService() {
+     std::vector<uint16_t> disabled_ciphers;
+     int idx = base::RandInt(0, 47);
+     disabled_ciphers.push_back(g_ssl_ciphers[idx]);
+-    config_.disabled_cipher_suites = disabled_ciphers;
++    context_config_.disabled_cipher_suites = disabled_ciphers;
+   }
+   ~IPTSSLConfigService() override = default;
+ 
+-  void GetSSLConfig(net::SSLConfig* config) override;
++  // void GetSSLConfig(SSLConfig* config) override;
++  net::SSLContextConfig GetSSLContextConfig() override;
+   bool CanShareConnectionWithClientCerts(
+       const std::string& hostname) const override;
+ 
++  bool ShouldSuppressLegacyTLSWarning(
++      const std::string& hostname) const override;
++
+  private:
+-  net::SSLConfig config_;
++  // SSLConfig config_;
++  net::SSLContextConfig context_config_;
+ };
+ 
+ class IPTCertVerifier : public net::CertVerifier {
+@@ -180,6 +187,7 @@ class IPTCertVerifier : public net::CertVerifier {
+   // scoped_refptr<CertVerifyProc> verify_proc_;
+ };
+ 
++/*
+ class IPTHostResolver : public net::HostResolver {
+  public:
+   IPTHostResolver();
+@@ -222,6 +230,7 @@ class IPTHostResolver : public net::HostResolver {
+   net::IPAddress ip_address_;
+   std::unique_ptr<net::HostCache> cache_;
+ };
++*/
+ 
+ // fuchsia/base/test_devtools_list_fetcher.cc
+ class IPTURLFetcherDelegate : public net::URLFetcherDelegate {
+diff --git a/native/node_drill/xnode.cc b/native/node_drill/xnode.cc
+index 33d583d..ef9d55f 100644
+--- a/native/node_drill/xnode.cc
++++ b/native/node_drill/xnode.cc
+@@ -88,18 +88,19 @@ void XNode::OnCrTestTimeout(const IPAddress& ip_address) {
+ }
+ 
+ int XNode::doCrSSLConnect() {
+-  std::unique_ptr<ClientSocketHandle> connection(new ClientSocketHandle);
+-  connection->SetSocket(std::move(transport_));
++  // std::unique_ptr<ClientSocketHandle> connection(new ClientSocketHandle);
++  // connection->SetSocket(std::move(transport_));
+   HostPortPair host_port_pair(sni_host_, 443);
+-  SSLClientSocketContext ssl_context;
+-  ssl_context.cert_verifier = new IPTCertVerifier();
+-  ssl_context.cert_transparency_verifier = new DoNothingCTVerifier;
+-  ssl_context.transport_security_state =
+-      new TransportSecurityState;  //  new TransportSecurityState 2
+-  ssl_context.ct_policy_enforcer = new IPTCTPolicyEnforcer;
+-  ssl_context.ssl_session_cache_shard = "shard";
++
++  CertVerifier* cert_verifier = new IPTCertVerifier();
++  TransportSecurityState* transport_security_state = new TransportSecurityState;
++  CTVerifier* cert_transparency_verifier = new DoNothingCTVerifier;
++  CTPolicyEnforcer* ct_policy_enforcer = new IPTCTPolicyEnforcer;
++  SSLClientContext* ssl_context = new SSLClientContext(
++      NULL, cert_verifier, transport_security_state, cert_transparency_verifier,
++      ct_policy_enforcer, NULL);
+   ssl_sock_ = socket_factory_->CreateSSLClientSocket(
+-      std::move(connection), host_port_pair, ssl_config_, ssl_context);
++      ssl_context, std::move(transport_), host_port_pair, ssl_config_);
+   next_state_ = STATE_SSL_CONNECT;
+   int rv = ssl_sock_->Connect(
+       base::BindOnce(&XNode::OnIOComplete, base::Unretained(this)));
+@@ -133,12 +134,16 @@ int XNode::doCrHTTPRequest(const char* sni_host,
+       std::make_unique<ProxyConfigServiceFixed>(
+           ProxyConfigWithAnnotation::CreateDirect()));
+ 
+-  std::unique_ptr<IPTHostResolver> resolver(new IPTHostResolver(ip_address));
++  // std::unique_ptr<IPTHostResolver> resolver(new
++  // IPTHostResolver(ip_address));
++  auto resolver = HostResolver::CreateStandaloneResolver(
++      NetLog::Get(), HostResolver::ManagerOptions(),
++      base::StringPrintf("MAP * %s", ip_address.ToString().c_str()), true);
+   context_builder.set_host_resolver(std::move(resolver));
+   std::unique_ptr<IPTCertVerifier> cert_verifier(new IPTCertVerifier());
+   context_builder.SetCertVerifier(std::move(cert_verifier));
+   std::unique_ptr<IPTSSLConfigService> ssl_config_service(
+-      new IPTSSLConfigService());
++      new IPTSSLConfigService(ssl_context_config_));
+   context_builder.set_ssl_config_service(std::move(ssl_config_service));
+   std::unique_ptr<net::URLRequestContext> context = context_builder.Build();
+ 
+diff --git a/native/node_drill/xnode.h b/native/node_drill/xnode.h
+index a685c09..3145294 100644
+--- a/native/node_drill/xnode.h
++++ b/native/node_drill/xnode.h
+@@ -56,6 +56,7 @@ class XNode {
+   std::unique_ptr<net::SSLClientSocket> ssl_sock_;
+   net::ClientSocketFactory* socket_factory_;
+   net::SSLConfig ssl_config_;
++  net::SSLContextConfig ssl_context_config_;
+   State next_state_;
+   std::string resp_;
+   int result_;
+diff --git a/native/node_drill/xpatch.cc b/native/node_drill/xpatch.cc
+index 9d324ed..6bb2494 100644
+--- a/native/node_drill/xpatch.cc
++++ b/native/node_drill/xpatch.cc
+@@ -28,9 +28,9 @@
+ #include "base/command_line.h"
+ #include "base/files/file_path.h"
+ #include "base/files/file_util.h"
++#include "base/hash/md5.h"  // r83 base/hash/md5.h
+ #include "base/logging.h"
+ #include "base/macros.h"
+-#include "base/md5.h"  // r83 base/hash/md5.h
+ #include "base/memory/ptr_util.h"
+ #include "base/memory/ref_counted.h"
+ #include "base/memory/weak_ptr.h"
+@@ -45,9 +45,10 @@
+ #include "base/strings/stringprintf.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/post_task.h"
+-#include "base/task/task_scheduler/scheduler_worker_pool_params.h"  // r83
+-#include "base/task/task_scheduler/task_scheduler.h"                // r83
+-#include "base/task/task_scheduler/task_scheduler_impl.h"           // r83
++// #include "base/task/task_scheduler/scheduler_worker_pool_params.h"  // r83
++// #include "base/task/task_scheduler/task_scheduler.h"                // r83
++// #include "base/task/task_scheduler/task_scheduler_impl.h"           // r83
++#include "base/task/thread_pool/thread_pool_instance.h"  // r83
+ #include "base/threading/thread_task_runner_handle.h"
+ #include "base/time/time.h"
+ 
+@@ -329,13 +330,17 @@ class XBackend {
+         std::make_unique<ProxyConfigServiceFixed>(
+             ProxyConfigWithAnnotation::CreateDirect()));
+ 
+-    std::unique_ptr<IPTHostResolver> resolver(
+-        new IPTHostResolver(host_ip_address->getIPAddress()));
++    // std::unique_ptr<IPTHostResolver> resolver(new IPTHostResolver());
++    auto resolver = HostResolver::CreateStandaloneResolver(
++        NetLog::Get(), HostResolver::ManagerOptions(),
++        base::StringPrintf("MAP * %s",
++                           host_ip_address->getIPAddress().ToString().c_str()),
++        true);
+     context_builder.set_host_resolver(std::move(resolver));
+     std::unique_ptr<IPTCertVerifier> cert_verifier(new IPTCertVerifier());
+     context_builder.SetCertVerifier(std::move(cert_verifier));
+     std::unique_ptr<IPTSSLConfigService> ssl_config_service(
+-        new IPTSSLConfigService());
++        new IPTSSLConfigService(ssl_context_config_));
+     context_builder.set_ssl_config_service(std::move(ssl_config_service));
+     std::unique_ptr<URLRequestContext> context = context_builder.Build();
+ 
+@@ -379,15 +384,17 @@ class XBackend {
+     context_builder.set_proxy_config_service(
+         std::make_unique<ProxyConfigServiceFixed>(
+             ProxyConfigWithAnnotation::CreateDirect()));
+-    // TODO Check failed: address_family == AF_INET || ...
+-    std::unique_ptr<IPTHostResolver> resolver(new IPTHostResolver());
++
++    // std::unique_ptr<IPTHostResolver> resolver(new IPTHostResolver());
++    auto resolver = HostResolver::CreateStandaloneResolver(
++        NetLog::Get(), HostResolver::ManagerOptions(), "MAP * 127.0.0.1", true);
+     context_builder.set_host_resolver(std::move(resolver));
+     std::unique_ptr<IPTCertVerifier> cert_verifier(new IPTCertVerifier());
+     context_builder.SetCertVerifier(std::move(cert_verifier));
+-    std::unique_ptr<IPTSSLConfigService> ssl_config_service(
+-        new IPTSSLConfigService());
+-    context_builder.set_ssl_config_service(std::move(ssl_config_service));
+-    context_ = context_builder.Build();  //  new TransportSecurityState 1
++    // std::unique_ptr<IPTSSLConfigService> ssl_config_service(
++    //    new IPTSSLConfigService(ssl_context_config_));
++    // context_builder.set_ssl_config_service(std::move(ssl_config_service));
++    // context_ = context_builder.Build();  // new TransportSecurityState 1
+ 
+     /*
+     ssl_context_.cert_verifier = new IPTCertVerifier();
+@@ -397,12 +404,12 @@ class XBackend {
+     IPTCTPolicyEnforcer; ssl_context_.ssl_session_cache_shard = "shard";
+     */
+ 
+-    ssl_config_.send_client_cert = false;
+-    ssl_config_.client_cert = NULL;
++    // ssl_config_.send_client_cert = false;
++    // ssl_config_.client_cert = NULL;
+ 
+     int rand_idx = base::RandInt(0, 47);
+     uint16_t cipher_suite = g_ssl_ciphers[rand_idx];
+-    ssl_config_.disabled_cipher_suites.push_back(cipher_suite);
++    ssl_context_config_.disabled_cipher_suites.push_back(cipher_suite);
+ 
+     const char *key_exchange_str = NULL, *cipher_str = NULL, *mac_str = NULL;
+     bool is_aead, is_tls13;
+@@ -434,10 +441,11 @@ class XBackend {
+   vector<CIDR*> cidrs_;
+   vector<HostIpAddress*> host_ip_addresses_;
+   // base::OneShotTimer timer_;
+-  std::unique_ptr<URLRequestContext> context_;
++  // std::unique_ptr<URLRequestContext> context_;
+   // SSLClientSocketContext ssl_context_;
+-  SSLConfig ssl_config_;
++  // SSLConfig ssl_config_;
+   string cipher_suite_;
++  SSLContextConfig ssl_context_config_;
+   sql::Database db_;
+   // base::Closure quit_loop_func_;
+   // std::unique_ptr<SSLClientSocket> ssl_sock_;
+@@ -451,7 +459,7 @@ class XBackend {
+ 
+ static void* doBackendTestTask(void* backend_ptr) {
+   XBackend* backend = reinterpret_cast<XBackend*>(backend_ptr);
+-  base::MessageLoopForIO message_loop;
++  base::MessageLoop message_loop(base::MessagePumpType::IO);
+   if (backend != NULL) {
+     backend->doBackendTest();
+   }
+@@ -460,7 +468,7 @@ static void* doBackendTestTask(void* backend_ptr) {
+ 
+ static void* doFetchConfigTask(void* patch_ptr) {
+   XPatch* patch = reinterpret_cast<XPatch*>(patch_ptr);
+-  base::MessageLoopForIO message_loop;
++  base::MessageLoop message_loop(base::MessagePumpType::IO);
+ #ifndef XPATCH_CLI
+   string lang, data_dir, apk_file;
+   patch->InitAndroid(lang, data_dir, apk_file);
+@@ -504,7 +512,7 @@ static void* doFetchConfigTask(void* patch_ptr) {
+ 
+ XPatch::XPatch(int threshold)
+     : mutex_(PTHREAD_MUTEX_INITIALIZER),
+-      message_loop_(new base::MessageLoopForIO()) {
++      message_loop_(new base::MessageLoop(base::MessagePumpType::IO)) {
+   // mutex_ = PTHREAD_MUTEX_INITIALIZER;
+   cert_size_ = 0;
+   ipt_size_ = 0;
+diff --git a/native/node_drill/xpatchcli.cc b/native/node_drill/xpatchcli.cc
+index 505c9c8..eb39008 100644
+--- a/native/node_drill/xpatchcli.cc
++++ b/native/node_drill/xpatchcli.cc
+@@ -17,6 +17,7 @@
+ // #include "base/android/path_utils.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/rand_util.h"
++#include "base/task/thread_pool/thread_pool_instance.h"  // r83
+ #include "crypto/aead.h"
+ #include "net/base/ip_endpoint.h"
+ 
+@@ -98,7 +99,8 @@ void print_usage() {
+ 
+ int main2(int argc, char* argv[]) {
+   base::AtExitManager at_exit_manager;
+-  base::MessageLoopForIO message_loop;
++  base::ThreadPoolInstance::CreateAndStartWithDefaultParams("xpatchcli");
++  base::MessageLoop message_loop(base::MessagePumpType::IO);
+   XNode node("lw.pingfan.pw", "ssl.akamiedia.com");
+   IPAddress ip_address;
+   if (ip_address.AssignFromIPLiteral("42.99.128.135")) {

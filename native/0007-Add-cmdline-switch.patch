@@ -1,0 +1,62 @@
+From: h <h@localhost>
+Date: Mon, 25 May 2020 02:13:02 +0000
+Subject: [PATCH 1/1] Add cmdline switch for envoy-url
+
+---
+--- a/chrome/browser/prefs/chrome_command_line_pref_store.cc
++++ b/chrome/browser/prefs/chrome_command_line_pref_store.cc
+@@ -104,6 +104,7 @@ ChromeCommandLinePrefStore::ChromeComman
+   ApplyProxyMode();
+   ValidateProxySwitches();
+   ApplySSLSwitches();
++  ApplyEnvoyUrlSwitches();
+   ApplyBackgroundModeSwitches();
+ }
+ 
+@@ -171,6 +172,15 @@ void ChromeCommandLinePrefStore::ApplySS
+              WriteablePrefStore::DEFAULT_PREF_WRITE_FLAGS);
+   }
+ }
++
++void ChromeCommandLinePrefStore::ApplyEnvoyUrlSwitches() {
++  if (command_line()->HasSwitch(switches::kEnvoyUrl)) {
++    std::string envoy_url =
++        command_line()->GetSwitchValueASCII(switches::kEnvoyUrl);
++    SetValue(prefs::kEnvoyUrl, std::make_unique<base::Value>(envoy_url),
++             WriteablePrefStore::DEFAULT_PREF_WRITE_FLAGS);
++  }
++}
+ 
+ void ChromeCommandLinePrefStore::ApplyBackgroundModeSwitches() {
+   if (command_line()->HasSwitch(switches::kDisableExtensions)) {
+--- a/chrome/browser/prefs/chrome_command_line_pref_store.h
++++ b/chrome/browser/prefs/chrome_command_line_pref_store.h
+@@ -38,6 +38,8 @@ class ChromeCommandLinePrefStore : publi
+   // Apply the SSL/TLS preferences from the given switches.
+   void ApplySSLSwitches();
+ 
++  void ApplyEnvoyUrlSwitches();
++
+   // Determines whether the background mode is force-disabled.
+   void ApplyBackgroundModeSwitches();
+ 
+--- a/chrome/common/chrome_switches.cc
++++ b/chrome/common/chrome_switches.cc
+@@ -106,6 +106,7 @@ const char kCheckForUpdateIntervalSec[]
+ 
+ // Comma-separated list of SSL cipher suites to disable.
+ const char kCipherSuiteBlacklist[]          = "cipher-suite-blacklist";
++const char kEnvoyUrl[]                      = "envoy-url";
+ 
+ // Tells chrome to display the cloud print dialog and upload the specified file
+ // for printing.
+--- a/chrome/common/chrome_switches.h
++++ b/chrome/common/chrome_switches.h
+@@ -55,6 +55,7 @@ extern const char kAutoSelectDesktopCapt
+ extern const char kBypassAppBannerEngagementChecks[];
+ extern const char kCheckForUpdateIntervalSec[];
+ extern const char kCipherSuiteBlacklist[];
++extern const char kEnvoyUrl[];
+ extern const char kCloudPrintFile[];
+ extern const char kCloudPrintFileType[];
+ extern const char kCloudPrintJobTitle[];

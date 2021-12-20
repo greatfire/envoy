@@ -1,0 +1,74 @@
+From: h <h@localhost>
+Date: Wed, 12 Feb 2020 05:23:48 +0000
+Subject: [PATCH 1/1] Add envoy scheme
+
+---
+ components/cronet/native/sample/main.cc |  5 ++++-
+ net/url_request/url_request_http_job.cc | 35 ++++++++++++++++++++++++++++-----
+ 2 files changed, 34 insertions(+), 6 deletions(-)
+
+--- a/components/cronet/native/sample/main.cc
++++ b/components/cronet/native/sample/main.cc
+@@ -12,7 +12,10 @@ Cronet_EnginePtr CreateCronetEngine() {
+   Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
+   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
+   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
+-  Cronet_EngineParams_envoy_url_set(engine_params, "https://example.com/enovy_path/");
++  Cronet_EngineParams_envoy_url_set(engine_params,
++                                    "https://example.com/envoy_path/");
++  // Cronet_EngineParams_envoy_url_set(engine_params,
++  // "envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=subdomain.example.com");
+   Cronet_EngineParams_enable_quic_set(engine_params, true);
+ 
+   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+--- a/net/url_request/url_request_http_job.cc
++++ b/net/url_request/url_request_http_job.cc
+@@ -30,6 +30,7 @@
+ #include "base/time/time.h"
+ #include "base/trace_event/trace_event.h"
+ #include "base/values.h"
++#include "net/base/escape.h"
+ #include "net/base/features.h"
+ #include "net/base/host_port_pair.h"
+ #include "net/base/http_user_agent_settings.h"
+@@ -500,12 +501,36 @@ void URLRequestHttpJob::StartTransaction
+           base::MD5Update(&md5ctx, request_->url().spec());
+           base::MD5Digest digest;
+           base::MD5Final(&digest, &md5ctx);
+-          std::string md5string = base::MD5DigestToBase16(digest);
++          auto md5digest = base::MD5DigestToBase16(digest);
+ 
+-          std::string url_orig = request_info_.url.spec();
++          auto envoy_url = GURL(request_->context()->envoy_url());
++          if (envoy_url.SchemeIsHTTPOrHTTPS()) {
++            request_info_.url = envoy_url; // TODO check is_vaid() before set
++          } else if (envoy_url.scheme().compare("envoy") == 0) {
++            std::string headerPrefix = "header_";
++            auto headerPrefixLength = headerPrefix.size();
++
++            for (QueryIterator it(envoy_url); !it.IsAtEnd(); it.Advance()) {
++              auto key = it.GetKey();
++              auto value = it.GetUnescapedValue();
++              if (key.compare("url") == 0) {
++                // see GetUnescapedValue, TODO check is_valid() before set
++                request_info_.url =
++                    GURL(net::UnescapeURLComponent(value, UnescapeRule::NORMAL));
++              } else if (key.rfind(headerPrefix, 0) == 0 &&
++                         key.size() > headerPrefixLength) {
++                request_info_.extra_headers.SetHeader(
++                    key.substr(headerPrefixLength), value); // check for header Host, add :authority for http2; :path for http2
++              }
++            }
++          }
++
++          // count for cache key
+           request_info_.url =
+-              GURL(request_->context()->envoy_url() + md5string);
+-          request_info_.extra_headers.SetHeader("Url-Orig", url_orig);
++              AppendQueryParameter(request_info_.url, "_digest", md5digest);
++          // TODO encode field value
++          request_info_.extra_headers.SetHeader("Url-Orig",
++                                                request_->url().spec());
+           request_info_.extra_headers.SetHeader("Host-Orig",
+                                                 request_->url().host());
+         }

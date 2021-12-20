@@ -37,6 +37,55 @@ shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1080
 You can receive `com.greatfire.envoy.SS_LOCAL_STARTED` broadcast with  
  `com.greatfire.envoy.SS_LOCAL_STARTED.LOCAL_ADDRESS` and `com.greatfire.envoy.SS_LOCAL_STARTED.LOCAL_PORT` as extras when ss services is started.
 
+## Multiple envoy urls
+
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    // register to receive test results
+    LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(org.greatfire.envoy.NetworkIntentServiceKt.BROADCAST_VALID_URL_FOUND));
+
+    List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList("https://allowed.example.com/path/", "socks5://127.0.0.1:1080"));
+    NetworkIntentService.submit(this, envoyUrls);
+
+    // or call NetworkIntentService.enqueueQuery, and
+    // we will get responses in Receiver's onReceive
+    // NetworkIntentService.enqueueQuery(this);
+    ...
+}
+
+protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (intent != null) {
+            final List<String> validUrls = intent.getStringArrayListExtra(org.greatfire.envoy.NetworkIntentServiceKt..EXTENDED_DATA_VALID_URLS);
+            Log.i("BroadcastReceiver", "Received valid urls: " + TextUtils.join(", ", validUrls));
+            if (validUrls != null && !validUrls.isEmpty()) {
+                String envoyUrl = validUrls.get(0);
+                // Select the fastest one
+                CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
+           }
+      }
+   }
+};
+```
+
+Add uses-permission and services to AndroidManifest.xml
+```xml
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+...
+
+<service
+    android:name="org.greatfire.envoy.ShadowsocksService"
+    android:exported="false"
+    android:isolatedProcess="false" />
+<service
+    android:name="org.greatfire.envoy.NetworkIntentService"
+    android:exported="false" />
+```
+
 ## FAQ
 
 ### library strip error

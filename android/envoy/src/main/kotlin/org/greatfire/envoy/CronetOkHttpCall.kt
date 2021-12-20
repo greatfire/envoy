@@ -1,11 +1,16 @@
 package org.greatfire.envoy
 
-import org.greatfire.envoy.CronetNetworking.buildRequest
-import okhttp3.*
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.EventListener
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import okio.AsyncTimeout
 import okio.Timeout
 import org.chromium.net.CronetEngine
 import org.chromium.net.UrlRequest
+import org.greatfire.envoy.CronetNetworking.buildRequest
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 

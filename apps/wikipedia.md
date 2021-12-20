@@ -15,7 +15,8 @@
     1. add aar configurations to app/build.gradle.
     2. call `CronetNetworking.initializeCronetEngine(getApplicationContext(), "YOUR-ENVOY-URL")` in the main/base class' `onCreate` method, i.e. `org.wikipedia.activity.BaseActivity`.  
     `YOUR-ENVOY-URL` is the URL for your CDN or backend server if no CDN is configured(not recommended), such as `https://example.com/". [Here](../native/README.md#examples) for more about envoy url formats.
-    3. In Wikipedia only retrofit and OkHttp are used. So add `CronetInterceptor` interceptor  to `ServiceFactory.createRetrofit` and `OkHttpConnectionFactory.OkHttpConnectionFactory`.
+    3. in Wikipedia only retrofit and OkHttp are used. So add `CronetInterceptor` interceptor  to `ServiceFactory.createRetrofit` and `OkHttpConnectionFactory.OkHttpConnectionFactory`.
+    4. build it, then run `adb install ./app/build/outputs/apk/alpha/debug/app-alpha-debug.apk`
 5. Setup CDN and backend server, see `apps/nginx.conf`.
    1. Configure CDN [Origin server](https://www.cloudflare.com/learning/cdn/glossary/origin-server/) to your backend server.
    2. Add nginx site config as this:

@@ -1,0 +1,81 @@
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+@@ -183,8 +183,13 @@ public class CronetUrlRequestContext ext
+                     // mUrlRequestContextAdapter is guaranteed to exist until
+                     // initialization on init and network threads completes and
+                     // initNetworkThread is called back on network thread.
++		    if (builder.getEnvoyUrl() != null && builder.getEnvoyUrl().startsWith("socks5://")) {
++			    CronetUrlRequestContextJni.get().initRequestContextOnInitThreadWithUri(
++				    mUrlRequestContextAdapter, CronetUrlRequestContext.this, builder.getEnvoyUrl());
++		    } else {
+                     CronetUrlRequestContextJni.get().initRequestContextOnInitThread(
+                             mUrlRequestContextAdapter, CronetUrlRequestContext.this);
++		    }
+                 }
+             }
+         });
+@@ -723,6 +728,9 @@ public class CronetUrlRequestContext ext
+         void initRequestContextOnInitThread(long nativePtr, CronetUrlRequestContext caller);
+ 
+         @NativeClassQualifiedName("CronetURLRequestContextAdapter")
++        void initRequestContextOnInitThreadWithUri(long nativePtr, CronetUrlRequestContext caller, String uri);
++
++        @NativeClassQualifiedName("CronetURLRequestContextAdapter")
+         void configureNetworkQualityEstimatorForTesting(long nativePtr,
+                 CronetUrlRequestContext caller, boolean useLocalHostRequests,
+                 boolean useSmallerResponses, boolean disableOfflineCheck);
+--- a/components/cronet/android/cronet_url_request_context_adapter.h
++++ b/components/cronet/android/cronet_url_request_context_adapter.h
+@@ -49,6 +49,11 @@ class CronetURLRequestContextAdapter
+       JNIEnv* env,
+       const base::android::JavaParamRef<jobject>& jcaller);
+ 
++  void InitRequestContextOnInitThreadWithUri(
++      JNIEnv* env,
++      const base::android::JavaParamRef<jobject>& jcaller,
++      const base::android::JavaParamRef<jstring>& juri);
++
+   // Releases all resources for the request context and deletes the object.
+   // Blocks until network thread is destroyed after running all pending tasks.
+   void Destroy(JNIEnv* env,
+@@ -91,6 +96,9 @@ class CronetURLRequestContextAdapter
+   // Called on init Java thread to initialize URLRequestContext.
+   void InitRequestContextOnInitThread();
+ 
++  // Called on init Java thread to initialize URLRequestContext.
++  void InitRequestContextOnInitThreadWithUri(const base::android::JavaParamRef<jstring>& juri);
++
+   // Configures the network quality estimator to observe requests to localhost,
+   // to use smaller responses when estimating throughput, and to disable the
+   // device offline checks when computing the effective connection type or when
+--- a/components/cronet/android/cronet_url_request_context_adapter.cc
++++ b/components/cronet/android/cronet_url_request_context_adapter.cc
+@@ -106,6 +106,16 @@ void CronetURLRequestContextAdapter::Ini
+   context_->InitRequestContextOnInitThread();
+ }
+ 
++void CronetURLRequestContextAdapter::InitRequestContextOnInitThreadWithUri(
++    JNIEnv* env,
++    const JavaParamRef<jobject>& jcaller,
++    const JavaParamRef<jstring>& juri) {
++  jcronet_url_request_context_.Reset(env, jcaller);
++  std::string uri(
++      base::android::ConvertJavaStringToUTF8(env, juri));
++  context_->InitRequestContextOnInitThreadWithUri(uri);
++}
++
+ void CronetURLRequestContextAdapter::ConfigureNetworkQualityEstimatorForTesting(
+     JNIEnv* env,
+     const JavaParamRef<jobject>& jcaller,
+--- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
++++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
+@@ -125,7 +125,8 @@ public class CronetSampleActivity extend
+         CronetEngine.Builder myBuilder = new CronetEngine.Builder(this);
+         myBuilder.enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
+                 .enableHttp2(true)
+-                .setEnvoyUrl("https://example.com/enovy_path/")
++                //.setEnvoyUrl("https://example.com/enovy_path/")
++                .setEnvoyUrl("socks5://127.0.0.1:1080")
+                 .enableQuic(true);
+ 
+         mCronetEngine = myBuilder.build();

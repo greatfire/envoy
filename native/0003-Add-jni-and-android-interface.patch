@@ -1,0 +1,160 @@
+From: h <h@localhost>
+Date: Thu, 13 Feb 2020 06:43:42 +0000
+Subject: [PATCH 1/1] Add jni and android interface
+
+---
+ components/cronet/android/api.txt                             |  4 +++-
+ .../cronet/android/api/src/org/chromium/net/CronetEngine.java |  5 +++++
+ .../api/src/org/chromium/net/ICronetEngineBuilder.java        |  1 +
+ components/cronet/android/api_version.txt                     |  2 +-
+ .../cronet/android/cronet_url_request_context_adapter.cc      |  2 ++
+ .../src/org/chromium/net/impl/CronetEngineBuilderImpl.java    | 11 +++++++++++
+ .../src/org/chromium/net/impl/CronetUrlRequestContext.java    | 10 +++++-----
+ .../java/src/org/chromium/net/impl/JavaCronetEngine.java      |  1 +
+ .../org/chromium/cronet_sample_apk/CronetSampleActivity.java  |  1 +
+ 9 files changed, 30 insertions(+), 7 deletions(-)
+
+--- a/components/cronet/android/api.txt
++++ b/components/cronet/android/api.txt
+@@ -57,6 +57,7 @@ public class org.chromium.net.CronetEngi
+   public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
+   public java.lang.String getDefaultUserAgent();
+   public org.chromium.net.CronetEngine$Builder setUserAgent(java.lang.String);
++  public org.chromium.net.CronetEngine$Builder setEnvoyUrl(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setStoragePath(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
+   public org.chromium.net.CronetEngine$Builder enableQuic(boolean);
+@@ -210,6 +211,7 @@ public abstract class org.chromium.net.I
+   public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
+   public abstract java.lang.String getDefaultUserAgent();
++  public abstract org.chromium.net.ICronetEngineBuilder setEnvoyUrl(java.lang.String);
+   public abstract org.chromium.net.ExperimentalCronetEngine build();
+   public org.chromium.net.ICronetEngineBuilder enableNetworkQualityEstimator(boolean);
+   public org.chromium.net.ICronetEngineBuilder setThreadPriority(int);
+@@ -394,4 +396,4 @@ public abstract class org.chromium.net.U
+   public abstract java.lang.String getProxyServer();
+   public abstract long getReceivedByteCount();
+ }
+-Stamp: 71c5599220fcd59906505a5d599e5f7e
++Stamp: 8dbf878138314b73bfb7283acd5929d0
+--- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
++++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+@@ -113,6 +113,11 @@ public abstract class CronetEngine {
+             return this;
+         }
+ 
++        public Builder setEnvoyUrl(String envoyUrl) {
++            mBuilderDelegate.setEnvoyUrl(envoyUrl);
++            return this;
++        }
++
+         /**
+          * Sets directory for HTTP Cache and Cookie Storage. The directory must
+          * exist.
+--- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
++++ b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+@@ -36,6 +36,7 @@ public abstract class ICronetEngineBuild
+     public abstract ICronetEngineBuilder setStoragePath(String value);
+     public abstract ICronetEngineBuilder setUserAgent(String userAgent);
+     public abstract String getDefaultUserAgent();
++    public abstract ICronetEngineBuilder setEnvoyUrl(String envoyUrl);
+     public abstract ExperimentalCronetEngine build();
+ 
+     // Experimental API methods.
+--- a/components/cronet/android/api_version.txt
++++ b/components/cronet/android/api_version.txt
+@@ -1 +1 @@
+-13
++14
+--- a/components/cronet/android/cronet_url_request_context_adapter.cc
++++ b/components/cronet/android/cronet_url_request_context_adapter.cc
+@@ -237,6 +237,7 @@ int CronetURLRequestContextAdapter::defa
+ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
+     JNIEnv* env,
+     const JavaParamRef<jstring>& juser_agent,
++    const JavaParamRef<jstring>& jenvoy_url,
+     const JavaParamRef<jstring>& jstorage_path,
+     jboolean jquic_enabled,
+     const JavaParamRef<jstring>& jquic_default_user_agent_id,
+@@ -259,6 +260,7 @@ static jlong JNI_CronetUrlRequestContext
+       ConvertNullableJavaStringToUTF8(env, jstorage_path),
+       /* accept_languages */ std::string(),
+       ConvertNullableJavaStringToUTF8(env, juser_agent),
++      ConvertNullableJavaStringToUTF8(env, jenvoy_url),
+       ConvertNullableJavaStringToUTF8(env,
+                                       jexperimental_quic_connection_options),
+       base::WrapUnique(
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
+@@ -80,6 +80,7 @@ public abstract class CronetEngineBuilde
+     private final List<Pkp> mPkps = new LinkedList<>();
+     private boolean mPublicKeyPinningBypassForLocalTrustAnchorsEnabled;
+     private String mUserAgent;
++    private String mEnvoyUrl;
+     private String mStoragePath;
+     private boolean mQuicEnabled;
+     private boolean mHttp2Enabled;
+@@ -122,6 +123,16 @@ public abstract class CronetEngineBuilde
+     }
+ 
+     @Override
++    public CronetEngineBuilderImpl setEnvoyUrl(String envoyUrl) {
++        mEnvoyUrl = envoyUrl;
++        return this;
++    }
++
++    public String getEnvoyUrl() {
++        return mEnvoyUrl;
++    }
++
++    @Override
+     public CronetEngineBuilderImpl setStoragePath(String value) {
+         if (!new File(value).isDirectory()) {
+             throw new IllegalArgumentException("Storage path must be set to existing directory");
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+@@ -194,7 +194,7 @@ public class CronetUrlRequestContext ext
+     public static long createNativeUrlRequestContextConfig(CronetEngineBuilderImpl builder) {
+         final long urlRequestContextConfig =
+                 CronetUrlRequestContextJni.get().createRequestContextConfig(builder.getUserAgent(),
+-                        builder.storagePath(), builder.quicEnabled(),
++                        builder.getEnvoyUrl(), builder.storagePath(), builder.quicEnabled(),
+                         builder.getDefaultQuicUserAgentId(), builder.http2Enabled(),
+                         builder.brotliEnabled(), builder.cacheDisabled(), builder.httpCacheMode(),
+                         builder.httpCacheMaxSize(), builder.experimentalOptions(),
+@@ -692,10 +692,10 @@ public class CronetUrlRequestContext ext
+     // Native methods are implemented in cronet_url_request_context_adapter.cc.
+     @NativeMethods
+     interface Natives {
+-        long createRequestContextConfig(String userAgent, String storagePath, boolean quicEnabled,
+-                String quicUserAgentId, boolean http2Enabled, boolean brotliEnabled,
+-                boolean disableCache, int httpCacheMode, long httpCacheMaxSize,
+-                String experimentalOptions, long mockCertVerifier,
++        long createRequestContextConfig(String userAgent, String envoyUrl, String storagePath,
++                boolean quicEnabled, String quicUserAgentId, boolean http2Enabled,
++                boolean brotliEnabled, boolean disableCache, int httpCacheMode,
++                long httpCacheMaxSize, String experimentalOptions, long mockCertVerifier,
+                 boolean enableNetworkQualityEstimator,
+                 boolean bypassPublicKeyPinningForLocalTrustAnchors, int networkThreadPriority);
+ 
+--- a/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
+@@ -71,6 +71,7 @@ public final class JavaCronetEngine exte
+             boolean disableConnectionMigration, boolean allowDirectExecutor,
+             boolean trafficStatsTagSet, int trafficStatsTag, boolean trafficStatsUidSet,
+             int trafficStatsUid, RequestFinishedInfo.Listener requestFinishedListener) {
++        // TODO add mEnvoyUrl
+         return new JavaUrlRequest(callback, mExecutorService, executor, url, mUserAgent,
+                 allowDirectExecutor, trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet,
+                 trafficStatsUid);
+--- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
++++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
+@@ -125,6 +125,7 @@ public class CronetSampleActivity extend
+         CronetEngine.Builder myBuilder = new CronetEngine.Builder(this);
+         myBuilder.enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
+                 .enableHttp2(true)
++                .setEnvoyUrl("https://example.com/enovy_path/")
+                 .enableQuic(true);
+ 
+         mCronetEngine = myBuilder.build();

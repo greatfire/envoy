@@ -9,6 +9,7 @@ import org.chromium.net.UploadDataProviders
 import org.chromium.net.UrlRequest
 import java.io.File
 import java.io.IOException
+import java.lang.reflect.Field
 import java.net.URL
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -38,7 +39,9 @@ object CronetNetworking {
 
     @JvmStatic
     @Synchronized
+    @JvmOverloads
     fun initializeCronetEngine(context: Context, envoyUrl: String?, reInitializeIfNeeded: Boolean = false) {
+        Log.d(TAG, "try to build cronet engine with $envoyUrl")
         if (this.mCronetEngine != null && !reInitializeIfNeeded) {
             Log.d(TAG, "cronet engine is initialized already, and reInitializeIfNeeded is $reInitializeIfNeeded")
             return
@@ -48,7 +51,6 @@ object CronetNetworking {
         } else {
             val cacheDir = File(context.cacheDir, "cronet-cache")
             cacheDir.mkdirs()
-            Log.d(TAG, "try to build cronet engine")
             mCronetEngine = CronetEngine.Builder(context)
                     // .setUserAgent("curl/7.66.0")
                     .enableBrotli(true)
@@ -60,13 +62,30 @@ object CronetNetworking {
                     .build()
             if (mCronetEngine != null) {
                 Log.d(TAG, "engine version " + mCronetEngine!!.versionString)
-                URL.setURLStreamHandlerFactory(mCronetEngine!!.createURLStreamHandlerFactory())
+                val factory = mCronetEngine!!.createURLStreamHandlerFactory()
+                // https://stackoverflow.com/questions/30267447/seturlstreamhandlerfactory-and-java-lang-error-factory-already-set
+                try {
+                    // Try doing it the normal way
+                    URL.setURLStreamHandlerFactory(factory)
+                } catch (e: Error) {
+                    // Force it via reflection
+                    try {
+                        val factoryField: Field = URL::class.java.getDeclaredField("factory")
+                        factoryField.isAccessible = true
+                        factoryField.set(null, factory)
+                    } catch (ex: Exception) {
+                        when (ex) {
+                            is NoSuchFieldException, is IllegalAccessException ->
+                                Log.e(TAG, "Could not access factory field on URL class: {}", e)
+                            else -> throw ex
+                        }
+                    }
+                }
             } else {
                 Log.e(TAG, "failed to build cronet engine")
             }
         }
     }
-
 
     @JvmStatic
     @Throws(IOException::class)

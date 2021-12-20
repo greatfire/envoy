@@ -1,0 +1,523 @@
+From: h <h@localhost>
+Date: Sat, 15 Feb 2020 03:43:02 +0000
+Subject: [PATCH 1/1] Add as features and android preferences
+
+---
+ chrome/android/chrome_java_resources.gni           |  2 +
+ chrome/android/chrome_java_sources.gni             |  2 +
+ chrome/android/java/res/layout/envoy_editor.xml    | 60 +++++++++++++++
+ chrome/android/java/res/values/values.xml          |  2 +
+ chrome/android/java/res/xml/envoy_preferences.xml  | 18 +++++
+ .../android/java/res/xml/privacy_preferences.xml   |  7 ++
+ .../chrome/browser/settings/EnvoyEditor.java       | 87 ++++++++++++++++++++++
+ .../chrome/browser/settings/EnvoyPreferences.java  | 39 ++++++++++
+ chrome/app/generated_resources.grd                 |  6 ++
+ chrome/app/resources/generated_resources_zh-CN.xtb |  4 +-
+ .../browser/flags/android/cached_feature_flags.cc  | 15 ++++
+ .../chrome/browser/flags/CachedFeatureFlags.java   | 10 +++
+ .../browser/net/system_network_context_manager.cc  |  7 ++
+ .../ui/android/strings/android_chrome_strings.grd  | 11 +++
+ .../translations/android_chrome_strings_zh-CN.xtb  |  5 +-
+ chrome/common/chrome_features.cc                   |  5 ++
+ chrome/common/chrome_features.h                    |  5 ++
+ chrome/common/pref_names.cc                        |  2 +
+ chrome/common/pref_names.h                         |  1 +
+ services/network/network_context.cc                |  1 +
+ .../network/public/mojom/network_context.mojom     |  2 +
+ 21 files changed, 289 insertions(+), 2 deletions(-)
+
+--- a/chrome/android/chrome_java_resources.gni
++++ b/chrome/android/chrome_java_resources.gni
+@@ -8,6 +8,8 @@
+ # git cl format
+ 
+ chrome_java_resources = [
++  "java/res/layout/envoy_editor.xml",
++  "java/res/xml/envoy_preferences.xml",
+   "java/res/anim/accelerate_quart.xml",
+   "java/res/anim/activity_close_exit.xml",
+   "java/res/anim/activity_open_enter.xml",
+--- a/chrome/android/chrome_java_sources.gni
++++ b/chrome/android/chrome_java_sources.gni
+@@ -1356,6 +1356,8 @@ chrome_java_sources = [
+   "java/src/org/chromium/chrome/browser/services/gcm/GCMBackgroundTask.java",
+   "java/src/org/chromium/chrome/browser/services/gcm/GcmUma.java",
+   "java/src/org/chromium/chrome/browser/services/gcm/InvalidationGcmUpstreamSender.java",
++  "java/src/org/chromium/chrome/browser/settings/EnvoyEditor.java",
++  "java/src/org/chromium/chrome/browser/settings/EnvoyPreferences.java",
+   "java/src/org/chromium/chrome/browser/settings/MainSettings.java",
+   "java/src/org/chromium/chrome/browser/settings/SettingsActivity.java",
+   "java/src/org/chromium/chrome/browser/settings/SettingsLauncherImpl.java",
+--- /dev/null
++++ b/chrome/android/java/res/layout/envoy_editor.xml
+@@ -0,0 +1,60 @@
++<?xml version="1.0" encoding="utf-8"?>
++
++<FrameLayout
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent" >
++
++    <ScrollView
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:id="@+id/scroll_view"
++        android:fillViewport="true" >
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical"
++            android:focusableInTouchMode="true" >
++
++            <com.google.android.material.textfield.TextInputLayout
++                android:id="@+id/envoy_url"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content" >
++                <EditText
++                    android:id="@+id/envoy_url_edit"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:inputType="textUri"
++                    android:singleLine="true"
++                    android:importantForAutofill="no"
++                    android:hint="@string/options_envoy_edit_label" />
++            </com.google.android.material.textfield.TextInputLayout>
++
++            <Space style="@style/ButtonBarTopSpacer" />
++            <View style="@style/ButtonBarTopDivider" />
++
++            <LinearLayout style="@style/ButtonBar" >
++                <org.chromium.ui.widget.ButtonCompat
++                    android:id="@+id/envoy_reset"
++                    style="@style/ButtonBarButton"
++                    android:text="@string/reset" />
++
++                <org.chromium.ui.widget.ButtonCompat
++                    android:id="@+id/envoy_cancel"
++                    style="@style/ButtonBarButton"
++                    android:text="@string/cancel" />
++
++                <org.chromium.ui.widget.ButtonCompat
++                    android:id="@+id/envoy_save"
++                    style="@style/ButtonBarButton"
++                    android:text="@string/save" />
++            </LinearLayout>
++        </LinearLayout>
++    </ScrollView>
++
++     <include layout="@layout/settings_action_bar_shadow"/>
++
++</FrameLayout>
+--- a/chrome/android/java/res/values/values.xml
++++ b/chrome/android/java/res/values/values.xml
+@@ -40,4 +40,6 @@
+     <integer name="download_infobar_bar_start_offset">800</integer>
+     <integer name="download_infobar_bar_fill_in_delay">400</integer>
+     <integer name="download_infobar_bar_fill_out_delay">200</integer>
++
++    <string name="envoy_help_url">https://www.bing.com/</string>
+ </resources>
+--- /dev/null
++++ b/chrome/android/java/res/xml/envoy_preferences.xml
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="utf-8"?>
++
++<PreferenceScreen
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto">
++
++    <org.chromium.chrome.browser.about_settings.HyperlinkPreference
++        android:key="envoy_help"
++        android:title="@string/envoy_help"
++        app:url="@string/envoy_help_url" />
++
++    <Preference
++        android:key="envoy_edit"
++        android:title="@string/options_envoy_edit_label"
++        android:fragment="org.chromium.chrome.browser.settings.EnvoyEditor" />
++
++</PreferenceScreen>
++
+--- a/chrome/android/java/res/xml/privacy_preferences.xml
++++ b/chrome/android/java/res/xml/privacy_preferences.xml
+@@ -50,4 +50,10 @@
+         android:summary="@string/privacy_sync_and_services_link_legacy"
+         app:allowDividerBelow="false"
+         android:order="7"/>
++    <Preference
++        android:fragment="org.chromium.chrome.browser.settings.EnvoyPreferences"
++        android:key="envoy"
++        android:title="@string/options_envoy_title"
++        android:summary="@string/options_envoy_summary"
++        android:order="8" />
+ </PreferenceScreen>
+--- /dev/null
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyEditor.java
+@@ -0,0 +1,87 @@
++package org.chromium.chrome.browser.settings;
++
++import android.os.Bundle;
++import androidx.fragment.app.Fragment;
++import android.text.Editable;
++import android.text.TextWatcher;
++import android.util.Log;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.Button;
++import android.widget.EditText;
++
++import org.chromium.chrome.R;
++import org.chromium.chrome.browser.flags.CachedFeatureFlags;
++import org.chromium.components.browser_ui.settings.SettingsUtils;
++// import org.chromium.components.url_formatter.UrlFormatter;
++
++/**
++ * Provides the Java-UI for editing the Envoy preference.
++ */
++public class EnvoyEditor extends Fragment implements TextWatcher {
++    private EditText mEnvoyUrlEdit;
++    private Button mSaveButton;
++    private Button mResetButton;
++
++    @Override
++    public View onCreateView(
++            LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        getActivity().setTitle(R.string.options_envoy_edit_title);
++
++        View v = inflater.inflate(R.layout.envoy_editor, container, false);
++        View scrollView = v.findViewById(R.id.scroll_view);
++        scrollView.getViewTreeObserver().addOnScrollChangedListener(
++                SettingsUtils.getShowShadowOnScrollListener(v, v.findViewById(R.id.shadow)));
++        mEnvoyUrlEdit = (EditText) v.findViewById(R.id.envoy_url_edit);
++        mEnvoyUrlEdit.setText(CachedFeatureFlags.getEnvoyUrl());
++        mEnvoyUrlEdit.addTextChangedListener(this);
++        mEnvoyUrlEdit.requestFocus();
++
++        initializeSaveCancelResetButtons(v);
++        return v;
++    }
++
++    @Override
++    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
++
++    @Override
++    public void onTextChanged(CharSequence s, int start, int before, int count) {
++        //mSaveButton.setEnabled(s.length() != 0); // TODO check if envoy_url and url parameter are valid
++        mResetButton.setEnabled(true);
++    }
++
++    @Override
++    public void afterTextChanged(Editable s) {}
++
++    private void initializeSaveCancelResetButtons(View v) {
++        mResetButton = (Button) v.findViewById(R.id.envoy_reset);
++        mResetButton.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                mEnvoyUrlEdit.setText(CachedFeatureFlags.getEnvoyUrl());
++                getActivity().finish();
++            }
++        });
++
++        mSaveButton = (Button) v.findViewById(R.id.envoy_save);
++        //mSaveButton.setEnabled(false);
++        mSaveButton.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                Log.i("EnvoyEditor", "save " + mEnvoyUrlEdit.getText().toString());
++                CachedFeatureFlags.setEnvoyUrl(mEnvoyUrlEdit.getText().toString());
++                getActivity().finish();
++            }
++        });
++
++        Button button = (Button) v.findViewById(R.id.envoy_cancel);
++        button.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                getActivity().finish();
++            }
++        });
++    }
++}
+--- /dev/null
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyPreferences.java
+@@ -0,0 +1,39 @@
++package org.chromium.chrome.browser.settings;
++
++import android.os.Bundle;
++import androidx.annotation.VisibleForTesting;
++import androidx.preference.Preference;
++import androidx.preference.PreferenceFragmentCompat;
++
++import org.chromium.chrome.R;
++import org.chromium.chrome.browser.flags.CachedFeatureFlags;
++import org.chromium.components.browser_ui.settings.SettingsUtils;
++
++/**
++ * Fragment that allows the user to configure Envoy related preferences.
++ */
++public class EnvoyPreferences extends PreferenceFragmentCompat {
++    @VisibleForTesting
++    private static final String PREF_ENVOY_EDIT = "envoy_edit";
++
++    private Preference mEnvoyEdit;
++
++    @Override
++    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
++        getActivity().setTitle(R.string.options_envoy_title);
++        SettingsUtils.addPreferencesFromResource(this, R.xml.envoy_preferences);
++
++        mEnvoyEdit = findPreference(PREF_ENVOY_EDIT);
++        updateCurrentEnvoyUrl();
++    }
++
++    private void updateCurrentEnvoyUrl() {
++        mEnvoyEdit.setSummary(CachedFeatureFlags.getEnvoyUrl());
++    }
++
++    @Override
++    public void onResume() {
++        super.onResume();
++        updateCurrentEnvoyUrl();
++    }
++}
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -7220,6 +7220,12 @@ the Bookmarks menu.">
+       </if>
+ 
+       <if expr="is_android">
++        <message name="IDS_OPTIONS_ENVOY_TITLE" desc="The title of the envoy option on Android" formatter_data="android_java">
++          Envoy options
++        </message>
++        <message name="IDS_OPTIONS_ENVOY_SUMMARY" desc="The title of the envoy summary on Android" formatter_data="android_java">
++          Configure envoy
++        </message>
+         <message name="IDS_OPTIONS_HOMEPAGE_TITLE" desc="The title of Chrome's homepage setting screen on Android. " formatter_data="android_java">
+           Homepage
+         </message>
+--- a/chrome/app/resources/generated_resources_zh-CN.xtb
++++ b/chrome/app/resources/generated_resources_zh-CN.xtb
+@@ -7024,4 +7024,6 @@
+ <translation id="995782501881226248">YouTube</translation>
+ <translation id="996250603853062861">正在建立安全连接...</translation>
+ <translation id="998747458861718449">检查(&amp;N)</translation>
+-</translationbundle>
+\ No newline at end of file
++<translation id="3558311757436544135">Envoy 选项</translation>
++<translation id="55773412430883023">配置 envoy</translation>
++</translationbundle>
+--- a/chrome/browser/flags/android/cached_feature_flags.cc
++++ b/chrome/browser/flags/android/cached_feature_flags.cc
+@@ -7,6 +7,9 @@
+ #include "chrome/browser/flags/jni_headers/CachedFeatureFlags_jni.h"
+ 
+ #include "base/android/jni_string.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/common/pref_names.h"
++#include "components/prefs/pref_service.h"
+ #include "base/feature_list.h"
+ #include "content/public/common/content_features.h"
+ #include "content/public/common/network_service_util.h"
+@@ -41,3 +44,15 @@ static jboolean JNI_CachedFeatureFlags_I
+   return content::IsOutOfProcessNetworkService() &&
+          base::FeatureList::IsEnabled(features::kWarmUpNetworkProcess);
+ }
++
++static ScopedJavaLocalRef<jstring> JNI_CachedFeatureFlags_GetEnvoyUrl(
++    JNIEnv* env) {
++  return base::android::ConvertUTF8ToJavaString(
++      env, g_browser_process->local_state()->GetString(prefs::kEnvoyUrl));
++}
++
++static void JNI_CachedFeatureFlags_SetEnvoyUrl(JNIEnv* env,
++                                             const JavaParamRef<jstring>& url) {
++  g_browser_process->local_state()->SetString(
++      prefs::kEnvoyUrl, base::android::ConvertJavaStringToUTF8(env, url));
++}
+--- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
++++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
+@@ -123,6 +123,14 @@ public class CachedFeatureFlags {
+     private static Map<String, String> sOverridesTestFeatures;
+     private static String sReachedCodeProfilerTrialGroup;
+ 
++    public static void setEnvoyUrl(String url) {
++        CachedFeatureFlagsJni.get().setEnvoyUrl(url);
++    }
++
++    public static String getEnvoyUrl() {
++        return CachedFeatureFlagsJni.get().getEnvoyUrl();
++    }
++
+     /**
+      * Checks if a cached feature flag is enabled.
+      *
+@@ -399,6 +407,8 @@ public class CachedFeatureFlags {
+ 
+     @NativeMethods
+     interface Natives {
++        void setEnvoyUrl(String url);
++        String getEnvoyUrl();
+         boolean isNetworkServiceWarmUpEnabled();
+     }
+ }
+--- a/chrome/browser/net/system_network_context_manager.cc
++++ b/chrome/browser/net/system_network_context_manager.cc
+@@ -345,6 +345,10 @@ SystemNetworkContextManager::SystemNetwo
+ 
+   pref_change_registrar_.Init(local_state_);
+ 
++  // save value to profile
++  local_state_->SetDefaultPrefValue(prefs::kEnvoyUrl,
++                                    base::Value(features::kEnvoyUrlParam.Get()));
++
+   PrefChangeRegistrar::NamedChangeCallback auth_pref_callback =
+       base::BindRepeating(&OnAuthPrefsChanged, base::Unretained(local_state_));
+ 
+@@ -393,6 +397,7 @@ SystemNetworkContextManager::~SystemNetw
+ void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
+   StubResolverConfigReader::RegisterPrefs(registry);
+ 
++  registry->RegisterStringPref(prefs::kEnvoyUrl, std::string());
+   // Static auth params
+   registry->RegisterStringPref(prefs::kAuthSchemes,
+                                "basic,digest,ntlm,negotiate");
+@@ -550,6 +555,8 @@ void SystemNetworkContextManager::Config
+   network_context_params->enable_brotli = true;
+ 
+   network_context_params->user_agent = GetUserAgent();
++  // TODO need to restart?
++  network_context_params->envoy_url = local_state_->GetString(prefs::kEnvoyUrl);
+ 
+   // Disable referrers by default. Any consumer that enables referrers should
+   // respect prefs::kEnableReferrers from the appropriate pref store.
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -631,6 +631,17 @@ CHAR-LIMIT guidelines:
+         Chrome Passwords
+       </message>
+ 
++      <!-- Envoy preferences -->
++      <message name="IDS_OPTIONS_ENVOY_EDIT_TITLE" desc="The title of the screen that allows users to change the URL that is used for envoy.">
++        Edit Envoy URL
++      </message>
++      <message name="IDS_OPTIONS_ENVOY_EDIT_LABEL" desc="The label for the edit text field that allows the user to change the URL that is used for envoy.">
++        Envoy URL
++      </message>
++      <message name="IDS_ENVOY_HELP" desc="The title of the hyperlink that allows users to visit the wiki page with instructions for envoy configuration.">
++        Visit help page
++      </message>
++
+       <!-- Homepage preferences -->
+       <message name="IDS_OPTIONS_HOMEPAGE_EDIT_HINT" desc="Hint for the text edit on Homepage Preference setting, guiding user to enter their customized homepage setting">
+         Enter custom web address
+--- a/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
++++ b/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
+@@ -1,6 +1,9 @@
+ <?xml version="1.0" ?>
+ <!DOCTYPE translationbundle>
+ <translationbundle lang="zh-CN">
++<translation id="2852174385554816066">输入 Envoy URL</translation>
++<translation id="5994499281528305078">Envoy URL</translation>
++<translation id="8189997785233370573">访问帮助页面</translation>
+ <translation id="1028699632127661925">正在发送到<ph name="DEVICE_NAME" />…</translation>
+ <translation id="103269572468856066">一并清除以下网站和应用内的数据？</translation>
+ <translation id="1036348656032585052">关闭</translation>
+@@ -1142,4 +1145,4 @@
+ <translation id="983192555821071799">关闭所有标签页</translation>
+ <translation id="987264212798334818">常规</translation>
+ <translation id="996149300115483134">动态卡片上的菜单已关闭</translation>
+-</translationbundle>
+\ No newline at end of file
++</translationbundle>
+--- a/chrome/common/chrome_features.cc
++++ b/chrome/common/chrome_features.cc
+@@ -316,6 +316,11 @@ const base::FeatureParam<bool> kDnsOverH
+ const base::FeatureParam<std::string> kDnsOverHttpsTemplatesParam{
+     &kDnsOverHttps, "Templates", ""};
+ 
++// this value is ignored, envoy url is check for emptiness
++const base::Feature kEnvoy{"Envoy", base::FEATURE_ENABLED_BY_DEFAULT};
++
++const base::FeatureParam<std::string> kEnvoyUrlParam{&kEnvoy, "EnvoyUrl", ""};
++
+ #if defined(OS_ANDROID)
+ // Enable changing default downloads storage location on Android.
+ const base::Feature kDownloadsLocationChange{"DownloadsLocationChange",
+--- a/chrome/common/chrome_features.h
++++ b/chrome/common/chrome_features.h
+@@ -200,6 +200,11 @@ COMPONENT_EXPORT(CHROME_FEATURES)
+ extern const base::FeatureParam<std::string>
+     kDnsOverHttpsDisabledProvidersParam;
+ 
++COMPONENT_EXPORT(CHROME_FEATURES)
++extern const base::Feature kEnvoy;
++COMPONENT_EXPORT(CHROME_FEATURES)
++extern const base::FeatureParam<std::string> kEnvoyUrlParam;
++
+ #if defined(OS_ANDROID)
+ COMPONENT_EXPORT(CHROME_FEATURES)
+ extern const base::Feature kDownloadsLocationChange;
+--- a/chrome/common/pref_names.cc
++++ b/chrome/common/pref_names.cc
+@@ -2093,6 +2093,8 @@ const char kDnsOverHttpsMode[] = "dns_ov
+ // insecure resolvers.
+ const char kDnsOverHttpsTemplates[] = "dns_over_https.templates";
+ 
++const char kEnvoyUrl[] = "envoy.envoy_url";
++
+ // A pref holding the value of the policy used to explicitly allow or deny
+ // access to audio capture devices.  When enabled or not set, the user is
+ // prompted for device access.  When disabled, access to audio capture devices
+--- a/chrome/common/pref_names.h
++++ b/chrome/common/pref_names.h
+@@ -800,6 +800,7 @@ extern const char kHSTSPolicyBypassList[
+ extern const char kBuiltInDnsClientEnabled[];
+ extern const char kDnsOverHttpsMode[];
+ extern const char kDnsOverHttpsTemplates[];
++extern const char kEnvoyUrl[];
+ 
+ extern const char kRegisteredProtocolHandlers[];
+ extern const char kIgnoredProtocolHandlers[];
+--- a/services/network/network_context.cc
++++ b/services/network/network_context.cc
+@@ -1969,6 +1969,7 @@ URLRequestContextOwner NetworkContext::M
+   // Borrow an alias for future use before giving the builder ownership.
+   user_agent_settings_ = user_agent_settings.get();
+   builder.set_http_user_agent_settings(std::move(user_agent_settings));
++  builder.set_envoy_url(params_->envoy_url);
+ 
+   builder.set_enable_brotli(params_->enable_brotli);
+   if (params_->context_name)
+--- a/services/network/public/mojom/network_context.mojom
++++ b/services/network/public/mojom/network_context.mojom
+@@ -223,6 +223,8 @@ struct NetworkContextParams {
+   // The user agent string.
+   string user_agent;
+ 
++  string envoy_url;
++
+   // String to send as the Accept-Language header. This can be changed later
+   // by calling SetAcceptLanguage on the NetworkContext. If empty, the header
+   // will not be added.
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -2791,6 +2791,13 @@ source_set("browser") {
+       "net/reporting_service_proxy.cc",
+       "net/reporting_service_proxy.h",
+     ]
++  } else {
++    sources += [
++      "net/cross_origin_embedder_policy_reporter.cc",
++      "net/cross_origin_embedder_policy_reporter.h",
++      "net/cross_origin_opener_policy_reporter.cc",
++      "net/cross_origin_opener_policy_reporter.h",
++    ]
+   }
+ 
+   if (use_viz_devtools) {

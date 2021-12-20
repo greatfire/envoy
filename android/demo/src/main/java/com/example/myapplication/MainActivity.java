@@ -1,8 +1,14 @@
 package com.example.myapplication;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -16,6 +22,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -23,9 +30,22 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 import org.chromium.net.CronetEngine;
+import org.greatfire.envoy.CronetNetworking;
+import org.greatfire.envoy.NetworkIntentService;
 import org.greatfire.envoy.ShadowsocksService;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.greatfire.envoy.NetworkIntentServiceKt.BROADCAST_VALID_URL_FOUND;
+import static org.greatfire.envoy.NetworkIntentServiceKt.EXTENDED_DATA_VALID_URLS;
 
 public class MainActivity extends FragmentActivity {
 
@@ -35,11 +55,16 @@ public class MainActivity extends FragmentActivity {
 
     private static final String[] titles = new String[]{"Cronet", "OKHttp", "WebView", "Volley", "HttpConn", "Nuke"};
 
+    NetworkIntentService mService;
+    boolean mBound = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // register to receive test results
+        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(BROADCAST_VALID_URL_FOUND));
 
         String ssUri = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234";
         Intent shadowsocksIntent = new Intent(this, ShadowsocksService.class);
@@ -67,6 +92,15 @@ public class MainActivity extends FragmentActivity {
         // url = "https://httpbin.org/ip";
         String envoyUrl = "socks5://127.0.0.1:1080"; // Keep this if no port conflicts
 
+        List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList(envoyUrl, "https://allowed.example.com/path/"));
+        NetworkIntentService.submit(this, envoyUrls);
+        // we will get responses in NetworkIntentServiceReceiver's onReceive
+
+        // NetworkIntentService.enqueueQuery(this); // async
+        if (mBound) {
+            Log.i(TAG, "current valid urls are " + mService.getValidUrls()); // sync
+        }
+
         CronetEngine.Builder engineBuilder = new CronetEngine.Builder(getApplication());
         engineBuilder.setUserAgent("curl/7.66.0");
         engineBuilder.setEnvoyUrl(envoyUrl);
@@ -86,6 +120,12 @@ public class MainActivity extends FragmentActivity {
         // URL.setURLStreamHandlerFactory(new CronetURLStreamHandlerFactory((ExperimentalCronetEngine)engine));
 
         // new RetrofitRequestTask().execute(url);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
     }
 
     @Override
@@ -109,7 +149,7 @@ public class MainActivity extends FragmentActivity {
         @NotNull
         @Override
         public Fragment createFragment(int position) {
-            Log.d("Fragment", "at position " + position);
+            Log.d(TAG, "fragment at position " + position);
             switch (position) {
                 case 0:
                     return new CronetFragment();
@@ -153,4 +193,82 @@ public class MainActivity extends FragmentActivity {
             }
         }
     }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Bind to NetworkIntentService
+        Intent intent = new Intent(this, NetworkIntentService.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        unbindService(connection);
+        mBound = false;
+    }
+
+    /**
+     * Defines callbacks for service binding, passed to bindService()
+     */
+    private final ServiceConnection connection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            NetworkIntentService.NetworkBinder binder = (NetworkIntentService.NetworkBinder) service;
+            mService = binder.getService();
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
+
+    protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+
+        private static final String TAG = "NetworkReceiver";
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent != null) {
+                final List<String> validUrls = intent.getStringArrayListExtra(EXTENDED_DATA_VALID_URLS);
+                if (validUrls != null && !validUrls.isEmpty()) {
+                    String envoyUrl = validUrls.get(0);
+                    Log.i(TAG, "Received valid urls: " + TextUtils.join(", ", validUrls);
+                    // Select the fastest one
+                    CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                URL url = new URL("https://api.ipify.org/");
+                                BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+                                String inputLine;
+                                StringBuilder response = new StringBuilder();
+                                while ((inputLine = in.readLine()) != null)
+                                    response.append(inputLine);
+                                in.close();
+
+                                Log.d(TAG, "proxied request returns " + response.toString());
+                            } catch (MalformedURLException e) {
+                                Log.e(TAG, "failed to proxy request ", e);
+                            } catch (IOException e) {
+                                Log.e(TAG, "failed to read response ", e);
+                            }
+                        }
+                    }.start();
+                    runOnUiThread(() -> {
+                        // MainActivity.this.setTitle("V " + validUrls.toString());
+                    });
+                } else {
+                    Log.e(TAG, "Received empty valid urls");
+                }
+            }
+        }
+    };
 }

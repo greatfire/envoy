@@ -1,0 +1,75 @@
+# Copyright (c) 2013 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/buildflag_header.gni")
+import("//build/config/chromecast_build.gni")
+import("//build/config/compiler/compiler.gni")
+import("//build/config/crypto.gni")
+import("//build/config/features.gni")
+import("//build/config/ui.gni")
+import("//net/features.gni")
+import("//testing/libfuzzer/fuzzer_test.gni")
+import("//testing/test.gni")
+import("//third_party/icu/config.gni")
+import("//third_party/protobuf/proto_library.gni")
+import("//tools/grit/grit_rule.gni")
+import("//url/features.gni")
+
+# r83
+#if (!is_proto_quic) {
+#  import("//v8/gni/v8.gni")
+#}
+
+if (is_android) {
+  import("//build/config/android/config.gni")
+  import("//build/config/android/rules.gni")
+}
+
+#else if (is_mac) {
+#  import("//build/config/mac/mac_sdk.gni")
+#}
+
+component("node_drill") {
+  sources = [
+    "common.cc",
+    "xnode.cc",
+    "xbackend.cc",
+    "xpatch.cc",
+  ]
+
+  deps = [
+    "//base",
+    "//crypto",
+    "//net",
+
+    "//sql",
+    "//third_party/icu",
+    "//third_party/zlib:minizip",
+  ]
+}
+
+executable("node_drill_cli") {
+  sources = [
+    "common.cc",
+    "xnode.cc",
+    "xbackend.cc",
+    "xpatch.cc",
+    "xpatchcli.cc",
+  ]
+
+  defines = [
+    "XPATCH_CLI",
+    "NO_SHUFFLE_XBACKEND",
+    #"SINGLE_IO_THREAD",
+  ]
+
+  deps = [
+    "//base",
+    "//crypto",
+    "//net",
+    "//sql",
+    "//third_party/icu",
+    "//third_party/zlib:minizip",
+  ]
+}

@@ -2,15 +2,23 @@ package org.greatfire.envoy
 
 import android.os.ConditionVariable
 import android.util.Log
-import okhttp3.*
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.EventListener
+import okhttp3.Headers
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.lang.IllegalArgumentException
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.util.*
@@ -107,11 +115,11 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
         try {
             mResponseCallback?.onResponse(mCall, mResponse)
         } catch (e: IOException) {
-            e.printStackTrace()
+            Log.e(TAG, "Callback onResponse failed:", e)
         }
     }
 
-    override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error?: CronetException) {
+    override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException?) {
         val wrappedError = IOException("Cronet Exception Occurred", error)
         mIOException = wrappedError
         mResponseConditionVariable.open()
@@ -125,7 +133,7 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
     }
 
     companion object {
-        private const val TAG = "Callback"
+        private const val TAG = "UrlRequestCallback"
         private const val MAX_FOLLOW_COUNT = 20
         private fun protocolFromNegotiatedProtocol(responseInfo: UrlResponseInfo): Protocol {
             val negotiatedProtocol = responseInfo.negotiatedProtocol.toLowerCase(Locale.ENGLISH)
@@ -169,10 +177,12 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
                     if (key.equals("content-encoding", ignoreCase = true)) {
                         continue
                     }
+                    if (key == null) {
+                        continue
+                    }
                     headerBuilder.add(key, value)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Invalid header, $key: $value")
-                    e.printStackTrace()
+                } catch (e: IllegalArgumentException) {
+                    Log.e(TAG, "Invalid header, $key: $value", e)
                 }
             }
             return headerBuilder.build()
