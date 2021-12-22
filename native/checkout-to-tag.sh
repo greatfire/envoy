@@ -21,7 +21,7 @@ gclient recurse --ignore sh -c "git fetch --unshallow"
 
 # check chrome://about or http://omahaproxy.appspot.com
 git fetch origin "refs/tags/$TAG:refs/tags/$TAG" --no-tags --verbose
-git checkout -b "$TAG" "tags/$TAG"
+git checkout -B "$TAG" "tags/$TAG"
 
 COMMIT_DATE=$(git log -n 1 --pretty=format:%ci)
 # 2020-01-06 04:54:58 +0000
