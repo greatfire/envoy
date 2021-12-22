@@ -239,7 +239,7 @@ public class MainActivity extends FragmentActivity {
                 final List<String> validUrls = intent.getStringArrayListExtra(EXTENDED_DATA_VALID_URLS);
                 if (validUrls != null && !validUrls.isEmpty()) {
                     String envoyUrl = validUrls.get(0);
-                    Log.i(TAG, "Received valid urls: " + TextUtils.join(", ", validUrls);
+                    Log.i(TAG, "Received valid urls: " + TextUtils.join(", ", validUrls));
                     // Select the fastest one
                     CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
                     new Thread() {

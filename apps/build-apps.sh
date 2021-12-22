@@ -10,8 +10,8 @@ set -e
 
 git checkout -- *.patch
 #CronetNetworking.initializeCronetEngine(getApplicationContext(), ""); // set envoy url here
-sed -i "s@, \"\"); // set envoy url here@, \"$ENVOY_URL\");@" ./*.patch
-sed -i "s@, \"\"); // set ss uri here@, \"$SS_URI\"));@" ./*.patch
+sed -i "s#, \"\"); // set envoy url here#, \"$ENVOY_URL\");#" ./*.patch
+sed -i "s#, \"\"); // set ss uri here#, \"$SS_URI\"));#" ./*.patch
 
 echo build apps-android-wikipedia ...
 cd ../android || exit 1
