@@ -5,17 +5,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:allowBackup="false"
+        android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         tools:ignore="GoogleAppIndexingWarning"
-        android:extractNativeLibs="false"
         tools:targetApi="m">
-
         <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar">
@@ -27,18 +27,27 @@
 
         <service
             android:name="org.greatfire.envoy.ShadowsocksService"
-            android:enabled="true"
             android:exported="false"
-            android:isolatedProcess="true" /> <!-- android:permission="set exported to true when this is defined" -->
+            android:isolatedProcess="false" /> <!-- android:permission="set exported to true when this is defined" -->
+        <service
+            android:name="org.greatfire.envoy.NetworkIntentService"
+            android:exported="false" />
 
         <receiver
             android:name=".ShadowsocksServiceReceiver"
-            android:enabled="true"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.greatfire.envoy.SS_LOCAL_STARTED" />
             </intent-filter>
         </receiver>
+        <!-- https://stackoverflow.com/questions/23364668/register-a-local-broadcastreceiver-in-androidmanifest-xml
+        <receiver
+            android:name=".NetworkIntentServiceReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="org.greatfire.envoy.VALID_URL_FOUND" />
+            </intent-filter>
+        </receiver>
+        -->
     </application>
-
 </manifest>

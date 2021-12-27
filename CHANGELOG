@@ -1,10 +1,22 @@
+# HEAD
 
-2020-06-08
+1. Update wikipedia patch to from revision 1067302cd to 3c4d8b79b
+2. Fix proguard rules for release build
 
-1. Add the setup guide to configure cdn and backend in native/README.md
+# 2020-06-08
+
+## native
+
+1. Reorder patches, #25
+1. Upgrade native patches from 81.0.4044.122 to 83.0.4103.76, #25
+1. Add setting page for envoy url
+1. Add host header for http2
+1. Add android ui translations
+1. Add commandline switch for envoy url
+
+
+## release
+
+1. Add setup guide to configure cdn and backend in native/README.md
 1. Add migration guide for wikipedia
-1. Add demo apk/arr file links and link for technical details to README.md
-
-2020-05-07
-
-1. First commit.
+1. Add demo apk/arr file links and technical details link to README.md

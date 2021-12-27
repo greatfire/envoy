@@ -6,8 +6,8 @@ We are looking for developers to improve envoy together, please contact support@
 
 Technical details are explained [here](native/README.md).
 
-* for pure c and java cronet library, see directory `native/`.
-* for the android library, import directory `android/` from android studio or build with gradle from the command line.
+* for pure c and java cronet library, see directory [native/](native).
+* for the android library, import directory [android/](android) from android studio or build with gradle from the command line.
 
 Please note that this project is unrelated to the [Envoy Proxy project](https://www.envoyproxy.io/).
 

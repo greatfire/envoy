@@ -1,0 +1,65 @@
+diff --git native/node_drill/xpatchng.cc native/node_drill/xpatchng.cc
+index 0d96830..08837bc 100644
+--- native/node_drill/xpatchng.cc
++++ native/node_drill/xpatchng.cc
+@@ -24,17 +24,19 @@
+ #include "base/strings/string_util.h"
+ #include "base/files/file_path.h"
+ #include "base/files/file_util.h"
++#ifdef OS_ANDROID
+ #include "base/android/locale_utils.h"
+ #include "base/android/path_utils.h"
++#include "base/android/jni_android.h"
++#include "base/android/jni_string.h"
++#include "base/android/build_info.h"
++#endif
+ #include "base/memory/weak_ptr.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/memory/ref_counted.h"
+-#include "base/android/jni_android.h"
+-#include "base/android/jni_string.h"
+ #include "base/strings/string_split.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/post_task.h"
+-#include "base/android/build_info.h"
+ #include "base/task/task_scheduler/task_scheduler.h"
+ #include "base/task/task_scheduler/task_scheduler_impl.h"
+ #include "base/task/task_scheduler/scheduler_worker_pool_params.h"
+@@ -101,9 +103,9 @@
+ 
+ //xxd -i cacert.pem > cacert_pem.h
+ #include "cacert_pem.h"
+-#include "assets_404.h"
+-#include "assets_favicon_ico.h"
+-#include "assets_INDEX_html.h"
++//#include "assets_404.h"
++//#include "assets_favicon_ico.h"
++//#include "assets_INDEX_html.h"
+ 
+ #ifdef XPATCH_NGTOOL
+ #define MYLOG(...)   fprintf(stderr, __VA_ARGS__)
+@@ -130,11 +132,13 @@ const uint16_t kSSLCiphers[] = { 0x5a5a, 0x1301, 0x1302, 0x1303, 0xc02b, 0xc02f,
+ #define DN_SIZE sizeof(domain_name)/sizeof(char *)
+ #define DS_SIZE sizeof(domain_suffix)/sizeof(char *)
+ 
++#ifdef OS_ANDROID
+ using base::android::JavaParamRef;
+ using base::android::ScopedJavaLocalRef;
+ using base::android::ConvertJavaStringToUTF8;
+ using base::android::ConvertJavaStringToUTF16;
+ using base::android::ConvertUTF8ToJavaString;
++#endif
+ using namespace net;
+ using namespace std;
+ 
+@@ -1290,8 +1294,8 @@ void XPatchNG::chk_apk_fingerprint(string& apkpath) {
+             if(memcmp(APKFP_MD, md, fplen) == 0)
+               fp_matched_ = true;
+ #ifdef XPATCH_NGTOOL
+-            MYLOG("cert_num = %d, cert = %p, fingerprint verify %d \n", cert_num, cert, fp_matched_);
+-            for(int i = 0; i < fplen; i++) printf("0x%02x,", md[i]);
++            // MYLOG("cert_num = %d, cert = %p, fingerprint verify %d \n", cert_num, cert, fp_matched_);
++            for(unsigned long i = 0; i < fplen; i++) printf("0x%02x,", md[i]);
+             printf("\n");
+ #endif
+           }

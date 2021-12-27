@@ -1,0 +1,14 @@
+native/0001-Add-envoy_url-to-URLRequestContext.patch
+native/0002-Add-envoy-scheme.patch
+native/0003-Add-jni-and-android-interface.patch
+native/0004-Add-host-map-rules-for-envoy-scheme.patch
+native/0005-Add-disabled-cipher-suites-parameter.patch
+native/0006-Add-as-features-and-android-preferences.patch
+native/0007-Add-cmdline-switch.patch
+native/0008-Set-host-header-for-http2.patch
+native/0009-Add-setting-page-for-envoy-url.patch
+native/0010-Disable-external-intent.patch
+native/0011-Add-salt-parameter.patch
+native/0012-Add-socks5-proxy-for-cronet.patch
+native/0013-Add-jni-for-cronet-socks5-proxy.patch
+native/0014-Add-ss-service.patch

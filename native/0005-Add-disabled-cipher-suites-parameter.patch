@@ -1,0 +1,144 @@
+From: h <h@localhost>
+Date: Sat, 18 Apr 2020 02:42:01 +0000
+Subject: [PATCH 1/1] Add disabled_cipher_suites parameter
+
+[58831 - Allow individual SSL/TLS ciphersuites to be enabled/disabled](https://bugs.chromium.org/p/chromium/issues/detail?id=58831#6),
+even https://bugs.chromium.org/p/chromium/issues/list?q=component:Internals%3ENetwork%3ESSL
+also see CommandLinePrefStore and https://www.ssllabs.com/ssltest/viewMyClient.html
+---
+ .../browser/ssl/ssl_config_service_manager_pref.cc | 11 +++++++++
+ components/cronet/native/sample/main.cc            |  6 +++++
+ net/ssl/ssl_config_service_defaults.cc             |  4 ++++
+ net/ssl/ssl_config_service_defaults.h              |  1 +
+ net/url_request/url_request_context_builder.cc     | 27 ++++++++++++++++++++--
+ 5 files changed, 47 insertions(+), 2 deletions(-)
+
+--- a/chrome/browser/ssl/ssl_config_service_manager_pref.cc
++++ b/chrome/browser/ssl/ssl_config_service_manager_pref.cc
+@@ -14,6 +14,7 @@
+ #include "base/location.h"
+ #include "base/macros.h"
+ #include "base/strings/string_util.h"
++#include "base/strings/string_split.h"
+ #include "base/values.h"
+ #include "chrome/common/chrome_features.h"
+ #include "chrome/common/chrome_switches.h"
+@@ -26,6 +27,7 @@
+ #include "components/prefs/pref_service.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "mojo/public/cpp/bindings/remote_set.h"
++#include "net/base/url_util.h"
+ #include "net/cert/cert_verifier.h"
+ #include "net/ssl/ssl_cipher_suite_names.h"
+ #include "net/ssl/ssl_config_service.h"
+@@ -209,6 +211,7 @@ void SSLConfigServiceManagerPref::Regist
+ 
+ void SSLConfigServiceManagerPref::AddToNetworkContextParams(
+     network::mojom::NetworkContextParams* network_context_params) {
++  // TODO  network_context_params->envoy_url
+   network_context_params->initial_ssl_config = GetSSLConfigFromPrefs();
+   mojo::Remote<network::mojom::SSLConfigClient> ssl_config_client;
+   network_context_params->ssl_config_client_receiver =
+@@ -278,6 +281,14 @@ void SSLConfigServiceManagerPref::OnDisa
+   const base::ListValue* value =
+       local_state->GetList(prefs::kCipherSuiteBlacklist);
+   disabled_cipher_suites_ = ParseCipherSuites(ListValueToStringVector(value));
++
++  auto envoy_url = GURL(local_state->GetString(prefs::kEnvoyUrl));
++  std::string disabled_cipher_suites;
++  std::vector<uint16_t> disabled_ciphers;
++  if (net::GetValueForKeyInQuery(envoy_url, "disabled_cipher_suites", &disabled_cipher_suites)) {
++    auto cipher_strings = base::SplitString(disabled_cipher_suites, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++    disabled_cipher_suites_ = ParseCipherSuites(cipher_strings);
++  }
+ }
+ 
+ }  // namespace
+--- a/components/cronet/native/sample/main.cc
++++ b/components/cronet/native/sample/main.cc
+@@ -25,6 +25,12 @@ Cronet_EnginePtr CreateCronetEngine() {
+       "envoy://"
+       "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
+       "subdomain.example.com&address=1.2.3.4");
++  Cronet_EngineParams_envoy_url_set(
++      engine_params,
++      "envoy://"
++      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
++      "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
++
+   Cronet_EngineParams_enable_quic_set(engine_params, true);
+ 
+   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+--- a/net/ssl/ssl_config_service_defaults.cc
++++ b/net/ssl/ssl_config_service_defaults.cc
+@@ -9,6 +9,10 @@ namespace net {
+ SSLConfigServiceDefaults::SSLConfigServiceDefaults() = default;
+ SSLConfigServiceDefaults::~SSLConfigServiceDefaults() = default;
+ 
++SSLConfigServiceDefaults::SSLConfigServiceDefaults(SSLContextConfig default_config): default_config_(default_config) {
++  // default_config.disabled_cipher_suites = default_config_.disabled_cipher_suites;
++}
++
+ SSLContextConfig SSLConfigServiceDefaults::GetSSLContextConfig() {
+   return default_config_;
+ }
+--- a/net/ssl/ssl_config_service_defaults.h
++++ b/net/ssl/ssl_config_service_defaults.h
+@@ -18,6 +18,7 @@ class NET_EXPORT SSLConfigServiceDefault
+  public:
+   SSLConfigServiceDefaults();
+   ~SSLConfigServiceDefaults() override;
++  SSLConfigServiceDefaults(SSLContextConfig default_config);
+ 
+   // Returns the default SSL config settings.
+   SSLContextConfig GetSSLContextConfig() override;
+--- a/net/url_request/url_request_context_builder.cc
++++ b/net/url_request/url_request_context_builder.cc
+@@ -14,6 +14,7 @@
+ #include "base/notreached.h"
+ #include "base/single_thread_task_runner.h"
+ #include "base/strings/string_util.h"
++#include "base/strings/string_split.h"
+ #include "base/task/post_task.h"
+ #include "base/task/thread_pool.h"
+ #include "base/threading/thread_task_runner_handle.h"
+@@ -44,6 +45,7 @@
+ #include "net/proxy_resolution/configured_proxy_resolution_service.h"
+ #include "net/quic/quic_context.h"
+ #include "net/quic/quic_stream_factory.h"
++#include "net/ssl/ssl_cipher_suite_names.h"
+ #include "net/ssl/ssl_config_service_defaults.h"
+ #include "net/url_request/static_http_user_agent_settings.h"
+ #include "net/url_request/url_request_context.h"
+@@ -443,8 +445,29 @@ std::unique_ptr<URLRequestContext> URLRe
+   if (ssl_config_service_) {
+     storage->set_ssl_config_service(std::move(ssl_config_service_));
+   } else {
+-    storage->set_ssl_config_service(
+-        std::make_unique<SSLConfigServiceDefaults>());
++
++    SSLContextConfig ssl_context_config;
++    std::vector<uint16_t> disabled_ciphers;
++    if (GetValueForKeyInQuery(envoy_url, "disabled_cipher_suites", &value)) {
++      auto cipher_strings = base::SplitString(value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++      // see net::ParseCipherSuites(cipher_strings);
++      std::vector<uint16_t> cipher_suites;
++      cipher_suites.reserve(cipher_strings.size());
++
++      for (auto it = cipher_strings.begin(); it != cipher_strings.end(); ++it) {
++        uint16_t cipher_suite = 0;
++        if (!net::ParseSSLCipherString(*it, &cipher_suite)) {
++          LOG(ERROR) << "Ignoring unrecognized or unparsable cipher suite: " << *it;
++          continue;
++        }
++        cipher_suites.push_back(cipher_suite);
++      }
++      std::sort(cipher_suites.begin(), cipher_suites.end());
++
++      ssl_context_config.disabled_cipher_suites =  cipher_suites;
++    }
++    auto ssl_config_service_ptr = std::make_unique<SSLConfigServiceDefaults>(ssl_context_config);
++    storage->set_ssl_config_service(std::move(ssl_config_service_ptr));
+   }
+ 
+   if (http_auth_handler_factory_) {

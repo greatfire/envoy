@@ -7,6 +7,8 @@ import android.util.Log;
 
 public class ShadowsocksServiceReceiver extends BroadcastReceiver {
 
+    private static final String TAG = "SSReceiver";
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent.getAction().equals("com.greatfire.envoy.SS_LOCAL_STARTED")) {
@@ -16,7 +18,7 @@ public class ShadowsocksServiceReceiver extends BroadcastReceiver {
             }
             int localPort = intent.getIntExtra("com.greatfire.envoy.SS_LOCAL_STARTED.LOCAL_PORT", 1080);
             // you can start your own background services here to use the socks5 service
-            Log.d("SSReceiver", String.format("Shadowsocks service started at %s:%d", localAddress, localPort));
+            Log.d(TAG, String.format("Shadowsocks service started at %s:%d", localAddress, localPort));
         }
     }
 }

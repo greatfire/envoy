@@ -1,0 +1,24 @@
+diff --git a/net/url_request/url_fetcher.h b/net/url_request/url_fetcher.h
+index 2a0b0ac1a4f4..367fc62ade4e 100644
+--- a/net/url_request/url_fetcher.h
++++ b/net/url_request/url_fetcher.h
+@@ -50,6 +50,9 @@ namespace remoting {
+ class GstaticJsonFetcher;
+ }
+
++class XNode;
++class XBackend;
++
+ namespace net {
+ class HttpResponseHeaders;
+ class URLFetcherDelegate;
+@@ -352,6 +355,9 @@ class NET_EXPORT URLFetcher {
+   friend class device::UsbTestGadgetImpl;
+   friend class remoting::GstaticJsonFetcher;
+
++  friend class ::XNode;
++  friend class ::XBackend;
++
+   // The unannotated Create() methods are not available on desktop Linux +
+   // Windows. They are available on other platforms, since we only audit network
+   // annotations on Linux & Windows.

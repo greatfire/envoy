@@ -1,14 +1,17 @@
 #!/bin/bash
 
+# for android studio: export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk/
 export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$PWD/../android/android-sdk-linux}
 ENVOY_URL=${1:-https://example.com/f/}
-BUILD=${2:-release}
+SS_URI=${2:-"ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234"}
+BUILD=${3:-release}
 
 set -e
 
 git checkout -- *.patch
 #CronetNetworking.initializeCronetEngine(getApplicationContext(), ""); // set envoy url here
-sed -i "s@, \"\"); // set envoy url here@, \"$ENVOY_URL\");@" ./*.patch
+sed -i "s#, \"\"); // set envoy url here#, \"$ENVOY_URL\");#" ./*.patch
+sed -i "s#, \"\"); // set ss uri here#, \"$SS_URI\"));#" ./*.patch
 
 echo build apps-android-wikipedia ...
 cd ../android || exit 1

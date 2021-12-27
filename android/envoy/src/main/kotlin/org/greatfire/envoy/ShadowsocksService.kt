@@ -38,13 +38,13 @@ class ShadowsocksService : Service() {
         val localPort = intent.getIntExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1080)
         config.put("local_port", localPort)
         val configFile = File(ContextCompat.getNoBackupFilesDir(this), "shadowsocks.conf")
-        // val configFile = File("/data/local/tmp/shadowsocks.conf-envoy")
+        // val configFile = File("/data/local/tmp/shadowsocks-envoy.conf")
         configFile.writeText(config.toString())
         val channelId = "shadowsocks-channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "shadowsocks-channel"
             val channel = NotificationChannel(
-                    channelId, name, NotificationManager.IMPORTANCE_DEFAULT)
+                    channelId, name, NotificationManager.IMPORTANCE_LOW)
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
@@ -56,9 +56,10 @@ class ShadowsocksService : Service() {
                 .setOngoing(true)
                 .setContentTitle("Shadowsocks in running")
                 .setContentText("Shadowsocks in running")
+                // .setSmallIcon(R.drawable.ic_notification)
                 // .setContentIntent(pendingIntent)
                 // deprecated in API level 26, see NotificationChannel#setImportance(int)
-                .setPriority(Notification.PRIORITY_DEFAULT)
+                .setPriority(Notification.PRIORITY_LOW)
                 .setTicker("Shadowsocks in running")
                 .build()
         startForeground(SystemClock.uptimeMillis().toInt(), notification)
@@ -68,7 +69,7 @@ class ShadowsocksService : Service() {
         val executablePath = executableFile.absolutePath
         Runnable {
             val cmdArgs = arrayOf(executablePath, "-c", configFile.absolutePath)
-            Log.i("shadow-exec", """run ${cmdArgs.contentToString()}""")
+            Log.i(TAG, """run ${cmdArgs.contentToString()}""")
             try {
                 Runtime.getRuntime().exec(cmdArgs)
                 val broadcastIntent = Intent()
@@ -77,7 +78,7 @@ class ShadowsocksService : Service() {
                 broadcastIntent.putExtra("org.greatfire.envoy.SS_LOCAL_STARTED.LOCAL_PORT", localPort)
                 sendBroadcast(broadcastIntent)
             } catch (e: IOException) {
-                Log.e("shadow-exec", cmdArgs.contentToString(), e)
+                Log.e(TAG, cmdArgs.contentToString(), e)
             }
         }.run()
 
@@ -85,11 +86,13 @@ class ShadowsocksService : Service() {
         return START_REDELIVER_INTENT
     }
 
-    override fun onBind(intent: Intent): IBinder? {
-        return binder;
+    override fun onBind(intent: Intent): IBinder {
+        return binder
     }
 
     companion object {
+        private const val TAG = "ShadowsocksService"
+
         private val pattern =
                 """(?i)ss://[-a-zA-Z0-9+&@#/%?=.~*'()|!:,;_\[\]]*[-a-zA-Z0-9+&@#/%=.~*'()|\[\]]""".toRegex()
         private val userInfoPattern = "^(.+?):(.*)$".toRegex()
