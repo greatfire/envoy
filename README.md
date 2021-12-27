@@ -69,9 +69,13 @@ Go to patches for each application in directory `apps` to learn how to integrate
 You can submit more apps with `git -c diff.noprefix=false format-patch --numbered --binary HEAD~`.
 
 ## Release steps
+
 1. Rebuild cronet-debug.aar and cronet-release.aar: run `./native/build_cronet.sh debug` and `./native/build_cronet.sh release`
 2. Rebuild envoy: `./android/build-envoy.sh`
 3. Rebuild demo apps: `./apps/build-apps.sh`
+
+Building everything from source requires around 100GB of disk space and time. The whole release process is also scripted in the [_.gitlab-ci.yml_](.gitlab-ci.yml).  This can also be run using [Vagrant](https://www.vagrantup.com/) by running `vagrant up --provision --no-destroy-on-error`.
+
 
 ## History
 1. [Google to reimplement curl in libcrurl | daniel.haxx.se](https://daniel.haxx.se/blog/2019/06/19/google-to-reimplement-curl-in-libcrurl/), [Simplified Chinese](https://www.oschina.net/news/107711/google-to-reimplement-curl-in-libcrurl)

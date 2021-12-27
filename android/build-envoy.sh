@@ -2,6 +2,8 @@
 # https://medium.com/@marc.calandro/how-to-setup-gitlab-ci-for-your-android-projects-d4c48429366f
 # https://about.gitlab.com/blog/2018/10/24/setting-up-gitlab-ci-for-android-projects/
 
+cd $(dirname $0)
+
 export ANDROID_COMPILE_SDK=29
 export ANDROID_BUILD_TOOLS=29.0.2
 export ANDROID_SDK_TOOLS=4333796
@@ -9,21 +11,26 @@ export ANDROID_SDK_TOOLS=4333796
 export NDK_VERSION="21.0.6113669"
 export CMAKE_VERSION="3.10.2.4988404"
 
-export ANDROID_SDK_ROOT=$PWD/android-sdk-linux
-export CMAKE_HOME=$PWD/android-sdk-linux/cmake/${CMAKE_VERSION}/bin/
-export PATH=$PATH:$PWD/android-sdk-linux/platform-tools/:$CMAKE_HOME
+export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$PWD/android-sdk-linux}
+export CMAKE_HOME=$ANDROID_SDK_ROOT/cmake/${CMAKE_VERSION}/bin
+export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$CMAKE_HOME
+export sdkmanager=$ANDROID_SDK_ROOT/tools/bin/sdkmanager
 
 set -e
-wget --continue --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/sdk-tools-linux-${ANDROID_SDK_TOOLS}.zip
-[[ ! -d android-sdk-linux ]] && unzip -d android-sdk-linux android-sdk.zip
-# android-sdk-linux/tools/bin/sdkmanager --list|grep -i ndk
-echo y | android-sdk-linux/tools/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}"
-echo y | android-sdk-linux/tools/bin/sdkmanager "platform-tools"
-echo y | android-sdk-linux/tools/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}"
-echo y | android-sdk-linux/tools/bin/sdkmanager "ndk;${NDK_VERSION}"
-echo y | android-sdk-linux/tools/bin/sdkmanager "cmake;${CMAKE_VERSION}"
+if [ ! -e $sdkmanager ]; then
+    wget --continue --quiet --output-document=android-sdk.zip \
+	 https://dl.google.com/android/repository/sdk-tools-linux-${ANDROID_SDK_TOOLS}.zip
+    unzip -d $ANDROID_SDK_ROOT android-sdk.zip
+    rm -f android-sdk.zip
+fi
+# $sdkmanager --list|grep -i ndk
+echo y | $sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}"
+echo y | $sdkmanager "platform-tools"
+echo y | $sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}"
+echo y | $sdkmanager "ndk;${NDK_VERSION}"
+echo y | $sdkmanager "cmake;${CMAKE_VERSION}"
 
-yes | android-sdk-linux/tools/bin/sdkmanager --licenses
+yes | $sdkmanager --licenses
 
 BUILD=${1:-release}
 cp "../native/cronet-$BUILD.aar" ./cronet/
