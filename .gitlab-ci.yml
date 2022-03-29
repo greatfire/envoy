@@ -55,6 +55,7 @@ android:
         ninja-build
         openjdk-8-jdk-headless
         pkg-config
+        python
         python3
         python3-requests
         unzip
@@ -80,16 +81,9 @@ android:
     - mkdir -p chromium
     - cd chromium
     - export CHROMIUM_SRC_ROOT=`pwd`/src
-    - fetch --no-history android
+    - fetch android
     - cd src
     - build/install-build-deps-android.sh
-    - gclient runhooks
-    - gclient sync
-    - ./components/cronet/tools/cr_cronet.py gn --out_dir=out/Cronet
-
-    - ninja -C out/Cronet cronet_package
-    - ./components/cronet/tools/cr_cronet.py gn --release
-    - ninja -C out/Release cronet_package
 
     # set up dev env in case manual work is needed
     - echo >> /etc/profile.d/env.sh
@@ -99,9 +93,9 @@ android:
 
     - cd $CI_PROJECT_DIR
     - sed -i 's,/bin/bash$,/bin/bash -x,' a*/*.sh # show commands as they run
-    - ./native/checkout-to-tag.sh 81.0.4020.0
+    - ./native/checkout-to-tag.sh
     - ./native/build_cronet.sh release
     - ./native/build_cronet.sh debug  # build-envoy.sh wants both release and debug
     - cp native/cronet-debug.aar android/cronet/
     - ./android/build-envoy.sh
-    - ./apps/build-apps.sh
+    #- ./apps/build-apps.sh
