@@ -98,4 +98,3 @@ android:
     - ./native/build_cronet.sh debug  # build-envoy.sh wants both release and debug
     - cp native/cronet-debug.aar android/cronet/
     - ./android/build-envoy.sh
-    #- ./apps/build-apps.sh
