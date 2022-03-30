@@ -81,9 +81,12 @@ android:
     - mkdir -p chromium
     - cd chromium
     - export CHROMIUM_SRC_ROOT=`pwd`/src
-    - fetch android
+    - fetch --no-history android
     - cd src
     - build/install-build-deps-android.sh
+    - git fetch origin refs/tags/87.0.4280.66:refs/tags/87.0.4280.66 --verbose
+    - git checkout -B 87.0.4280.66 tags/87.0.4280.66
+    - gclient sync --reset --with_branch_heads
 
     # set up dev env in case manual work is needed
     - echo >> /etc/profile.d/env.sh
@@ -93,7 +96,6 @@ android:
 
     - cd $CI_PROJECT_DIR
     - sed -i 's,/bin/bash$,/bin/bash -x,' a*/*.sh # show commands as they run
-    - ./native/checkout-to-tag.sh
     - ./native/build_cronet.sh release
     - ./native/build_cronet.sh debug  # build-envoy.sh wants both release and debug
     - cp native/cronet-debug.aar android/cronet/
