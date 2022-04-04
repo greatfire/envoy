@@ -30,7 +30,9 @@ echo y | $sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}"
 echo y | $sdkmanager "ndk;${NDK_VERSION}"
 echo y | $sdkmanager "cmake;${CMAKE_VERSION}"
 
+set +o pipefail # sdkmanager --licenses "fails" if all licenses are already accepted
 yes | $sdkmanager --licenses
+set -o pipefail
 
 BUILD=${1:-release}
 cp "../native/cronet-$BUILD.aar" ./cronet/
