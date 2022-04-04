@@ -16,7 +16,7 @@ export CMAKE_HOME=$ANDROID_SDK_ROOT/cmake/${CMAKE_VERSION}/bin
 export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$CMAKE_HOME
 export sdkmanager=$ANDROID_SDK_ROOT/tools/bin/sdkmanager
 
-set -e
+set -euo pipefail
 if [ ! -e $sdkmanager ]; then
     wget --continue --quiet --output-document=android-sdk.zip \
 	 https://dl.google.com/android/repository/sdk-tools-linux-${ANDROID_SDK_TOOLS}.zip
