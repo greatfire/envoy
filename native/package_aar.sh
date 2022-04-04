@@ -11,6 +11,8 @@
 # https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/sample/README
 # https://console.cloud.google.com/storage/browser/chromium-cronet/android/81.0.4039.0/Release/cronet
 
+set -euo pipefail
+
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
 DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 CRONET_OUTPUT_DIR=${CRONET_OUTPUT_DIR:-$CHROMIUM_SRC_ROOT/out/Cronet/cronet}
