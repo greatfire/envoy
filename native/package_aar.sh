@@ -21,10 +21,7 @@ source $CHROMIUM_SRC_ROOT/chrome/VERSION
 CHROME_VERSION=$MAJOR.$MINOR.$BUILD.$PATCH
 export PATH="$DEPOT_TOOLS_ROOT/bin:$PATH"
 
-trap 'rm --recursive --force "$build_tmp_dir"' EXIT
-if [[ -z "$build_tmp_dir" ]]; then
-    build_tmp_dir="$(mktemp --tmpdir=/tmp --directory -t cronet-build-"$(date +%Y-%m-%d)"-XXXXXXXXXX)"
-fi
+build_tmp_dir="$(mktemp --tmpdir=/tmp --directory -t cronet-build-"$(date +%Y-%m-%d)"-XXXXXXXXXX)"
 
 mkdir -p "$build_tmp_dir"
 cd "$build_tmp_dir" || exit 1
