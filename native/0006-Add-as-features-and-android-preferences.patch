@@ -1,14 +1,9 @@
-From: h <h@localhost>
-Date: Sat, 15 Feb 2020 03:43:02 +0000
-Subject: [PATCH 1/1] Add as features and android preferences
-
----
  chrome/android/chrome_java_resources.gni           |  2 +
  chrome/android/chrome_java_sources.gni             |  2 +
  chrome/android/java/res/layout/envoy_editor.xml    | 60 +++++++++++++++
  chrome/android/java/res/values/values.xml          |  2 +
  chrome/android/java/res/xml/envoy_preferences.xml  | 18 +++++
- .../android/java/res/xml/privacy_preferences.xml   |  7 ++
+ .../android/java/res/xml/privacy_preferences.xml   |  6 ++
  .../chrome/browser/settings/EnvoyEditor.java       | 87 ++++++++++++++++++++++
  .../chrome/browser/settings/EnvoyPreferences.java  | 39 ++++++++++
  chrome/app/generated_resources.grd                 |  6 ++
@@ -24,8 +19,10 @@ Subject: [PATCH 1/1] Add as features and android preferences
  chrome/common/pref_names.h                         |  1 +
  services/network/network_context.cc                |  1 +
  .../network/public/mojom/network_context.mojom     |  2 +
- 21 files changed, 289 insertions(+), 2 deletions(-)
+ 21 files changed, 288 insertions(+), 2 deletions(-)
 
+diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
+index 11287982826dd..0fcb18afac6c0 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
 @@ -8,6 +8,8 @@
@@ -37,17 +34,22 @@ Subject: [PATCH 1/1] Add as features and android preferences
    "java/res/anim/accelerate_quart.xml",
    "java/res/anim/activity_close_exit.xml",
    "java/res/anim/activity_open_enter.xml",
+diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
+index d8115dc1ed556..951e6d82d3ef1 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -1356,6 +1356,8 @@ chrome_java_sources = [
+@@ -1007,6 +1007,8 @@ chrome_java_sources = [
+   "java/src/org/chromium/chrome/browser/services/gcm/GCMBackgroundServiceImpl.java",
    "java/src/org/chromium/chrome/browser/services/gcm/GCMBackgroundTask.java",
    "java/src/org/chromium/chrome/browser/services/gcm/GcmUma.java",
-   "java/src/org/chromium/chrome/browser/services/gcm/InvalidationGcmUpstreamSender.java",
 +  "java/src/org/chromium/chrome/browser/settings/EnvoyEditor.java",
 +  "java/src/org/chromium/chrome/browser/settings/EnvoyPreferences.java",
    "java/src/org/chromium/chrome/browser/settings/MainSettings.java",
    "java/src/org/chromium/chrome/browser/settings/SettingsActivity.java",
    "java/src/org/chromium/chrome/browser/settings/SettingsLauncherImpl.java",
+diff --git a/chrome/android/java/res/layout/envoy_editor.xml b/chrome/android/java/res/layout/envoy_editor.xml
+new file mode 100644
+index 0000000000000..a8f099a5ea7e5
 --- /dev/null
 +++ b/chrome/android/java/res/layout/envoy_editor.xml
 @@ -0,0 +1,60 @@
@@ -111,15 +113,20 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +     <include layout="@layout/settings_action_bar_shadow"/>
 +
 +</FrameLayout>
+diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res/values/values.xml
+index bf615b74b4727..c6d1934790492 100644
 --- a/chrome/android/java/res/values/values.xml
 +++ b/chrome/android/java/res/values/values.xml
-@@ -40,4 +40,6 @@
-     <integer name="download_infobar_bar_start_offset">800</integer>
-     <integer name="download_infobar_bar_fill_in_delay">400</integer>
-     <integer name="download_infobar_bar_fill_out_delay">200</integer>
+@@ -41,4 +41,6 @@
+ 
+     <!-- Revamped Incognito NTP -->
+     <integer name="descriptions_weight">1</integer>
 +
 +    <string name="envoy_help_url">https://www.bing.com/</string>
  </resources>
+diff --git a/chrome/android/java/res/xml/envoy_preferences.xml b/chrome/android/java/res/xml/envoy_preferences.xml
+new file mode 100644
+index 0000000000000..27033524a084e
 --- /dev/null
 +++ b/chrome/android/java/res/xml/envoy_preferences.xml
 @@ -0,0 +1,18 @@
@@ -141,19 +148,24 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +
 +</PreferenceScreen>
 +
+diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+index 31c384b2ef3f2..89bce7c6b5281 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -50,4 +50,10 @@
+@@ -63,4 +63,10 @@
+         android:key="sync_and_services_link"
          android:summary="@string/privacy_sync_and_services_link_legacy"
-         app:allowDividerBelow="false"
-         android:order="7"/>
-+    <Preference
+         app:allowDividerBelow="false"/>
++   <Preference
 +        android:fragment="org.chromium.chrome.browser.settings.EnvoyPreferences"
 +        android:key="envoy"
 +        android:title="@string/options_envoy_title"
 +        android:summary="@string/options_envoy_summary"
 +        android:order="8" />
  </PreferenceScreen>
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyEditor.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyEditor.java
+new file mode 100644
+index 0000000000000..82197046eb6ea
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyEditor.java
 @@ -0,0 +1,87 @@
@@ -244,6 +256,9 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +        });
 +    }
 +}
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyPreferences.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyPreferences.java
+new file mode 100644
+index 0000000000000..6c9b62f89e683
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/EnvoyPreferences.java
 @@ -0,0 +1,39 @@
@@ -286,9 +301,11 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +        updateCurrentEnvoyUrl();
 +    }
 +}
+diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
+index bb5618a274c99..01d49d1ddf320 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -7220,6 +7220,12 @@ the Bookmarks menu.">
+@@ -8201,6 +8201,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
        </if>
  
        <if expr="is_android">
@@ -301,17 +318,21 @@ Subject: [PATCH 1/1] Add as features and android preferences
          <message name="IDS_OPTIONS_HOMEPAGE_TITLE" desc="The title of Chrome's homepage setting screen on Android. " formatter_data="android_java">
            Homepage
          </message>
+diff --git a/chrome/app/resources/generated_resources_zh-CN.xtb b/chrome/app/resources/generated_resources_zh-CN.xtb
+index 050db1dbf9084..0d2ba5310114f 100644
 --- a/chrome/app/resources/generated_resources_zh-CN.xtb
 +++ b/chrome/app/resources/generated_resources_zh-CN.xtb
-@@ -7024,4 +7024,6 @@
- <translation id="995782501881226248">YouTube</translation>
- <translation id="996250603853062861">正在建立安全连接...</translation>
+@@ -8227,4 +8227,6 @@
+ <translation id="996803490569799917">查看与亲朋好友相聚时刻的回忆集锦</translation>
+ <translation id="99731366405731005">您需要开启 <ph name="LINK1_BEGIN" />Chrome 同步<ph name="LINK1_END" />才能使用 Wi-Fi 同步功能。<ph name="LINK2_BEGIN" />了解详情<ph name="LINK2_END" /></translation>
  <translation id="998747458861718449">检查(&amp;N)</translation>
 -</translationbundle>
 \ No newline at end of file
 +<translation id="3558311757436544135">Envoy 选项</translation>
 +<translation id="55773412430883023">配置 envoy</translation>
 +</translationbundle>
+diff --git a/chrome/browser/flags/android/cached_feature_flags.cc b/chrome/browser/flags/android/cached_feature_flags.cc
+index 21a8ef33356c9..565b1fcd04c48 100644
 --- a/chrome/browser/flags/android/cached_feature_flags.cc
 +++ b/chrome/browser/flags/android/cached_feature_flags.cc
 @@ -7,6 +7,9 @@
@@ -324,7 +345,7 @@ Subject: [PATCH 1/1] Add as features and android preferences
  #include "base/feature_list.h"
  #include "content/public/common/content_features.h"
  #include "content/public/common/network_service_util.h"
-@@ -41,3 +44,15 @@ static jboolean JNI_CachedFeatureFlags_I
+@@ -41,3 +44,15 @@ static jboolean JNI_CachedFeatureFlags_IsNetworkServiceWarmUpEnabled(
    return content::IsOutOfProcessNetworkService() &&
           base::FeatureList::IsEnabled(features::kWarmUpNetworkProcess);
  }
@@ -340,10 +361,12 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +  g_browser_process->local_state()->SetString(
 +      prefs::kEnvoyUrl, base::android::ConvertJavaStringToUTF8(env, url));
 +}
+diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
+index b5d3b92dc33fe..e5a676742a972 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
-@@ -123,6 +123,14 @@ public class CachedFeatureFlags {
-     private static Map<String, String> sOverridesTestFeatures;
+@@ -143,6 +143,14 @@ public class CachedFeatureFlags {
+ 
      private static String sReachedCodeProfilerTrialGroup;
  
 +    public static void setEnvoyUrl(String url) {
@@ -357,7 +380,7 @@ Subject: [PATCH 1/1] Add as features and android preferences
      /**
       * Checks if a cached feature flag is enabled.
       *
-@@ -399,6 +407,8 @@ public class CachedFeatureFlags {
+@@ -487,6 +495,8 @@ public class CachedFeatureFlags {
  
      @NativeMethods
      interface Natives {
@@ -366,9 +389,11 @@ Subject: [PATCH 1/1] Add as features and android preferences
          boolean isNetworkServiceWarmUpEnabled();
      }
  }
+diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
+index 361c1618db144..db5541448cc6c 100644
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -345,6 +345,10 @@ SystemNetworkContextManager::SystemNetwo
+@@ -361,6 +361,10 @@ SystemNetworkContextManager::SystemNetworkContextManager(
  
    pref_change_registrar_.Init(local_state_);
  
@@ -379,7 +404,7 @@ Subject: [PATCH 1/1] Add as features and android preferences
    PrefChangeRegistrar::NamedChangeCallback auth_pref_callback =
        base::BindRepeating(&OnAuthPrefsChanged, base::Unretained(local_state_));
  
-@@ -393,6 +397,7 @@ SystemNetworkContextManager::~SystemNetw
+@@ -420,6 +424,7 @@ SystemNetworkContextManager::~SystemNetworkContextManager() {
  void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
    StubResolverConfigReader::RegisterPrefs(registry);
  
@@ -387,18 +412,20 @@ Subject: [PATCH 1/1] Add as features and android preferences
    // Static auth params
    registry->RegisterStringPref(prefs::kAuthSchemes,
                                 "basic,digest,ntlm,negotiate");
-@@ -550,6 +555,8 @@ void SystemNetworkContextManager::Config
+@@ -633,6 +638,8 @@ void SystemNetworkContextManager::ConfigureDefaultNetworkContextParams(
    network_context_params->enable_brotli = true;
  
-   network_context_params->user_agent = GetUserAgent();
+   network_context_params->user_agent = embedder_support::GetUserAgent();
 +  // TODO need to restart?
 +  network_context_params->envoy_url = local_state_->GetString(prefs::kEnvoyUrl);
  
    // Disable referrers by default. Any consumer that enables referrers should
    // respect prefs::kEnableReferrers from the appropriate pref store.
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index d1b673ab34471..540e0953b65e2 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -631,6 +631,17 @@ CHAR-LIMIT guidelines:
+@@ -747,6 +747,17 @@ CHAR_LIMIT guidelines:
          Chrome Passwords
        </message>
  
@@ -416,6 +443,8 @@ Subject: [PATCH 1/1] Add as features and android preferences
        <!-- Homepage preferences -->
        <message name="IDS_OPTIONS_HOMEPAGE_EDIT_HINT" desc="Hint for the text edit on Homepage Preference setting, guiding user to enter their customized homepage setting">
          Enter custom web address
+diff --git a/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb b/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
+index d011e5d856e98..1443945dd468a 100644
 --- a/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
 +++ b/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
 @@ -1,6 +1,9 @@
@@ -425,19 +454,21 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +<translation id="2852174385554816066">输入 Envoy URL</translation>
 +<translation id="5994499281528305078">Envoy URL</translation>
 +<translation id="8189997785233370573">访问帮助页面</translation>
+ <translation id="1016498331642356377">使用语音快速搜索。若要修改此快捷方式，请轻触并按住这里。</translation>
  <translation id="1028699632127661925">正在发送到<ph name="DEVICE_NAME" />…</translation>
- <translation id="103269572468856066">一并清除以下网站和应用内的数据？</translation>
- <translation id="1036348656032585052">关闭</translation>
-@@ -1142,4 +1145,4 @@
+ <translation id="103269572468856066">一并清除来自这些网站和应用的数据？</translation>
+@@ -1459,4 +1462,4 @@ Privacy Sandbox 试用版功能尚处于积极开发阶段，目前只能在部
  <translation id="983192555821071799">关闭所有标签页</translation>
  <translation id="987264212798334818">常规</translation>
  <translation id="996149300115483134">动态卡片上的菜单已关闭</translation>
 -</translationbundle>
 \ No newline at end of file
 +</translationbundle>
+diff --git a/chrome/common/chrome_features.cc b/chrome/common/chrome_features.cc
+index e9c636bcb54c8..f8f970190c812 100644
 --- a/chrome/common/chrome_features.cc
 +++ b/chrome/common/chrome_features.cc
-@@ -316,6 +316,11 @@ const base::FeatureParam<bool> kDnsOverH
+@@ -366,6 +366,11 @@ const base::FeatureParam<bool> kDnsOverHttpsShowUiParam {
  const base::FeatureParam<std::string> kDnsOverHttpsTemplatesParam{
      &kDnsOverHttps, "Templates", ""};
  
@@ -446,12 +477,14 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +
 +const base::FeatureParam<std::string> kEnvoyUrlParam{&kEnvoy, "EnvoyUrl", ""};
 +
- #if defined(OS_ANDROID)
- // Enable changing default downloads storage location on Android.
- const base::Feature kDownloadsLocationChange{"DownloadsLocationChange",
+ #if BUILDFLAG(IS_CHROMEOS_ASH)
+ // Enables the DNS-Over-HTTPS in the DNS proxy.
+ const base::Feature kDnsProxyEnableDOH{"DnsProxyEnableDOH",
+diff --git a/chrome/common/chrome_features.h b/chrome/common/chrome_features.h
+index 01e4ac7f7fdd4..f7393ee8d50f8 100644
 --- a/chrome/common/chrome_features.h
 +++ b/chrome/common/chrome_features.h
-@@ -200,6 +200,11 @@ COMPONENT_EXPORT(CHROME_FEATURES)
+@@ -236,6 +236,11 @@ COMPONENT_EXPORT(CHROME_FEATURES)
  extern const base::FeatureParam<std::string>
      kDnsOverHttpsDisabledProvidersParam;
  
@@ -460,43 +493,51 @@ Subject: [PATCH 1/1] Add as features and android preferences
 +COMPONENT_EXPORT(CHROME_FEATURES)
 +extern const base::FeatureParam<std::string> kEnvoyUrlParam;
 +
- #if defined(OS_ANDROID)
+ #if BUILDFLAG(IS_CHROMEOS_ASH)
  COMPONENT_EXPORT(CHROME_FEATURES)
- extern const base::Feature kDownloadsLocationChange;
+ extern const base::Feature kDnsProxyEnableDOH;
+diff --git a/chrome/common/pref_names.cc b/chrome/common/pref_names.cc
+index 763ef63000f78..f69b6012f100a 100644
 --- a/chrome/common/pref_names.cc
 +++ b/chrome/common/pref_names.cc
-@@ -2093,6 +2093,8 @@ const char kDnsOverHttpsMode[] = "dns_ov
- // insecure resolvers.
- const char kDnsOverHttpsTemplates[] = "dns_over_https.templates";
+@@ -2273,6 +2273,8 @@ const char kDnsOverHttpsTemplates[] = "dns_over_https.templates";
+ const char kAdditionalDnsQueryTypesEnabled[] =
+     "async_dns.additional_dns_query_types_enabled";
  
 +const char kEnvoyUrl[] = "envoy.envoy_url";
 +
  // A pref holding the value of the policy used to explicitly allow or deny
  // access to audio capture devices.  When enabled or not set, the user is
  // prompted for device access.  When disabled, access to audio capture devices
+diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
+index ccaa8e1bf35ef..084094e5af4f1 100644
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -800,6 +800,7 @@ extern const char kHSTSPolicyBypassList[
- extern const char kBuiltInDnsClientEnabled[];
+@@ -855,6 +855,7 @@ extern const char kBuiltInDnsClientEnabled[];
  extern const char kDnsOverHttpsMode[];
  extern const char kDnsOverHttpsTemplates[];
+ extern const char kAdditionalDnsQueryTypesEnabled[];
 +extern const char kEnvoyUrl[];
  
- extern const char kRegisteredProtocolHandlers[];
- extern const char kIgnoredProtocolHandlers[];
+ #if BUILDFLAG(IS_MAC)
+ extern const char kUserRemovedLoginItem[];
+diff --git a/services/network/network_context.cc b/services/network/network_context.cc
+index 2ee1a3da9ca15..59d0cea2ef67d 100644
 --- a/services/network/network_context.cc
 +++ b/services/network/network_context.cc
-@@ -1969,6 +1969,7 @@ URLRequestContextOwner NetworkContext::M
+@@ -2335,6 +2335,7 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
    // Borrow an alias for future use before giving the builder ownership.
    user_agent_settings_ = user_agent_settings.get();
    builder.set_http_user_agent_settings(std::move(user_agent_settings));
 +  builder.set_envoy_url(params_->envoy_url);
  
    builder.set_enable_brotli(params_->enable_brotli);
-   if (params_->context_name)
+ 
+diff --git a/services/network/public/mojom/network_context.mojom b/services/network/public/mojom/network_context.mojom
+index 0b1afd416381c..5da043c7f8c02 100644
 --- a/services/network/public/mojom/network_context.mojom
 +++ b/services/network/public/mojom/network_context.mojom
-@@ -223,6 +223,8 @@ struct NetworkContextParams {
+@@ -282,6 +282,8 @@ struct NetworkContextParams {
    // The user agent string.
    string user_agent;
  
@@ -505,19 +546,3 @@ Subject: [PATCH 1/1] Add as features and android preferences
    // String to send as the Accept-Language header. This can be changed later
    // by calling SetAcceptLanguage on the NetworkContext. If empty, the header
    // will not be added.
---- a/content/browser/BUILD.gn
-+++ b/content/browser/BUILD.gn
-@@ -2791,6 +2791,13 @@ source_set("browser") {
-       "net/reporting_service_proxy.cc",
-       "net/reporting_service_proxy.h",
-     ]
-+  } else {
-+    sources += [
-+      "net/cross_origin_embedder_policy_reporter.cc",
-+      "net/cross_origin_embedder_policy_reporter.h",
-+      "net/cross_origin_opener_policy_reporter.cc",
-+      "net/cross_origin_opener_policy_reporter.h",
-+    ]
-   }
- 
-   if (use_viz_devtools) {

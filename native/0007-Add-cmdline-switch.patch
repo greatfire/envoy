@@ -1,23 +1,25 @@
-From: h <h@localhost>
-Date: Mon, 25 May 2020 02:13:02 +0000
-Subject: [PATCH 1/1] Add cmdline switch for envoy-url
+ chrome/browser/prefs/chrome_command_line_pref_store.cc | 10 ++++++++++
+ chrome/browser/prefs/chrome_command_line_pref_store.h  |  2 ++
+ chrome/common/chrome_switches.cc                       |  1 +
+ chrome/common/chrome_switches.h                        |  1 +
+ 4 files changed, 14 insertions(+)
 
----
+diff --git a/chrome/browser/prefs/chrome_command_line_pref_store.cc b/chrome/browser/prefs/chrome_command_line_pref_store.cc
+index 223c767cb12e5..33edd3c13e842 100644
 --- a/chrome/browser/prefs/chrome_command_line_pref_store.cc
 +++ b/chrome/browser/prefs/chrome_command_line_pref_store.cc
-@@ -104,6 +104,7 @@ ChromeCommandLinePrefStore::ChromeComman
+@@ -106,6 +106,7 @@ ChromeCommandLinePrefStore::ChromeCommandLinePrefStore(
    ApplyProxyMode();
    ValidateProxySwitches();
    ApplySSLSwitches();
 +  ApplyEnvoyUrlSwitches();
    ApplyBackgroundModeSwitches();
+   ApplyExplicitlyAllowedPortSwitch();
  }
- 
-@@ -171,6 +172,15 @@ void ChromeCommandLinePrefStore::ApplySS
-              WriteablePrefStore::DEFAULT_PREF_WRITE_FLAGS);
+@@ -178,6 +179,15 @@ void ChromeCommandLinePrefStore::ApplySSLSwitches() {
    }
  }
-+
+ 
 +void ChromeCommandLinePrefStore::ApplyEnvoyUrlSwitches() {
 +  if (command_line()->HasSwitch(switches::kEnvoyUrl)) {
 +    std::string envoy_url =
@@ -26,12 +28,15 @@ Subject: [PATCH 1/1] Add cmdline switch for envoy-url
 +             WriteablePrefStore::DEFAULT_PREF_WRITE_FLAGS);
 +  }
 +}
- 
++
  void ChromeCommandLinePrefStore::ApplyBackgroundModeSwitches() {
    if (command_line()->HasSwitch(switches::kDisableExtensions)) {
+     SetValue(prefs::kBackgroundModeEnabled,
+diff --git a/chrome/browser/prefs/chrome_command_line_pref_store.h b/chrome/browser/prefs/chrome_command_line_pref_store.h
+index dd5a4e6e82791..433b8cc69cf05 100644
 --- a/chrome/browser/prefs/chrome_command_line_pref_store.h
 +++ b/chrome/browser/prefs/chrome_command_line_pref_store.h
-@@ -38,6 +38,8 @@ class ChromeCommandLinePrefStore : publi
+@@ -40,6 +40,8 @@ class ChromeCommandLinePrefStore : public CommandLinePrefStore {
    // Apply the SSL/TLS preferences from the given switches.
    void ApplySSLSwitches();
  
@@ -40,9 +45,11 @@ Subject: [PATCH 1/1] Add cmdline switch for envoy-url
    // Determines whether the background mode is force-disabled.
    void ApplyBackgroundModeSwitches();
  
+diff --git a/chrome/common/chrome_switches.cc b/chrome/common/chrome_switches.cc
+index ea6b3943cfb42..8ed9e4a79a7c0 100644
 --- a/chrome/common/chrome_switches.cc
 +++ b/chrome/common/chrome_switches.cc
-@@ -106,6 +106,7 @@ const char kCheckForUpdateIntervalSec[]
+@@ -114,6 +114,7 @@ const char kCheckForUpdateIntervalSec[]     = "check-for-update-interval";
  
  // Comma-separated list of SSL cipher suites to disable.
  const char kCipherSuiteBlacklist[]          = "cipher-suite-blacklist";
@@ -50,10 +57,12 @@ Subject: [PATCH 1/1] Add cmdline switch for envoy-url
  
  // Tells chrome to display the cloud print dialog and upload the specified file
  // for printing.
+diff --git a/chrome/common/chrome_switches.h b/chrome/common/chrome_switches.h
+index 717c7e09b39a2..67f8e8adcca1d 100644
 --- a/chrome/common/chrome_switches.h
 +++ b/chrome/common/chrome_switches.h
-@@ -55,6 +55,7 @@ extern const char kAutoSelectDesktopCapt
- extern const char kBypassAppBannerEngagementChecks[];
+@@ -57,6 +57,7 @@ extern const char kAutoSelectDesktopCaptureSource[];
+ extern const char kAutoSelectTabCaptureSourceByTitle[];
  extern const char kCheckForUpdateIntervalSec[];
  extern const char kCipherSuiteBlacklist[];
 +extern const char kEnvoyUrl[];

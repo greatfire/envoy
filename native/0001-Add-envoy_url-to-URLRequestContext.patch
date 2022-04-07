@@ -1,24 +1,21 @@
-From: h <h@localhost>
-Date: Mon, 3 Feb 2020 21:38:10 +0800
-Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
-
----
  components/cronet/native/cronet.idl                |  1 +
  components/cronet/native/engine.cc                 |  1 +
- components/cronet/native/generated/cronet.idl_c.h  |  6 ++++
- .../native/generated/cronet.idl_impl_struct.cc     | 12 +++++++
+ components/cronet/native/generated/cronet.idl_c.h  |  6 +++
+ .../native/generated/cronet.idl_impl_struct.cc     | 12 ++++++
  .../native/generated/cronet.idl_impl_struct.h      |  1 +
- .../generated/cronet.idl_impl_struct_unittest.cc   |  4 +++
- components/cronet/native/sample/main.cc            |  1 +
- components/cronet/url_request_context_config.cc    | 40 ++++++++++++++++++++--
- components/cronet/url_request_context_config.h     | 20 +++++++++++
+ .../generated/cronet.idl_impl_struct_unittest.cc   |  4 ++
+ components/cronet/native/sample/main.cc            |  2 +
+ components/cronet/url_request_context_config.cc    | 47 +++++++++++++++++++++-
+ components/cronet/url_request_context_config.h     | 42 +++++++++++++++++++
  net/socket/client_socket_pool_manager.cc           |  2 +-
- net/url_request/url_request_context.h              |  4 +++
- net/url_request/url_request_context_builder.cc     |  6 ++++
- net/url_request/url_request_context_builder.h      |  2 ++
- net/url_request/url_request_http_job.cc            | 18 ++++++++++
- 14 files changed, 115 insertions(+), 3 deletions(-)
+ net/url_request/url_request_context.h              |  4 ++
+ net/url_request/url_request_context_builder.cc     |  6 +++
+ net/url_request/url_request_context_builder.h      |  2 +
+ net/url_request/url_request_http_job.cc            | 18 +++++++++
+ 14 files changed, 145 insertions(+), 3 deletions(-)
 
+diff --git a/components/cronet/native/cronet.idl b/components/cronet/native/cronet.idl
+index f0be146362360..85b9547085b1d 100644
 --- a/components/cronet/native/cronet.idl
 +++ b/components/cronet/native/cronet.idl
 @@ -510,6 +510,7 @@ struct EngineParams {
@@ -29,9 +26,11 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  
    /**
     * Sets a default value for the Accept-Language header value for UrlRequests
+diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
+index dae346479f063..e1aeccbee64d1 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
-@@ -147,6 +147,7 @@ Cronet_RESULT Cronet_EngineImpl::StartWi
+@@ -149,6 +149,7 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
    context_config_builder.storage_path = params->storage_path;
    context_config_builder.accept_language = params->accept_language;
    context_config_builder.user_agent = params->user_agent;
@@ -39,9 +38,11 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
    context_config_builder.experimental_options = params->experimental_options;
    context_config_builder.bypass_public_key_pinning_for_local_trust_anchors =
        params->enable_public_key_pinning_bypass_for_local_trust_anchors;
+diff --git a/components/cronet/native/generated/cronet.idl_c.h b/components/cronet/native/generated/cronet.idl_c.h
+index 041fd8f58813d..749938a50780f 100644
 --- a/components/cronet/native/generated/cronet.idl_c.h
 +++ b/components/cronet/native/generated/cronet.idl_c.h
-@@ -789,6 +789,9 @@ CRONET_EXPORT
+@@ -795,6 +795,9 @@ CRONET_EXPORT
  void Cronet_EngineParams_user_agent_set(Cronet_EngineParamsPtr self,
                                          const Cronet_String user_agent);
  CRONET_EXPORT
@@ -51,7 +52,7 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  void Cronet_EngineParams_accept_language_set(
      Cronet_EngineParamsPtr self,
      const Cronet_String accept_language);
-@@ -839,6 +842,9 @@ CRONET_EXPORT
+@@ -845,6 +848,9 @@ CRONET_EXPORT
  Cronet_String Cronet_EngineParams_user_agent_get(
      const Cronet_EngineParamsPtr self);
  CRONET_EXPORT
@@ -61,9 +62,11 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  Cronet_String Cronet_EngineParams_accept_language_get(
      const Cronet_EngineParamsPtr self);
  CRONET_EXPORT
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.cc b/components/cronet/native/generated/cronet.idl_impl_struct.cc
+index 9ff9bc81ccb26..a7767ff223ee3 100644
 --- a/components/cronet/native/generated/cronet.idl_impl_struct.cc
 +++ b/components/cronet/native/generated/cronet.idl_impl_struct.cc
-@@ -249,6 +249,12 @@ void Cronet_EngineParams_user_agent_set(
+@@ -249,6 +249,12 @@ void Cronet_EngineParams_user_agent_set(Cronet_EngineParamsPtr self,
    self->user_agent = user_agent;
  }
  
@@ -76,7 +79,7 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  void Cronet_EngineParams_accept_language_set(
      Cronet_EngineParamsPtr self,
      const Cronet_String accept_language) {
-@@ -342,6 +348,12 @@ Cronet_String Cronet_EngineParams_user_a
+@@ -342,6 +348,12 @@ Cronet_String Cronet_EngineParams_user_agent_get(
    return self->user_agent.c_str();
  }
  
@@ -89,19 +92,23 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  Cronet_String Cronet_EngineParams_accept_language_get(
      const Cronet_EngineParamsPtr self) {
    DCHECK(self);
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.h b/components/cronet/native/generated/cronet.idl_impl_struct.h
+index 84d6db6c3cfd1..592cae0e3efa1 100644
 --- a/components/cronet/native/generated/cronet.idl_impl_struct.h
 +++ b/components/cronet/native/generated/cronet.idl_impl_struct.h
-@@ -77,6 +77,7 @@ struct Cronet_EngineParams {
+@@ -83,6 +83,7 @@ struct Cronet_EngineParams {
  
    bool enable_check_result = true;
    std::string user_agent;
 +  std::string envoy_url;
    std::string accept_language;
    std::string storage_path;
-   bool enable_quic = false;
+   bool enable_quic = true;
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc b/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc
+index 06f48ee97b4e1..4bc6c6d6223df 100644
 --- a/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc
 +++ b/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc
-@@ -107,6 +107,10 @@ TEST_F(CronetStructTest, TestCronet_Engi
+@@ -107,6 +107,10 @@ TEST_F(CronetStructTest, TestCronet_EngineParams) {
                                       Cronet_EngineParams_user_agent_get(first));
    EXPECT_STREQ(Cronet_EngineParams_user_agent_get(first),
                 Cronet_EngineParams_user_agent_get(second));
@@ -112,28 +119,44 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
    Cronet_EngineParams_accept_language_set(
        second, Cronet_EngineParams_accept_language_get(first));
    EXPECT_STREQ(Cronet_EngineParams_accept_language_get(first),
+diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
+index fb2272e713711..3185d5934aea9 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
-@@ -12,6 +12,7 @@ Cronet_EnginePtr CreateCronetEngine() {
+@@ -12,6 +12,8 @@ Cronet_EnginePtr CreateCronetEngine() {
    Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
    Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
    Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
-+  Cronet_EngineParams_envoy_url_set(engine_params, "https://example.com/enovy_path/");
++  Cronet_EngineParams_envoy_url_set(engine_params,
++                                    "https://example.com/enovy_path/");
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
+index 6eb06fcc07ed3..7f7e80efdb040 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
-@@ -243,6 +243,41 @@ URLRequestContextConfig::URLRequestConte
-     const std::string& storage_path,
-     const std::string& accept_language,
-     const std::string& user_agent,
+@@ -261,6 +261,47 @@ URLRequestContextConfig::PreloadedNelAndReportingHeader::
+ URLRequestContextConfig::PreloadedNelAndReportingHeader::
+     ~PreloadedNelAndReportingHeader() = default;
+ 
++URLRequestContextConfig::URLRequestContextConfig(
++    bool enable_quic,
++    const std::string& quic_user_agent_id,
++    bool enable_spdy,
++    bool enable_brotli,
++    HttpCacheType http_cache,
++    int http_cache_max_size,
++    bool load_disable_cache,
++    const std::string& storage_path,
++    const std::string& accept_language,
++    const std::string& user_agent,
 +    const std::string& envoy_url,
-+    const std::string& experimental_options,
++    base::Value::DictStorage experimental_options,
 +    std::unique_ptr<net::CertVerifier> mock_cert_verifier,
 +    bool enable_network_quality_estimator,
 +    bool bypass_public_key_pinning_for_local_trust_anchors,
-+    base::Optional<double> network_thread_priority)
++    absl::optional<double> network_thread_priority)
 +    : enable_quic(enable_quic),
 +      quic_user_agent_id(quic_user_agent_id),
 +      enable_spdy(enable_spdy),
@@ -149,33 +172,36 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
 +      enable_network_quality_estimator(enable_network_quality_estimator),
 +      bypass_public_key_pinning_for_local_trust_anchors(
 +          bypass_public_key_pinning_for_local_trust_anchors),
++      effective_experimental_options(
++          base::Value(experimental_options).TakeDictDeprecated()),
++      experimental_options(std::move(experimental_options)),
 +      network_thread_priority(network_thread_priority),
-+      experimental_options(experimental_options) {}
++      bidi_stream_detect_broken_connection(false),
++      heartbeat_interval(base::Seconds(0)) {
++  SetContextConfigExperimentalOptions();
++}
 +
-+URLRequestContextConfig::URLRequestContextConfig(
-+    bool enable_quic,
-+    const std::string& quic_user_agent_id,
-+    bool enable_spdy,
-+    bool enable_brotli,
-+    HttpCacheType http_cache,
-+    int http_cache_max_size,
-+    bool load_disable_cache,
-+    const std::string& storage_path,
-+    const std::string& accept_language,
-+    const std::string& user_agent,
-     const std::string& experimental_options,
+ URLRequestContextConfig::URLRequestContextConfig(
+     bool enable_quic,
+     const std::string& quic_user_agent_id,
+@@ -315,6 +356,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+     const std::string& storage_path,
+     const std::string& accept_language,
+     const std::string& user_agent,
++    const std::string& envoy_url,
+     const std::string& unparsed_experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -745,6 +780,7 @@ void URLRequestContextConfig::ConfigureU
+@@ -820,6 +862,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    }
    context_builder->set_accept_language(accept_language);
    context_builder->set_user_agent(user_agent);
 +  context_builder->set_envoy_url(envoy_url);
-   net::HttpNetworkSession::Params session_params;
+   net::HttpNetworkSessionParams session_params;
    session_params.enable_http2 = enable_spdy;
    session_params.enable_quic = enable_quic;
-@@ -781,8 +817,8 @@ URLRequestContextConfigBuilder::Build()
-   return std::make_unique<URLRequestContextConfig>(
+@@ -855,8 +898,8 @@ URLRequestContextConfigBuilder::Build() {
+   return URLRequestContextConfig::CreateURLRequestContextConfig(
        enable_quic, quic_user_agent_id, enable_spdy, enable_brotli, http_cache,
        http_cache_max_size, load_disable_cache, storage_path, accept_language,
 -      user_agent, experimental_options, std::move(mock_cert_verifier),
@@ -185,49 +211,73 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
        bypass_public_key_pinning_for_local_trust_anchors,
        network_thread_priority);
  }
+diff --git a/components/cronet/url_request_context_config.h b/components/cronet/url_request_context_config.h
+index 6537dcd491d82..e8b3440dbf7f9 100644
 --- a/components/cronet/url_request_context_config.h
 +++ b/components/cronet/url_request_context_config.h
-@@ -116,6 +116,7 @@ struct URLRequestContextConfig {
+@@ -127,6 +127,8 @@ struct URLRequestContextConfig {
+   // User-Agent request header field.
+   const std::string user_agent;
+ 
++  const std::string envoy_url;
++
+   // Certificate verifier for testing.
+   std::unique_ptr<net::CertVerifier> mock_cert_verifier;
+ 
+@@ -202,6 +204,7 @@ struct URLRequestContextConfig {
        const std::string& accept_language,
        // User-Agent request header field.
        const std::string& user_agent,
 +      const std::string& envoy_url,
        // JSON encoded experimental options.
-       const std::string& experimental_options,
+       const std::string& unparsed_experimental_options,
        // MockCertVerifier to use for testing purposes.
-@@ -129,6 +130,23 @@ struct URLRequestContextConfig {
-       // values. On iOS, corresponds to NSThread::setThreadPriority values. Do
-       // not specify for other targets.
-       base::Optional<double> network_thread_priority);
+@@ -217,6 +220,44 @@ struct URLRequestContextConfig {
+       absl::optional<double> network_thread_priority);
+ 
+  private:
 +  URLRequestContextConfig(
++      // Enable QUIC.
 +      bool enable_quic,
++      // QUIC User Agent ID.
 +      const std::string& quic_user_agent_id,
++      // Enable SPDY.
 +      bool enable_spdy,
++      // Enable Brotli.
 +      bool enable_brotli,
++      // Type of http cache.
 +      HttpCacheType http_cache,
++      // Max size of http cache in bytes.
 +      int http_cache_max_size,
++      // Disable caching for HTTP responses. Other information may be stored in
++      // the cache.
 +      bool load_disable_cache,
++      // Storage path for http cache and cookie storage.
 +      const std::string& storage_path,
++      // Accept-Language request header field.
 +      const std::string& accept_language,
++      // User-Agent request header field.
 +      const std::string& user_agent,
-+      const std::string& experimental_options,
++      // Envoy URL
++      const std::string& envoy_url,
++      // Parsed experimental options.
++      base::Value::DictStorage experimental_options,
++      // MockCertVerifier to use for testing purposes.
 +      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
++      // Enable network quality estimator.
 +      bool enable_network_quality_estimator,
++      // Enable bypassing of public key pinning for local trust anchors
 +      bool bypass_public_key_pinning_for_local_trust_anchors,
-+      base::Optional<double> network_thread_priority);
++      // Optional network thread priority.
++      // On Android, corresponds to android.os.Process.setThreadPriority()
++      // values. On iOS, corresponds to NSThread::setThreadPriority values. Do
++      // not specify for other targets.
++      absl::optional<double> network_thread_priority);
 +
-   ~URLRequestContextConfig();
- 
-   // Configures |context_builder| based on |this|.
-@@ -156,6 +174,7 @@ struct URLRequestContextConfig {
-   const std::string accept_language;
-   // User-Agent request header field.
-   const std::string user_agent;
-+  const std::string envoy_url;
- 
-   // Certificate verifier for testing.
-   std::unique_ptr<net::CertVerifier> mock_cert_verifier;
-@@ -253,6 +272,7 @@ struct URLRequestContextConfigBuilder {
+   URLRequestContextConfig(
+       // Enable QUIC.
+       bool enable_quic,
+@@ -309,6 +350,7 @@ struct URLRequestContextConfigBuilder {
    std::string accept_language = "";
    // User-Agent request header field.
    std::string user_agent = "";
@@ -235,9 +285,11 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
    // Experimental options encoded as a string in a JSON format containing
    // experiments and their corresponding configuration options. The format
    // is a JSON object with the name of the experiment as the key, and the
+diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket_pool_manager.cc
+index f9156b798fb67..c21b450ad6009 100644
 --- a/net/socket/client_socket_pool_manager.cc
 +++ b/net/socket/client_socket_pool_manager.cc
-@@ -44,7 +44,7 @@ static_assert(base::size(g_max_sockets_p
+@@ -49,7 +49,7 @@ static_assert(base::size(g_max_sockets_per_pool) ==
  // be the same as the limit for ws. Also note that Firefox uses a limit of 200.
  // See http://crbug.com/486800
  int g_max_sockets_per_group[] = {
@@ -246,29 +298,33 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
      255  // WEBSOCKET_SOCKET_POOL
  };
  
+diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
+index a87d328abcad8..3bb90150905b9 100644
 --- a/net/url_request/url_request_context.h
 +++ b/net/url_request/url_request_context.h
-@@ -312,6 +312,9 @@ class NET_EXPORT URLRequestContext
-   void set_name(const std::string& name) { name_ = name; }
-   const std::string& name() const { return name_; }
+@@ -312,6 +312,9 @@ class NET_EXPORT URLRequestContext {
+     bound_network_ = network;
+   }
  
 +  void set_envoy_url(const std::string& envoy_url) { envoy_url_ = envoy_url; }
 +  const std::string& envoy_url() const { return envoy_url_; }
 +
-   // MemoryDumpProvider implementation:
-   // This is reported as
-   // "memory:chrome:all_processes:reported_by_chrome:net:effective_size_avg."
-@@ -369,6 +372,7 @@ class NET_EXPORT URLRequestContext
-   // Used in MemoryDumpProvier to annotate memory usage. The name does not need
-   // to be unique.
-   std::string name_;
+   void AssertCalledOnValidThread() {
+     DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+   }
+@@ -354,6 +357,7 @@ class NET_EXPORT URLRequestContext {
+   // Triggers a DCHECK if a NetworkIsolationKey/IsolationInfo is not provided to
+   // a request when true.
+   bool require_network_isolation_key_;
 +  std::string envoy_url_;
  
-   THREAD_CHECKER(thread_checker_);
+   NetworkChangeNotifier::NetworkHandle bound_network_;
  
+diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
+index e210e0da63c34..7cac83c1a0eb6 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
-@@ -231,6 +231,10 @@ void URLRequestContextBuilder::set_user_
+@@ -180,6 +180,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
    user_agent_ = user_agent;
  }
  
@@ -279,7 +335,7 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  void URLRequestContextBuilder::set_http_user_agent_settings(
      std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings) {
    http_user_agent_settings_ = std::move(http_user_agent_settings);
-@@ -365,6 +369,8 @@ std::unique_ptr<URLRequestContext> URLRe
+@@ -324,6 +328,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
    context->set_enable_brotli(enable_brotli_);
    context->set_network_quality_estimator(network_quality_estimator_);
  
@@ -288,9 +344,11 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
    if (http_user_agent_settings_) {
      storage->set_http_user_agent_settings(std::move(http_user_agent_settings_));
    } else {
+diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
+index 43223f005d6c4..9ec018aebf2e5 100644
 --- a/net/url_request/url_request_context_builder.h
 +++ b/net/url_request/url_request_context_builder.h
-@@ -185,6 +185,7 @@ class NET_EXPORT URLRequestContextBuilde
+@@ -187,6 +187,7 @@ class NET_EXPORT URLRequestContextBuilder {
    // have the headers already set.
    void set_accept_language(const std::string& accept_language);
    void set_user_agent(const std::string& user_agent);
@@ -298,29 +356,32 @@ Subject: [PATCH 1/1] Add envoy_url to URLRequestContext
  
    // Makes the created URLRequestContext use a particular HttpUserAgentSettings
    // object. Not compatible with set_accept_language() / set_user_agent().
-@@ -338,6 +339,7 @@ class NET_EXPORT URLRequestContextBuilde
+@@ -373,6 +374,7 @@ class NET_EXPORT URLRequestContextBuilder {
  
    std::string accept_language_;
    std::string user_agent_;
 +  std::string envoy_url_;
    std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings_;
  
- #if !BUILDFLAG(DISABLE_FTP_SUPPORT)
+   bool http_cache_enabled_ = true;
+diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
+index ed3542a0fedb9..cb4b8d0ddc7bd 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -14,6 +14,7 @@
+@@ -17,6 +17,7 @@
  #include "base/command_line.h"
  #include "base/compiler_specific.h"
  #include "base/file_version_info.h"
 +#include "base/hash/md5.h"
  #include "base/location.h"
- #include "base/macros.h"
+ #include "base/memory/ptr_util.h"
  #include "base/metrics/field_trial.h"
-@@ -493,6 +494,22 @@ void URLRequestHttpJob::StartTransaction
+@@ -560,6 +561,23 @@ void URLRequestHttpJob::StartTransactionInternal() {
  
        if (!throttling_entry_.get() ||
            !throttling_entry_->ShouldRejectRequest(*request_)) {
-+        if (request_->context()->envoy_url().rfind("http://", 0) == 0 || request_->context()->envoy_url().rfind("https://", 0) == 0) {
++        if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
++            request_->context()->envoy_url().rfind("https://", 0) == 0) {
 +          base::MD5Context md5ctx;
 +          base::MD5Init(&md5ctx);
 +          base::MD5Update(&md5ctx, request_->url().spec());
