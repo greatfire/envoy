@@ -3,9 +3,9 @@
  chrome/android/java/AndroidManifest.xml            |  6 ++
  .../chrome/browser/ChromeTabbedActivity.java       |  3 +
  .../chrome/browser/ShadowsocksService.java         | 78 ++++++++++++++++++++++
- .../browser/base/SplitCompatApplication.java       |  6 ++
+ .../browser/base/SplitChromeApplication.java       | 39 +++++++++++
  third_party/shadowsocks/BUILD.gn                   |  6 ++
- 7 files changed, 102 insertions(+)
+ 7 files changed, 135 insertions(+)
 
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
 index 951e6d82d3ef1..5426814145373 100644
@@ -165,23 +165,76 @@ index 0000000000000..e961a33a2835e
 +        throw new UnsupportedOperationException("Not yet implemented");
 +    }
 +}
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/base/SplitCompatApplication.java b/chrome/android/java/src/org/chromium/chrome/browser/base/SplitCompatApplication.java
-index 37472484cf1b5..60a5052b8911b 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/base/SplitCompatApplication.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/base/SplitCompatApplication.java
-@@ -174,6 +174,12 @@ public class SplitCompatApplication extends Application {
-             CommandLineInitUtil.initCommandLine(
-                     COMMAND_LINE_FILE, SplitCompatApplication::shouldUseDebugFlags);
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java b/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java
+index df8ff99ef16b5..6eb842aebe85a 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java
+@@ -13,12 +13,21 @@ import android.os.Handler;
+ import android.os.HandlerThread;
+ import android.os.SystemClock;
  
++import org.json.JSONException;
++import org.json.JSONObject;
++
+ import org.chromium.base.BundleUtils;
+ import org.chromium.base.JNIUtils;
+ import org.chromium.base.TraceEvent;
+ import org.chromium.base.annotations.IdentifierNameString;
+ import org.chromium.base.metrics.RecordHistogram;
+ 
++import java.io.File;
++import java.io.FileReader;
++import java.io.IOException;
++import java.net.URI;
++import java.net.URISyntaxException;
++
+ /**
+  * Application class to use for Chrome when //chrome code is in an isolated split. This class will
+  * perform any necessary initialization for non-browser processes without loading code from the
+@@ -40,6 +49,31 @@ public class SplitChromeApplication extends SplitCompatApplication {
+ 
+     private Resources mResources;
+ 
++    private static URI getSocks5URIFromShadowsocksConf() {
++        File f = new File("/data/local/tmp/shadowsocks.conf");
++        try (FileReader reader = new FileReader(f)) {
++            int size = (int) f.length();
++            char[] buffer = new char[size];
++            reader.read(buffer);
++
++            String myJson = String.valueOf(buffer);
++            JSONObject json = new JSONObject(myJson);
++            if (json.has("local_address") && json.has("local_port")) {
++                String localAddress = json.optString("local_address");
++                int localPort = json.optInt("local_port");
++                if (!localAddress.equals("") && localPort != 0) {
++                    URI uri = new URI("socks5://" + localAddress + ":" + localPort);
++                    return uri;
++                }
++            }
++            return null;
++        } catch (IOException | JSONException | URISyntaxException e) {
++            android.util.Log.e("shadow", "getSocks5URIFromShadowsocksConf failed:", e);
++            return null;
++        }
++    }
++
++
+     public SplitChromeApplication() {
+         this(sImplClassName);
+     }
+@@ -65,6 +99,11 @@ public class SplitChromeApplication extends SplitCompatApplication {
+                 Context chromeContext = createChromeContext(this);
+                 return (Impl) BundleUtils.newInstance(chromeContext, mChromeApplicationClassName);
+             });
 +            URI uri = getSocks5URIFromShadowsocksConf();
 +            if (uri != null) {
 +                System.setProperty("socksProxyHost", uri.getHost());
 +                System.setProperty("socksProxyPort", String.valueOf(uri.getPort()));
 +            }
-+
-             // Enable ATrace on debug OS or app builds.
-             int applicationFlags = context.getApplicationInfo().flags;
-             boolean isAppDebuggable = (applicationFlags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+         } else {
+             setImplSupplier(() -> createNonBrowserApplication());
+         }
 diff --git a/third_party/shadowsocks/BUILD.gn b/third_party/shadowsocks/BUILD.gn
 new file mode 100644
 index 0000000000000..bd33744461f0d
