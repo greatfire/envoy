@@ -5,7 +5,7 @@
 cd $(dirname $0)
 
 export ANDROID_COMPILE_SDK=29
-export ANDROID_BUILD_TOOLS=29.0.2
+export ANDROID_BUILD_TOOLS=30.0.2
 export ANDROID_SDK_TOOLS=4333796
 # https://github.com/gradle/gradle/issues/12440#issuecomment-606188282
 export NDK_VERSION="21.0.6113669"
