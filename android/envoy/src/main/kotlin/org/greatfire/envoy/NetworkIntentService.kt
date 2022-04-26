@@ -28,10 +28,12 @@ private const val ACTION_QUERY = "org.greatfire.envoy.action.QUERY"
 private const val EXTRA_PARAM_SUBMIT = "org.greatfire.envoy.extra.PARAM_SUBMIT"
 
 // Defines a custom Intent action
-const val BROADCAST_VALID_URL_FOUND = "org.greatfire.envoy.VALID_URL_FOUND"
+const val BROADCAST_URL_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
+const val BROADCAST_URL_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
 
 // Defines the key for the status "extra" in an Intent
 const val EXTENDED_DATA_VALID_URLS = "org.greatfire.envoy.VALID_URLS"
+const val EXTENDED_DATA_INVALID_URLS = "org.greatfire.envoy.INVALID_URLS"
 
 const val PREF_VALID_URLS = "validUrls"
 
@@ -57,6 +59,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private var validUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var invalidUrls = Collections.synchronizedList(mutableListOf<String>())
 
     // Binder given to clients
     private val binder = NetworkBinder()
@@ -131,7 +134,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
      * parameters.
      */
     private fun handleActionQuery() {
-        val localIntent = Intent(BROADCAST_VALID_URL_FOUND).apply {
+        val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
             // Puts the status into the Intent
             putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
         }
@@ -204,6 +207,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
+            Log.i(TAG, "onSucceeded method called for " + info?.url)
             if (info != null) {
                 this@NetworkIntentService.validUrls.add(envoyUrl)
                 // this@NetworkIntentService.handleActionQuery()
@@ -214,7 +218,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 editor.putString(PREF_VALID_URLS, json.toString())
                 editor.apply()
 
-                val localIntent = Intent(BROADCAST_VALID_URL_FOUND).apply {
+                val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
                     // Puts the status into the Intent
                     putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
                 }
@@ -228,6 +232,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 error: CronetException?
         ) {
             Log.i(TAG, "onFailed method called for " + info?.url + " " + error)
+            // broadcast intent with invalid urls so application can handle errors
+            this@NetworkIntentService.invalidUrls.add(envoyUrl)
+            val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
+                // Puts the status into the Intent
+                putStringArrayListExtra(EXTENDED_DATA_INVALID_URLS, ArrayList(invalidUrls))
+            }
+            LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
         }
     }
 }
