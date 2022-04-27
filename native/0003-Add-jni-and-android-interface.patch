@@ -7,7 +7,8 @@
  .../src/org/chromium/net/impl/CronetUrlRequestContext.java    | 10 +++++-----
  .../java/src/org/chromium/net/impl/JavaCronetEngine.java      |  1 +
  .../org/chromium/cronet_sample_apk/CronetSampleActivity.java  |  1 +
- 9 files changed, 30 insertions(+), 7 deletions(-)
+ components/cronet/url_request_context_config.cc               |  2 +-
+ 10 files changed, 31 insertions(+), 8 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
 index ba238fa0b3298..80020f84e034d 100644
@@ -171,3 +172,16 @@ index 0d72426a568a6..1ff0b8f2433ec 100644
                  .enableQuic(true);
  
          mCronetEngine = myBuilder.build();
+diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
+index 7f7e80efdb040..89ba88e5b007e 100644
+--- a/components/cronet/url_request_context_config.cc
++++ b/components/cronet/url_request_context_config.cc
+@@ -375,7 +375,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+   return base::WrapUnique(new URLRequestContextConfig(
+       enable_quic, quic_user_agent_id, enable_spdy, enable_brotli, http_cache,
+       http_cache_max_size, load_disable_cache, storage_path, accept_language,
+-      user_agent, std::move(experimental_options.value()),
++      user_agent, envoy_url, std::move(experimental_options.value()),
+       std::move(mock_cert_verifier), enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+       network_thread_priority));
