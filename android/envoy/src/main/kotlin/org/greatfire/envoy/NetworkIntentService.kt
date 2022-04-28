@@ -231,7 +231,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 info: UrlResponseInfo?,
                 error: CronetException?
         ) {
-            Log.i(TAG, "onFailed method called for " + info?.url + " " + error)
+            Log.e(TAG, "onFailed method called for " + info?.url + " " + error?.message)
             // broadcast intent with invalid urls so application can handle errors
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
             val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
