@@ -227,7 +227,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 info: UrlResponseInfo?,
                 error: CronetException?
         ) {
-            Log.i(TAG, "onFailed method called for " + info?.url + " " + error)
+            Log.e(TAG, "onFailed method called for " + info?.url + " " + error?.message)
         }
     }
 }
