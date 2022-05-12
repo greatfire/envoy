@@ -2,19 +2,19 @@
  1 file changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index 102b6469860d4..64cb6f85d8eac 100644
+index 2116e7f2d769b..f658e2c06f83e 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -17,7 +17,7 @@
- #include "base/command_line.h"
+@@ -18,7 +18,7 @@
  #include "base/compiler_specific.h"
+ #include "base/containers/adapters.h"
  #include "base/file_version_info.h"
 -#include "base/hash/md5.h"
 +#include "crypto/sha2.h"
  #include "base/location.h"
  #include "base/memory/ptr_util.h"
  #include "base/metrics/field_trial.h"
-@@ -564,13 +564,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -562,13 +562,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
            !throttling_entry_->ShouldRejectRequest(*request_)) {
          if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
              request_->context()->envoy_url().rfind("https://", 0) == 0) {
@@ -31,7 +31,7 @@ index 102b6469860d4..64cb6f85d8eac 100644
            auto envoy_url = GURL(request_->context()->envoy_url());
            if (envoy_url.SchemeIsHTTPOrHTTPS()) {
              request_info_.url = envoy_url; // TODO check is_vaid() before set
-@@ -585,6 +581,8 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -583,6 +579,8 @@ void URLRequestHttpJob::StartTransactionInternal() {
                  // see GetUnescapedValue, TODO check is_valid() before set
                  request_info_.url =
                      GURL(net::UnescapeURLComponent(value, UnescapeRule::NORMAL));
@@ -40,7 +40,7 @@ index 102b6469860d4..64cb6f85d8eac 100644
                } else if (key.rfind(headerPrefix, 0) == 0 &&
                           key.size() > headerPrefixLength) {
                  request_info_.extra_headers.SetHeader(
-@@ -594,8 +592,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -592,8 +590,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
            }
  
            // count for cache key

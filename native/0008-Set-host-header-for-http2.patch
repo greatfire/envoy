@@ -2,10 +2,10 @@
  1 file changed, 5 insertions(+)
 
 diff --git a/net/spdy/spdy_http_utils.cc b/net/spdy/spdy_http_utils.cc
-index 3592f9ec1b2ea..c2b0640e68ca9 100644
+index 80ca0386e6328..7a299fa0ed2e9 100644
 --- a/net/spdy/spdy_http_utils.cc
 +++ b/net/spdy/spdy_http_utils.cc
-@@ -107,6 +107,11 @@ void CreateSpdyHeadersFromHttpRequest(const HttpRequestInfo& info,
+@@ -111,6 +111,11 @@ void CreateSpdyHeadersFromHttpRequest(const HttpRequestInfo& info,
    HttpRequestHeaders::Iterator it(request_headers);
    while (it.GetNext()) {
      std::string name = base::ToLowerASCII(it.name());

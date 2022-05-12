@@ -22,7 +22,7 @@
  21 files changed, 288 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
-index 11287982826dd..0fcb18afac6c0 100644
+index 4c84d89f0c455..07716ada7b2c7 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
 @@ -8,6 +8,8 @@
@@ -35,10 +35,10 @@ index 11287982826dd..0fcb18afac6c0 100644
    "java/res/anim/activity_close_exit.xml",
    "java/res/anim/activity_open_enter.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index d8115dc1ed556..951e6d82d3ef1 100644
+index d9c173d124155..a5d42ff347aa8 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -1007,6 +1007,8 @@ chrome_java_sources = [
+@@ -1010,6 +1010,8 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/services/gcm/GCMBackgroundServiceImpl.java",
    "java/src/org/chromium/chrome/browser/services/gcm/GCMBackgroundTask.java",
    "java/src/org/chromium/chrome/browser/services/gcm/GcmUma.java",
@@ -302,10 +302,10 @@ index 0000000000000..6c9b62f89e683
 +    }
 +}
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
-index bb5618a274c99..01d49d1ddf320 100644
+index 9ce6ab120cf29..1d71390c159cc 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -8201,6 +8201,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
+@@ -8654,6 +8654,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
        </if>
  
        <if expr="is_android">
@@ -319,10 +319,10 @@ index bb5618a274c99..01d49d1ddf320 100644
            Homepage
          </message>
 diff --git a/chrome/app/resources/generated_resources_zh-CN.xtb b/chrome/app/resources/generated_resources_zh-CN.xtb
-index 050db1dbf9084..0d2ba5310114f 100644
+index 02b1bb0912d18..e79f4c9070ad3 100644
 --- a/chrome/app/resources/generated_resources_zh-CN.xtb
 +++ b/chrome/app/resources/generated_resources_zh-CN.xtb
-@@ -8227,4 +8227,6 @@
+@@ -8407,4 +8407,6 @@
  <translation id="996803490569799917">查看与亲朋好友相聚时刻的回忆集锦</translation>
  <translation id="99731366405731005">您需要开启 <ph name="LINK1_BEGIN" />Chrome 同步<ph name="LINK1_END" />才能使用 Wi-Fi 同步功能。<ph name="LINK2_BEGIN" />了解详情<ph name="LINK2_END" /></translation>
  <translation id="998747458861718449">检查(&amp;N)</translation>
@@ -362,10 +362,10 @@ index 21a8ef33356c9..565b1fcd04c48 100644
 +      prefs::kEnvoyUrl, base::android::ConvertJavaStringToUTF8(env, url));
 +}
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
-index b5d3b92dc33fe..e5a676742a972 100644
+index 53c064b7fb312..278ddb8841832 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
-@@ -143,6 +143,14 @@ public class CachedFeatureFlags {
+@@ -142,6 +142,14 @@ public class CachedFeatureFlags {
  
      private static String sReachedCodeProfilerTrialGroup;
  
@@ -380,7 +380,7 @@ index b5d3b92dc33fe..e5a676742a972 100644
      /**
       * Checks if a cached feature flag is enabled.
       *
-@@ -487,6 +495,8 @@ public class CachedFeatureFlags {
+@@ -486,6 +494,8 @@ public class CachedFeatureFlags {
  
      @NativeMethods
      interface Natives {
@@ -390,10 +390,10 @@ index b5d3b92dc33fe..e5a676742a972 100644
      }
  }
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
-index 361c1618db144..db5541448cc6c 100644
+index 0269a74140c80..fc98c9e5c991d 100644
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -361,6 +361,10 @@ SystemNetworkContextManager::SystemNetworkContextManager(
+@@ -450,6 +450,10 @@ SystemNetworkContextManager::SystemNetworkContextManager(
  
    pref_change_registrar_.Init(local_state_);
  
@@ -404,7 +404,7 @@ index 361c1618db144..db5541448cc6c 100644
    PrefChangeRegistrar::NamedChangeCallback auth_pref_callback =
        base::BindRepeating(&OnAuthPrefsChanged, base::Unretained(local_state_));
  
-@@ -420,6 +424,7 @@ SystemNetworkContextManager::~SystemNetworkContextManager() {
+@@ -516,6 +520,7 @@ SystemNetworkContextManager::~SystemNetworkContextManager() {
  void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
    StubResolverConfigReader::RegisterPrefs(registry);
  
@@ -412,7 +412,7 @@ index 361c1618db144..db5541448cc6c 100644
    // Static auth params
    registry->RegisterStringPref(prefs::kAuthSchemes,
                                 "basic,digest,ntlm,negotiate");
-@@ -633,6 +638,8 @@ void SystemNetworkContextManager::ConfigureDefaultNetworkContextParams(
+@@ -721,6 +726,8 @@ void SystemNetworkContextManager::ConfigureDefaultNetworkContextParams(
    network_context_params->enable_brotli = true;
  
    network_context_params->user_agent = embedder_support::GetUserAgent();
@@ -422,10 +422,10 @@ index 361c1618db144..db5541448cc6c 100644
    // Disable referrers by default. Any consumer that enables referrers should
    // respect prefs::kEnableReferrers from the appropriate pref store.
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index d1b673ab34471..540e0953b65e2 100644
+index 2545bcd7a9299..4211108379b00 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -747,6 +747,17 @@ CHAR_LIMIT guidelines:
+@@ -748,6 +748,17 @@ CHAR_LIMIT guidelines:
          Chrome Passwords
        </message>
  
@@ -444,7 +444,7 @@ index d1b673ab34471..540e0953b65e2 100644
        <message name="IDS_OPTIONS_HOMEPAGE_EDIT_HINT" desc="Hint for the text edit on Homepage Preference setting, guiding user to enter their customized homepage setting">
          Enter custom web address
 diff --git a/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb b/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
-index d011e5d856e98..1443945dd468a 100644
+index dfd97d8870c25..65851c4e2b938 100644
 --- a/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
 +++ b/chrome/browser/ui/android/strings/translations/android_chrome_strings_zh-CN.xtb
 @@ -1,6 +1,9 @@
@@ -457,7 +457,7 @@ index d011e5d856e98..1443945dd468a 100644
  <translation id="1016498331642356377">使用语音快速搜索。若要修改此快捷方式，请轻触并按住这里。</translation>
  <translation id="1028699632127661925">正在发送到<ph name="DEVICE_NAME" />…</translation>
  <translation id="103269572468856066">一并清除来自这些网站和应用的数据？</translation>
-@@ -1459,4 +1462,4 @@ Privacy Sandbox 试用版功能尚处于积极开发阶段，目前只能在部
+@@ -1526,4 +1529,4 @@ Privacy Sandbox 试用版功能尚处于积极开发阶段，目前只能在部
  <translation id="983192555821071799">关闭所有标签页</translation>
  <translation id="987264212798334818">常规</translation>
  <translation id="996149300115483134">动态卡片上的菜单已关闭</translation>
@@ -465,10 +465,10 @@ index d011e5d856e98..1443945dd468a 100644
 \ No newline at end of file
 +</translationbundle>
 diff --git a/chrome/common/chrome_features.cc b/chrome/common/chrome_features.cc
-index e9c636bcb54c8..f8f970190c812 100644
+index abbc47cac2571..c0fb85901dfd4 100644
 --- a/chrome/common/chrome_features.cc
 +++ b/chrome/common/chrome_features.cc
-@@ -366,6 +366,11 @@ const base::FeatureParam<bool> kDnsOverHttpsShowUiParam {
+@@ -363,6 +363,11 @@ const base::FeatureParam<bool> kDnsOverHttpsShowUiParam {
  const base::FeatureParam<std::string> kDnsOverHttpsTemplatesParam{
      &kDnsOverHttps, "Templates", ""};
  
@@ -481,12 +481,12 @@ index e9c636bcb54c8..f8f970190c812 100644
  // Enables the DNS-Over-HTTPS in the DNS proxy.
  const base::Feature kDnsProxyEnableDOH{"DnsProxyEnableDOH",
 diff --git a/chrome/common/chrome_features.h b/chrome/common/chrome_features.h
-index 01e4ac7f7fdd4..f7393ee8d50f8 100644
+index 73c06883d9eee..8763a6eab64c3 100644
 --- a/chrome/common/chrome_features.h
 +++ b/chrome/common/chrome_features.h
-@@ -236,6 +236,11 @@ COMPONENT_EXPORT(CHROME_FEATURES)
- extern const base::FeatureParam<std::string>
-     kDnsOverHttpsDisabledProvidersParam;
+@@ -242,6 +242,11 @@ COMPONENT_EXPORT(CHROME_FEATURES)
+ extern const base::FeatureParam<std::string> kDnsOverHttpsTemplatesParam;
+ COMPONENT_EXPORT(CHROME_FEATURES)
  
 +COMPONENT_EXPORT(CHROME_FEATURES)
 +extern const base::Feature kEnvoy;
@@ -497,10 +497,10 @@ index 01e4ac7f7fdd4..f7393ee8d50f8 100644
  COMPONENT_EXPORT(CHROME_FEATURES)
  extern const base::Feature kDnsProxyEnableDOH;
 diff --git a/chrome/common/pref_names.cc b/chrome/common/pref_names.cc
-index 763ef63000f78..f69b6012f100a 100644
+index 66794839f4aaa..8d821e83ba91f 100644
 --- a/chrome/common/pref_names.cc
 +++ b/chrome/common/pref_names.cc
-@@ -2273,6 +2273,8 @@ const char kDnsOverHttpsTemplates[] = "dns_over_https.templates";
+@@ -2308,6 +2308,8 @@ const char kDnsOverHttpsTemplates[] = "dns_over_https.templates";
  const char kAdditionalDnsQueryTypesEnabled[] =
      "async_dns.additional_dns_query_types_enabled";
  
@@ -510,10 +510,10 @@ index 763ef63000f78..f69b6012f100a 100644
  // access to audio capture devices.  When enabled or not set, the user is
  // prompted for device access.  When disabled, access to audio capture devices
 diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
-index ccaa8e1bf35ef..084094e5af4f1 100644
+index 8cd8b8a4ba130..8857d0b6eea1b 100644
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -855,6 +855,7 @@ extern const char kBuiltInDnsClientEnabled[];
+@@ -864,6 +864,7 @@ extern const char kBuiltInDnsClientEnabled[];
  extern const char kDnsOverHttpsMode[];
  extern const char kDnsOverHttpsTemplates[];
  extern const char kAdditionalDnsQueryTypesEnabled[];
@@ -522,10 +522,10 @@ index ccaa8e1bf35ef..084094e5af4f1 100644
  #if BUILDFLAG(IS_MAC)
  extern const char kUserRemovedLoginItem[];
 diff --git a/services/network/network_context.cc b/services/network/network_context.cc
-index 2ee1a3da9ca15..59d0cea2ef67d 100644
+index ecc38d1584570..a4296425b9cad 100644
 --- a/services/network/network_context.cc
 +++ b/services/network/network_context.cc
-@@ -2335,6 +2335,7 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
+@@ -2401,6 +2401,7 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
    // Borrow an alias for future use before giving the builder ownership.
    user_agent_settings_ = user_agent_settings.get();
    builder.set_http_user_agent_settings(std::move(user_agent_settings));
@@ -534,10 +534,10 @@ index 2ee1a3da9ca15..59d0cea2ef67d 100644
    builder.set_enable_brotli(params_->enable_brotli);
  
 diff --git a/services/network/public/mojom/network_context.mojom b/services/network/public/mojom/network_context.mojom
-index 0b1afd416381c..5da043c7f8c02 100644
+index b2beaa762bfe8..6f4895aabc202 100644
 --- a/services/network/public/mojom/network_context.mojom
 +++ b/services/network/public/mojom/network_context.mojom
-@@ -282,6 +282,8 @@ struct NetworkContextParams {
+@@ -286,6 +286,8 @@ struct NetworkContextParams {
    // The user agent string.
    string user_agent;
  

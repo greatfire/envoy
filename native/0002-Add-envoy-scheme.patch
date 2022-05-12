@@ -16,10 +16,10 @@ index 3185d5934aea9..d188a1f1d4047 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index cb4b8d0ddc7bd..102b6469860d4 100644
+index 9ddcafa7df548..2116e7f2d769b 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -34,6 +34,7 @@
+@@ -35,6 +35,7 @@
  #include "base/trace_event/trace_event.h"
  #include "base/values.h"
  #include "build/build_config.h"
@@ -27,7 +27,7 @@ index cb4b8d0ddc7bd..102b6469860d4 100644
  #include "net/base/features.h"
  #include "net/base/host_port_pair.h"
  #include "net/base/http_user_agent_settings.h"
-@@ -568,12 +569,36 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -566,12 +567,36 @@ void URLRequestHttpJob::StartTransactionInternal() {
            base::MD5Update(&md5ctx, request_->url().spec());
            base::MD5Digest digest;
            base::MD5Final(&digest, &md5ctx);

@@ -5,10 +5,10 @@
  4 files changed, 14 insertions(+)
 
 diff --git a/chrome/browser/prefs/chrome_command_line_pref_store.cc b/chrome/browser/prefs/chrome_command_line_pref_store.cc
-index 223c767cb12e5..33edd3c13e842 100644
+index 3fdef6b13d1c5..0ae4969c51024 100644
 --- a/chrome/browser/prefs/chrome_command_line_pref_store.cc
 +++ b/chrome/browser/prefs/chrome_command_line_pref_store.cc
-@@ -106,6 +106,7 @@ ChromeCommandLinePrefStore::ChromeCommandLinePrefStore(
+@@ -104,6 +104,7 @@ ChromeCommandLinePrefStore::ChromeCommandLinePrefStore(
    ApplyProxyMode();
    ValidateProxySwitches();
    ApplySSLSwitches();
@@ -16,7 +16,7 @@ index 223c767cb12e5..33edd3c13e842 100644
    ApplyBackgroundModeSwitches();
    ApplyExplicitlyAllowedPortSwitch();
  }
-@@ -178,6 +179,15 @@ void ChromeCommandLinePrefStore::ApplySSLSwitches() {
+@@ -176,6 +177,15 @@ void ChromeCommandLinePrefStore::ApplySSLSwitches() {
    }
  }
  
@@ -46,7 +46,7 @@ index dd5a4e6e82791..433b8cc69cf05 100644
    void ApplyBackgroundModeSwitches();
  
 diff --git a/chrome/common/chrome_switches.cc b/chrome/common/chrome_switches.cc
-index ea6b3943cfb42..8ed9e4a79a7c0 100644
+index e99b41bb748a1..e36dc2159beb7 100644
 --- a/chrome/common/chrome_switches.cc
 +++ b/chrome/common/chrome_switches.cc
 @@ -114,6 +114,7 @@ const char kCheckForUpdateIntervalSec[]     = "check-for-update-interval";
@@ -55,10 +55,10 @@ index ea6b3943cfb42..8ed9e4a79a7c0 100644
  const char kCipherSuiteBlacklist[]          = "cipher-suite-blacklist";
 +const char kEnvoyUrl[]                      = "envoy-url";
  
- // Tells chrome to display the cloud print dialog and upload the specified file
- // for printing.
+ // Comma-separated list of BrowserThreads that cause browser process to crash if
+ // the given browser thread is not responsive. UI/IO are the BrowserThreads that
 diff --git a/chrome/common/chrome_switches.h b/chrome/common/chrome_switches.h
-index 717c7e09b39a2..67f8e8adcca1d 100644
+index f079aad00cedd..cbb857963fc82 100644
 --- a/chrome/common/chrome_switches.h
 +++ b/chrome/common/chrome_switches.h
 @@ -57,6 +57,7 @@ extern const char kAutoSelectDesktopCaptureSource[];
@@ -66,6 +66,6 @@ index 717c7e09b39a2..67f8e8adcca1d 100644
  extern const char kCheckForUpdateIntervalSec[];
  extern const char kCipherSuiteBlacklist[];
 +extern const char kEnvoyUrl[];
- extern const char kCloudPrintFile[];
- extern const char kCloudPrintFileType[];
- extern const char kCloudPrintJobTitle[];
+ extern const char kCrashOnHangThreads[];
+ extern const char kCreateBrowserOnStartupForTests[];
+ extern const char kCustomDevtoolsFrontend[];
