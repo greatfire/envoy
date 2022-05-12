@@ -92,7 +92,7 @@ index c77a29140df77..5289c938b09c7 100644
    // Returns the default SSL config settings.
    SSLContextConfig GetSSLContextConfig() override;
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 395981484be16..586a1eada41a2 100644
+index 74cf5a723044c..43bcee9811b6a 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -13,6 +13,7 @@
@@ -100,10 +100,10 @@ index 395981484be16..586a1eada41a2 100644
  #include "base/notreached.h"
  #include "base/strings/string_util.h"
 +#include "base/strings/string_split.h"
- #include "base/task/post_task.h"
  #include "base/task/single_thread_task_runner.h"
  #include "base/task/thread_pool.h"
-@@ -48,6 +49,7 @@
+ #include "base/threading/thread_task_runner_handle.h"
+@@ -47,6 +48,7 @@
  #include "net/quic/quic_context.h"
  #include "net/quic/quic_stream_factory.h"
  #include "net/socket/network_binding_client_socket_factory.h"
@@ -111,7 +111,7 @@ index 395981484be16..586a1eada41a2 100644
  #include "net/ssl/ssl_config_service_defaults.h"
  #include "net/url_request/static_http_user_agent_settings.h"
  #include "net/url_request/url_request_context.h"
-@@ -444,8 +446,29 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -450,8 +452,29 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
    if (ssl_config_service_) {
      storage->set_ssl_config_service(std::move(ssl_config_service_));
    } else {

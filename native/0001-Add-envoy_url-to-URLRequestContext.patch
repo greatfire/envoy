@@ -27,7 +27,7 @@ index f0be146362360..85b9547085b1d 100644
    /**
     * Sets a default value for the Accept-Language header value for UrlRequests
 diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
-index dae346479f063..e1aeccbee64d1 100644
+index 8c110870a0c4f..41394fda40683 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
 @@ -149,6 +149,7 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
@@ -133,10 +133,10 @@ index fb2272e713711..3185d5934aea9 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 6eb06fcc07ed3..7f7e80efdb040 100644
+index a5688c7f2bf9d..4468310d7b5a0 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
-@@ -261,6 +261,47 @@ URLRequestContextConfig::PreloadedNelAndReportingHeader::
+@@ -263,6 +263,47 @@ URLRequestContextConfig::PreloadedNelAndReportingHeader::
  URLRequestContextConfig::PreloadedNelAndReportingHeader::
      ~PreloadedNelAndReportingHeader() = default;
  
@@ -184,7 +184,7 @@ index 6eb06fcc07ed3..7f7e80efdb040 100644
  URLRequestContextConfig::URLRequestContextConfig(
      bool enable_quic,
      const std::string& quic_user_agent_id,
-@@ -315,6 +356,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -317,6 +358,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
      const std::string& storage_path,
      const std::string& accept_language,
      const std::string& user_agent,
@@ -192,7 +192,7 @@ index 6eb06fcc07ed3..7f7e80efdb040 100644
      const std::string& unparsed_experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -820,6 +862,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -826,6 +868,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    }
    context_builder->set_accept_language(accept_language);
    context_builder->set_user_agent(user_agent);
@@ -200,7 +200,7 @@ index 6eb06fcc07ed3..7f7e80efdb040 100644
    net::HttpNetworkSessionParams session_params;
    session_params.enable_http2 = enable_spdy;
    session_params.enable_quic = enable_quic;
-@@ -855,8 +898,8 @@ URLRequestContextConfigBuilder::Build() {
+@@ -861,8 +904,8 @@ URLRequestContextConfigBuilder::Build() {
    return URLRequestContextConfig::CreateURLRequestContextConfig(
        enable_quic, quic_user_agent_id, enable_spdy, enable_brotli, http_cache,
        http_cache_max_size, load_disable_cache, storage_path, accept_language,
@@ -286,10 +286,10 @@ index 6537dcd491d82..e8b3440dbf7f9 100644
    // experiments and their corresponding configuration options. The format
    // is a JSON object with the name of the experiment as the key, and the
 diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket_pool_manager.cc
-index f9156b798fb67..c21b450ad6009 100644
+index b41e79eb1bfb6..f2172712c984c 100644
 --- a/net/socket/client_socket_pool_manager.cc
 +++ b/net/socket/client_socket_pool_manager.cc
-@@ -49,7 +49,7 @@ static_assert(base::size(g_max_sockets_per_pool) ==
+@@ -48,7 +48,7 @@ static_assert(std::size(g_max_sockets_per_pool) ==
  // be the same as the limit for ws. Also note that Firefox uses a limit of 200.
  // See http://crbug.com/486800
  int g_max_sockets_per_group[] = {
@@ -299,11 +299,11 @@ index f9156b798fb67..c21b450ad6009 100644
  };
  
 diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
-index a87d328abcad8..3bb90150905b9 100644
+index 27df35f3e4832..719e9f2c17a69 100644
 --- a/net/url_request/url_request_context.h
 +++ b/net/url_request/url_request_context.h
-@@ -312,6 +312,9 @@ class NET_EXPORT URLRequestContext {
-     bound_network_ = network;
+@@ -233,6 +233,9 @@ class NET_EXPORT URLRequestContext {
+     return bound_network_;
    }
  
 +  void set_envoy_url(const std::string& envoy_url) { envoy_url_ = envoy_url; }
@@ -312,7 +312,7 @@ index a87d328abcad8..3bb90150905b9 100644
    void AssertCalledOnValidThread() {
      DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
    }
-@@ -354,6 +357,7 @@ class NET_EXPORT URLRequestContext {
+@@ -360,6 +363,7 @@ class NET_EXPORT URLRequestContext {
    // Triggers a DCHECK if a NetworkIsolationKey/IsolationInfo is not provided to
    // a request when true.
    bool require_network_isolation_key_;
@@ -321,10 +321,10 @@ index a87d328abcad8..3bb90150905b9 100644
    NetworkChangeNotifier::NetworkHandle bound_network_;
  
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index e210e0da63c34..7cac83c1a0eb6 100644
+index f3160569254a1..ead911c099228 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
-@@ -180,6 +180,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
+@@ -185,6 +185,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
    user_agent_ = user_agent;
  }
  
@@ -335,8 +335,8 @@ index e210e0da63c34..7cac83c1a0eb6 100644
  void URLRequestContextBuilder::set_http_user_agent_settings(
      std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings) {
    http_user_agent_settings_ = std::move(http_user_agent_settings);
-@@ -324,6 +328,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
-   context->set_enable_brotli(enable_brotli_);
+@@ -337,6 +341,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+   context->set_require_network_isolation_key(require_network_isolation_key_);
    context->set_network_quality_estimator(network_quality_estimator_);
  
 +  if (!envoy_url_.empty())
@@ -345,10 +345,10 @@ index e210e0da63c34..7cac83c1a0eb6 100644
      storage->set_http_user_agent_settings(std::move(http_user_agent_settings_));
    } else {
 diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
-index 43223f005d6c4..9ec018aebf2e5 100644
+index 7bdf93aeb7aa1..0ad42c07c1301 100644
 --- a/net/url_request/url_request_context_builder.h
 +++ b/net/url_request/url_request_context_builder.h
-@@ -187,6 +187,7 @@ class NET_EXPORT URLRequestContextBuilder {
+@@ -188,6 +188,7 @@ class NET_EXPORT URLRequestContextBuilder {
    // have the headers already set.
    void set_accept_language(const std::string& accept_language);
    void set_user_agent(const std::string& user_agent);
@@ -356,7 +356,7 @@ index 43223f005d6c4..9ec018aebf2e5 100644
  
    // Makes the created URLRequestContext use a particular HttpUserAgentSettings
    // object. Not compatible with set_accept_language() / set_user_agent().
-@@ -373,6 +374,7 @@ class NET_EXPORT URLRequestContextBuilder {
+@@ -395,6 +396,7 @@ class NET_EXPORT URLRequestContextBuilder {
  
    std::string accept_language_;
    std::string user_agent_;
@@ -365,18 +365,18 @@ index 43223f005d6c4..9ec018aebf2e5 100644
  
    bool http_cache_enabled_ = true;
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index ed3542a0fedb9..cb4b8d0ddc7bd 100644
+index 2db8e1bc9e5bb..9ddcafa7df548 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -17,6 +17,7 @@
- #include "base/command_line.h"
+@@ -18,6 +18,7 @@
  #include "base/compiler_specific.h"
+ #include "base/containers/adapters.h"
  #include "base/file_version_info.h"
 +#include "base/hash/md5.h"
  #include "base/location.h"
  #include "base/memory/ptr_util.h"
  #include "base/metrics/field_trial.h"
-@@ -560,6 +561,23 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -558,6 +559,23 @@ void URLRequestHttpJob::StartTransactionInternal() {
  
        if (!throttling_entry_.get() ||
            !throttling_entry_->ShouldRejectRequest(*request_)) {
