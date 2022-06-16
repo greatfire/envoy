@@ -44,7 +44,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.greatfire.envoy.NetworkIntentServiceKt.BROADCAST_VALID_URL_FOUND;
+import static org.greatfire.envoy.NetworkIntentServiceKt.BROADCAST_URL_VALIDATION_SUCCEEDED;
 import static org.greatfire.envoy.NetworkIntentServiceKt.EXTENDED_DATA_VALID_URLS;
 
 public class MainActivity extends FragmentActivity {
@@ -64,7 +64,7 @@ public class MainActivity extends FragmentActivity {
         setContentView(R.layout.activity_main);
 
         // register to receive test results
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(BROADCAST_VALID_URL_FOUND));
+        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(BROADCAST_URL_VALIDATION_SUCCEEDED));
 
         String ssUri = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234";
         Intent shadowsocksIntent = new Intent(this, ShadowsocksService.class);
