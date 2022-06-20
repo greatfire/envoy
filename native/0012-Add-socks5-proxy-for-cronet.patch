@@ -1,165 +1,21 @@
---- a/components/cronet/cronet_global_state.h
-+++ b/components/cronet/cronet_global_state.h
-@@ -33,6 +33,9 @@ void PostTaskToInitThread(const base::Lo
- // idempotent, and must complete initialization before returning.
- void EnsureInitialized();
- 
-+std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
-+    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri);
-+
- // Creates a proxy config service appropriate for this platform that fetches the
- // system proxy settings. Cronet will call this API only after a prior call
- // to EnsureInitialized() has returned.
---- a/components/cronet/cronet_global_state_stubs.cc
-+++ b/components/cronet/cronet_global_state_stubs.cc
-@@ -59,6 +59,12 @@ void PostTaskToInitThread(const base::Lo
-   InitTaskRunner()->PostTask(posted_from, std::move(task));
- }
- 
-+std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
-+    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
-+  return net::ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
-+      io_task_runner, uri);
-+}
-+
- std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
-     const scoped_refptr<base::SequencedTaskRunner>& io_task_runner) {
-   return net::ConfiguredProxyResolutionService::CreateSystemProxyConfigService(
---- a/components/cronet/cronet_url_request_context.cc
-+++ b/components/cronet/cronet_url_request_context.cc
-@@ -178,6 +178,19 @@ CronetURLRequestContext::NetworkTasks::~
-   }
- }
- 
-+void CronetURLRequestContext::InitRequestContextOnInitThreadWithUri(base::StringPiece uri) {
-+  DCHECK(OnInitThread());
-+  auto proxy_config_service =
-+      cronet::CreateFixedProxyConfigService(GetNetworkTaskRunner(), uri);
-+  g_net_log.Get().EnsureInitializedOnInitThread();
-+  GetNetworkTaskRunner()->PostTask(
-+      FROM_HERE,
-+      base::BindOnce(&CronetURLRequestContext::NetworkTasks::Initialize,
-+                     base::Unretained(network_tasks_), GetNetworkTaskRunner(),
-+                     GetFileThread()->task_runner(),
-+                     std::move(proxy_config_service)));
-+}
-+
- void CronetURLRequestContext::InitRequestContextOnInitThread() {
-   DCHECK(OnInitThread());
-   auto proxy_config_service =
---- a/components/cronet/cronet_url_request_context.h
-+++ b/components/cronet/cronet_url_request_context.h
-@@ -104,6 +104,8 @@ class CronetURLRequestContext {
-   // Blocks until network thread is destroyed after running all pending tasks.
-   virtual ~CronetURLRequestContext();
- 
-+  void InitRequestContextOnInitThreadWithUri(base::StringPiece uri);
-+
-   // Called on init thread to initialize URLRequestContext.
-   void InitRequestContextOnInitThread();
- 
---- a/components/cronet/native/engine.cc
-+++ b/components/cronet/native/engine.cc
-@@ -198,10 +198,17 @@ Cronet_RESULT Cronet_EngineImpl::StartWi
-   // @VisibleForTesting (as the only external use will be in a test).
- 
-   // Initialize context on the init thread.
-+  if (params->envoy_url.rfind("socks5://", 0) != 0) {
-   cronet::PostTaskToInitThread(
-       FROM_HERE,
-       base::BindOnce(&CronetURLRequestContext::InitRequestContextOnInitThread,
-                      base::Unretained(context_.get())));
-+  } else {
-+      cronet::PostTaskToInitThread(
-+          FROM_HERE,
-+          base::BindOnce(&CronetURLRequestContext::InitRequestContextOnInitThreadWithUri,
-+                         base::Unretained(context_.get()), params->envoy_url));
-+  }
-   return CheckResult(Cronet_RESULT_SUCCESS);
- }
- 
---- a/net/proxy_resolution/configured_proxy_resolution_service.cc
-+++ b/net/proxy_resolution/configured_proxy_resolution_service.cc
-@@ -1390,6 +1390,20 @@ bool ConfiguredProxyResolutionService::C
-   return true;
- }
- 
-+std::unique_ptr<ProxyConfigService>
-+ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
-+    const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri) {
-+  ProxyConfig raw_proxy_config;
-+  raw_proxy_config.proxy_rules().type = ProxyConfig::ProxyRules::Type::PROXY_LIST;
-+  raw_proxy_config.proxy_rules().single_proxies.SetSingleProxyServer(ProxyServer::FromURI(uri, ProxyServer::SCHEME_SOCKS5));
-+#if (!defined(OS_WIN) && !defined(OS_LINUX)) || defined(OS_CHROMEOS)
-+  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, NO_TRAFFIC_ANNOTATION_YET);
-+#else
-+  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, kSystemProxyConfigTrafficAnnotation);
-+#endif
-+  return std::make_unique<ProxyConfigServiceFixed>(proxy_config);
-+}
-+
- // static
- std::unique_ptr<ProxyConfigService>
- ConfiguredProxyResolutionService::CreateSystemProxyConfigService(
---- a/net/proxy_resolution/configured_proxy_resolution_service.h
-+++ b/net/proxy_resolution/configured_proxy_resolution_service.h
-@@ -222,6 +222,9 @@ class NET_EXPORT ConfiguredProxyResoluti
-       const std::string& pac_string,
-       const NetworkTrafficAnnotationTag& traffic_annotation);
- 
-+  static std::unique_ptr<ProxyConfigService> CreateFixedSystemProxyConfigService(
-+      const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri);
-+
-   // Creates a config service appropriate for this platform that fetches the
-   // system proxy settings. |main_task_runner| is the thread where the consumer
-   // of the ProxyConfigService will live.
---- a/components/cronet/android/cronet_library_loader.cc
-+++ b/components/cronet/android/cronet_library_loader.cc
-@@ -183,6 +183,17 @@ std::unique_ptr<net::ProxyConfigService>
-   return service;
- }
- 
-+std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
-+    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
-+  std::unique_ptr<net::ProxyConfigService> service =
-+      net::ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
-+          io_task_runner, uri);
-+  //net::ProxyConfigServiceAndroid* android_proxy_config_service =
-+  //  static_cast<net::ProxyConfigServiceAndroid*>(service.get());
-+  //android_proxy_config_service->set_exclude_pac_url(true);
-+  return service;
-+}
-+
- // Creates a proxy resolution service appropriate for this platform.
- std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
-     std::unique_ptr<net::ProxyConfigService> proxy_config_service,
---- a/components/cronet/ios/cronet_global_state_ios.mm
-+++ b/components/cronet/ios/cronet_global_state_ios.mm
-@@ -72,6 +72,11 @@ std::unique_ptr<net::ProxyConfigService>
-   return nullptr;
- }
- 
-+std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
-+    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
-+  return nullptr;
-+}
-+
- std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
-     std::unique_ptr<net::ProxyConfigService> proxy_config_service,
-     net::NetLog* net_log) {
---- a/components/cronet/native/sample/main.cc
-+++ b/components/cronet/native/sample/main.cc
-@@ -30,6 +30,7 @@ Cronet_EnginePtr CreateCronetEngine() {
-       "envoy://"
-       "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
-       "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
-+  Cronet_EngineParams_envoy_url_set(engine_params, "socks5://127.0.0.1:1080");
- 
-   Cronet_EngineParams_enable_quic_set(engine_params, true);
- 
+ components/cronet/BUILD.gn                          | 21 +++++++++++++++++++++
+ components/cronet/android/cronet_library_loader.cc  | 11 +++++++++++
+ components/cronet/cronet_context.cc                 | 13 +++++++++++++
+ components/cronet/cronet_context.h                  |  2 ++
+ components/cronet/cronet_global_state.h             |  4 ++++
+ components/cronet/cronet_global_state_stubs.cc      |  7 +++++++
+ components/cronet/ios/cronet_global_state_ios.mm    |  5 +++++
+ components/cronet/native/engine.cc                  |  7 +++++++
+ components/cronet/native/sample/main.cc             |  1 +
+ .../configured_proxy_resolution_service.cc          | 14 ++++++++++++++
+ .../configured_proxy_resolution_service.h           |  3 +++
+ 11 files changed, 88 insertions(+)
+
+diff --git a/components/cronet/BUILD.gn b/components/cronet/BUILD.gn
+index 5be0ce232c13b..f4f539355fc09 100644
 --- a/components/cronet/BUILD.gn
 +++ b/components/cronet/BUILD.gn
-@@ -100,6 +100,27 @@ if (is_android) {
+@@ -101,6 +101,27 @@ if (is_android) {
      testonly = true
      deps = [ "//components/cronet/android:cronet_package_android" ]
    }
@@ -187,3 +43,197 @@
  } else if (is_ios) {
    group("cronet_package") {
      deps = [ "//components/cronet/ios:cronet_package_ios" ]
+diff --git a/components/cronet/android/cronet_library_loader.cc b/components/cronet/android/cronet_library_loader.cc
+index cec35b8af6506..600fc26c3b883 100644
+--- a/components/cronet/android/cronet_library_loader.cc
++++ b/components/cronet/android/cronet_library_loader.cc
+@@ -183,6 +183,17 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
+   return service;
+ }
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
++  std::unique_ptr<net::ProxyConfigService> service =
++      net::ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
++          io_task_runner, uri);
++  //net::ProxyConfigServiceAndroid* android_proxy_config_service =
++  //  static_cast<net::ProxyConfigServiceAndroid*>(service.get());
++  //android_proxy_config_service->set_exclude_pac_url(true);
++  return service;
++}
++
+ // Creates a proxy resolution service appropriate for this platform.
+ std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
+     std::unique_ptr<net::ProxyConfigService> proxy_config_service,
+diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
+index 926500f7ae1be..fcff4a4b75052 100644
+--- a/components/cronet/cronet_context.cc
++++ b/components/cronet/cronet_context.cc
+@@ -245,6 +245,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
+     net::NetworkChangeNotifier::RemoveNetworkObserver(this);
+ }
+ 
++void CronetContext::InitRequestContextOnInitThreadWithUri(base::StringPiece uri) {
++  DCHECK(OnInitThread());
++  auto proxy_config_service =
++      cronet::CreateFixedProxyConfigService(GetNetworkTaskRunner(), uri);
++  g_net_log.Get().EnsureInitializedOnInitThread();
++  GetNetworkTaskRunner()->PostTask(
++      FROM_HERE,
++      base::BindOnce(&CronetContext::NetworkTasks::Initialize,
++                     base::Unretained(network_tasks_), GetNetworkTaskRunner(),
++                     GetFileThread()->task_runner(),
++                     std::move(proxy_config_service)));
++}
++
+ void CronetContext::InitRequestContextOnInitThread() {
+   DCHECK(OnInitThread());
+   // Cannot create this inside Initialize because Android requires this to be
+diff --git a/components/cronet/cronet_context.h b/components/cronet/cronet_context.h
+index 6141657fb0df5..32dd16c4530d2 100644
+--- a/components/cronet/cronet_context.h
++++ b/components/cronet/cronet_context.h
+@@ -109,6 +109,8 @@ class CronetContext {
+   // Blocks until network thread is destroyed after running all pending tasks.
+   virtual ~CronetContext();
+ 
++  void InitRequestContextOnInitThreadWithUri(base::StringPiece uri);
++
+   // Called on init thread to initialize URLRequestContext.
+   void InitRequestContextOnInitThread();
+ 
+diff --git a/components/cronet/cronet_global_state.h b/components/cronet/cronet_global_state.h
+index 10003b0be1f4e..f3e959d817617 100644
+--- a/components/cronet/cronet_global_state.h
++++ b/components/cronet/cronet_global_state.h
+@@ -8,6 +8,7 @@
+ #include <memory>
+ #include <string>
+ #include "base/memory/scoped_refptr.h"
++#include "base/strings/string_piece.h"
+ #include "base/task/sequenced_task_runner.h"
+ 
+ namespace net {
+@@ -33,6 +34,9 @@ void PostTaskToInitThread(const base::Location& posted_from,
+ // idempotent, and must complete initialization before returning.
+ void EnsureInitialized();
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri);
++
+ // Creates a proxy config service appropriate for this platform that fetches the
+ // system proxy settings. Cronet will call this API only after a prior call
+ // to EnsureInitialized() has returned.
+diff --git a/components/cronet/cronet_global_state_stubs.cc b/components/cronet/cronet_global_state_stubs.cc
+index a44ca10578f9f..89fe1a7c50177 100644
+--- a/components/cronet/cronet_global_state_stubs.cc
++++ b/components/cronet/cronet_global_state_stubs.cc
+@@ -8,6 +8,7 @@
+ 
+ #include "base/at_exit.h"
+ #include "base/feature_list.h"
++#include "base/strings/string_piece.h"
+ #include "base/task/thread_pool.h"
+ #include "base/task/thread_pool/thread_pool_instance.h"
+ #include "net/proxy_resolution/configured_proxy_resolution_service.h"
+@@ -60,6 +61,12 @@ void PostTaskToInitThread(const base::Location& posted_from,
+   InitTaskRunner()->PostTask(posted_from, std::move(task));
+ }
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
++  return net::ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
++      io_task_runner, uri);
++}
++
+ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
+     const scoped_refptr<base::SequencedTaskRunner>& io_task_runner) {
+   return net::ConfiguredProxyResolutionService::CreateSystemProxyConfigService(
+diff --git a/components/cronet/ios/cronet_global_state_ios.mm b/components/cronet/ios/cronet_global_state_ios.mm
+index acd8aa50a09a6..fe294842da3e2 100644
+--- a/components/cronet/ios/cronet_global_state_ios.mm
++++ b/components/cronet/ios/cronet_global_state_ios.mm
+@@ -72,6 +72,11 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
+   return nullptr;
+ }
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
++  return nullptr;
++}
++
+ std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
+     std::unique_ptr<net::ProxyConfigService> proxy_config_service,
+     net::NetLog* net_log) {
+diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
+index 41394fda40683..271ab334f5b03 100644
+--- a/components/cronet/native/engine.cc
++++ b/components/cronet/native/engine.cc
+@@ -200,9 +200,16 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
+   // @VisibleForTesting (as the only external use will be in a test).
+ 
+   // Initialize context on the init thread.
++  if (params->envoy_url.rfind("socks5://", 0) != 0) {
+   cronet::PostTaskToInitThread(
+       FROM_HERE, base::BindOnce(&CronetContext::InitRequestContextOnInitThread,
+                                 base::Unretained(context_.get())));
++  } else {
++      cronet::PostTaskToInitThread(
++          FROM_HERE,
++          base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
++                         base::Unretained(context_.get()), params->envoy_url));
++  }
+   return CheckResult(Cronet_RESULT_SUCCESS);
+ }
+ 
+diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
+index 7b21245fdb8aa..1081a640cf726 100644
+--- a/components/cronet/native/sample/main.cc
++++ b/components/cronet/native/sample/main.cc
+@@ -35,6 +35,7 @@ Cronet_EnginePtr CreateCronetEngine() {
+       "envoy://"
+       "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
+       "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
++  Cronet_EngineParams_envoy_url_set(engine_params, "socks5://127.0.0.1:1080");
+ 
+   Cronet_EngineParams_enable_quic_set(engine_params, true);
+ 
+diff --git a/net/proxy_resolution/configured_proxy_resolution_service.cc b/net/proxy_resolution/configured_proxy_resolution_service.cc
+index 2c02537409255..ee3192aeb633d 100644
+--- a/net/proxy_resolution/configured_proxy_resolution_service.cc
++++ b/net/proxy_resolution/configured_proxy_resolution_service.cc
+@@ -1405,6 +1405,20 @@ bool ConfiguredProxyResolutionService::CastToConfiguredProxyResolutionService(
+   return true;
+ }
+ 
++std::unique_ptr<ProxyConfigService>
++ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri) {
++  ProxyConfig raw_proxy_config;
++  raw_proxy_config.proxy_rules().type = ProxyConfig::ProxyRules::Type::PROXY_LIST;
++  raw_proxy_config.proxy_rules().single_proxies.SetSingleProxyServer(ProxyUriToProxyServer(uri, ProxyServer::SCHEME_SOCKS5));
++#if (!defined(OS_WIN) && !defined(OS_LINUX)) || defined(OS_CHROMEOS)
++  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, NO_TRAFFIC_ANNOTATION_YET);
++#else
++  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, kSystemProxyConfigTrafficAnnotation);
++#endif
++  return std::make_unique<ProxyConfigServiceFixed>(proxy_config);
++}
++
+ // static
+ std::unique_ptr<ProxyConfigService>
+ ConfiguredProxyResolutionService::CreateSystemProxyConfigService(
+diff --git a/net/proxy_resolution/configured_proxy_resolution_service.h b/net/proxy_resolution/configured_proxy_resolution_service.h
+index 80b96262c640d..b5b985f911cca 100644
+--- a/net/proxy_resolution/configured_proxy_resolution_service.h
++++ b/net/proxy_resolution/configured_proxy_resolution_service.h
+@@ -227,6 +227,9 @@ class NET_EXPORT ConfiguredProxyResolutionService
+       const std::string& pac_string,
+       const NetworkTrafficAnnotationTag& traffic_annotation);
+ 
++  static std::unique_ptr<ProxyConfigService> CreateFixedSystemProxyConfigService(
++      const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri);
++
+   // Creates a config service appropriate for this platform that fetches the
+   // system proxy settings. |main_task_runner| is the thread where the consumer
+   // of the ProxyConfigService will live.
