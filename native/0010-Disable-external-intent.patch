@@ -1,26 +1,24 @@
-From: h <h@localhost>
-Date: Wed, 01 Jul 2020 18:13:10 +0000
-Subject: [PATCH 1/1] Disable external intent(app link)
-
- components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java | 3 +++
+ .../components/external_intents/ExternalNavigationHandler.java         | 3 +++
  1 file changed, 3 insertions(+)
 
+diff --git a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
+index 7c354a6efbca4..b7c321451ee96 100644
 --- a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
 +++ b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-@@ -1092,6 +1092,8 @@ public class ExternalNavigationHandler {
+@@ -835,6 +835,8 @@ public class ExternalNavigationHandler {
      }
  
-     private boolean launchExternalIntent(Intent targetIntent, boolean shouldProxyForInstantApps) {
-+       return false;
-+       /*
-         try {
-             if (!startActivityIfNeeded(targetIntent, shouldProxyForInstantApps)) {
-                 if (DEBUG) Log.i(TAG, "The current Activity was the only targeted Activity.");
-@@ -1105,6 +1107,7 @@ public class ExternalNavigationHandler {
+     private boolean externalIntentRequestsDisabledForUrl(ExternalNavigationParams params) {
++        return true;
++        /*
+         // TODO(changwan): check if we need to handle URL even when external intent is off.
+         if (CommandLine.getInstance().hasSwitch(
+                     ExternalIntentsSwitches.DISABLE_EXTERNAL_INTENT_REQUESTS)) {
+@@ -847,6 +849,7 @@ public class ExternalNavigationHandler {
+             return true;
          }
-         if (DEBUG) Log.i(TAG, "startActivityIfNeeded");
-         return true;
-+       */
+         return false;
++        */
      }
  
-     // This will handle external navigations only for intent meant for Autofill Assistant.
+     /**

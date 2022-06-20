@@ -1,18 +1,15 @@
-From: h <h@localhost>
-Date: Fri, 14 Feb 2020 03:58:32 +0000
-Subject: [PATCH 1/1] Add host map rules for envoy scheme
-
----
- components/cronet/native/sample/main.cc        | 13 +++++++++++--
+ components/cronet/native/sample/main.cc        | 19 +++++++++++++++++--
  net/url_request/url_request_context_builder.cc | 23 ++++++++++++++++++++++-
- 2 files changed, 33 insertions(+), 3 deletions(-)
+ 2 files changed, 39 insertions(+), 3 deletions(-)
 
+diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
+index d188a1f1d4047..560c10e91be8e 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
-@@ -14,8 +14,17 @@ Cronet_EnginePtr CreateCronetEngine() {
+@@ -14,8 +14,23 @@ Cronet_EnginePtr CreateCronetEngine() {
    Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
    Cronet_EngineParams_envoy_url_set(engine_params,
-                                     "https://example.com/envoy_path/");
+                                     "https://example.com/enovy_path/");
 -  // Cronet_EngineParams_envoy_url_set(engine_params,
 -  // "envoy://?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host=subdomain.example.com");
 +  Cronet_EngineParams_envoy_url_set(
@@ -26,9 +23,17 @@ Subject: [PATCH 1/1] Add host map rules for envoy scheme
 +      "envoy://"
 +      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
 +      "subdomain.example.com&address=1.2.3.4");
++  Cronet_EngineParams_envoy_url_set(
++      engine_params,
++      "envoy://"
++      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
++      "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
++
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
+index ead911c099228..74cf5a723044c 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -20,6 +20,7 @@
@@ -39,15 +44,15 @@ Subject: [PATCH 1/1] Add host map rules for envoy scheme
  #include "net/cert/cert_verifier.h"
  #include "net/cert/ct_log_verifier.h"
  #include "net/cert/ct_policy_enforcer.h"
-@@ -29,6 +30,7 @@
- #include "net/cookies/cookie_monster.h"
+@@ -30,6 +31,7 @@
+ #include "net/dns/context_host_resolver.h"
  #include "net/dns/host_resolver.h"
  #include "net/dns/host_resolver_manager.h"
 +#include "net/dns/mapped_host_resolver.h"
  #include "net/http/http_auth_handler_factory.h"
  #include "net/http/http_cache.h"
  #include "net/http/http_network_layer.h"
-@@ -417,7 +419,26 @@ std::unique_ptr<URLRequestContext> URLRe
+@@ -424,7 +426,26 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
      }
    }
    host_resolver_->SetRequestContext(context.get());

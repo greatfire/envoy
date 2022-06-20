@@ -233,7 +233,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 error: CronetException?
         ) {
             // logs captive portal url used to validate envoy url
-            Log.i(TAG, "onFailed method called for " + info?.url + " " + error)
+            Log.e(TAG, "onFailed method called for " + info?.url + " " + error?.message)
             // broadcast intent with invalid urls so application can handle errors
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
             val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
