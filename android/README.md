@@ -1,12 +1,11 @@
 
 ## Download
 
-- [cronet-release.aar](https://envoy.greatfire.org/static/cronet-release.aar)
-- [cronet-debug.aar](https://envoy.greatfire.org/static/cronet-debug.aar)
+Download cronet-debug.aar and cronet-release.aar [here](https://github.com/stevenmcdonald/envoy/releases/tag/102.0.5005.41-beta3).  Corresponding .aar files for Envoy can be found there if there are no local changes that need to be included.
 
 ## Build
 
-Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./gradlew assembleDebug` or `./gradlew assemble` to build the project.
+Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./gradlew assembleDebug` or `./gradlew assembleRelease` to build the project.
 
 ## Get Started
 
@@ -20,7 +19,7 @@ CronetNetworking.initializeCronetEngine(getApplicationContext(), "YOUR-ENVOY-URL
 
 ## Shadowsocks Service
 
-You can start the optional Shadowsocks Service(ss-local) when the above envoy url is in socks5 protocol such as `socks5://127.0.0.1:1080`.
+You can start the optional Shadowsocks service(ss-local) when the above envoy url is in socks5 protocol such as `socks5://127.0.0.1:1080`.
 ```java
 String ssUri = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234"; // your ss server connection url
 Intent shadowsocksIntent = new Intent(this, ShadowsocksService.class);
@@ -28,14 +27,13 @@ shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", ssUri);
 ContextCompat.startForegroundService(getApplicationContext(), shadowsocksIntent);
 ```
 
-And you can even customize the local listen address/port:
-```
-shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_ADDRESS", "127.0.0.1"); // socks5 host(also host for envoy url)
-shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1080); // socks5 port(also port for envoy url)
+You can customize the local listen address/port.  The default values 127.0.0.1 and 1080 will be used if no values are provided.
+```java
+shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_ADDRESS", "127.0.0.2"); // socks5 host(also host for envoy url)
+shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1081); // socks5 port(also port for envoy url)
 ```
 
-You can receive `com.greatfire.envoy.SS_LOCAL_STARTED` broadcast with  
- `com.greatfire.envoy.SS_LOCAL_STARTED.LOCAL_ADDRESS` and `com.greatfire.envoy.SS_LOCAL_STARTED.LOCAL_PORT` as extras when ss services is started.
+You can set up a broadcast receiver and check for the intent action `ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST`.  If the intent action matches, check the integer extra `ShadowsocksService.SHADOWSOCKS_SERVICE_RESULT`.  If the extra is greater than zero, it indicates that the Shadowsocks service was started successfully.
 
 ## Multiple envoy urls
 
@@ -43,8 +41,12 @@ You can receive `com.greatfire.envoy.SS_LOCAL_STARTED` broadcast with
 @Override
 protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    // register to receive test results
-    LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(org.greatfire.envoy.NetworkIntentServiceKt.BROADCAST_VALID_URL_FOUND));
+    // register to receive results
+    IntentFilter filter = new IntentFilter();
+    filter.addAction(BROADCAST_URL_VALIDATION_SUCCEEDED);
+    filter.addAction(BROADCAST_URL_VALIDATION_FAILED);
+    filter.addAction(ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST); // see shadowsocks service behavior above
+    LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, filter);
 
     List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList("https://allowed.example.com/path/", "socks5://127.0.0.1:1080"));
     NetworkIntentService.submit(this, envoyUrls);
@@ -60,15 +62,26 @@ protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null) {
-            final List<String> validUrls = intent.getStringArrayListExtra(org.greatfire.envoy.NetworkIntentServiceKt..EXTENDED_DATA_VALID_URLS);
-            Log.i("BroadcastReceiver", "Received valid urls: " + TextUtils.join(", ", validUrls));
-            if (validUrls != null && !validUrls.isEmpty()) {
-                String envoyUrl = validUrls.get(0);
-                // Select the fastest one
-                CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
-           }
-      }
-   }
+            if (intent.action == BROADCAST_URL_VALIDATION_SUCCEEDED) {
+                final List<String> validUrls = intent.getStringArrayListExtra(org.greatfire.envoy.NetworkIntentServiceKt..EXTENDED_DATA_VALID_URLS);
+                Log.i("BroadcastReceiver", "Received valid urls: " + TextUtils.join(", ", validUrls));
+                if (validUrls != null && !validUrls.isEmpty()) {
+                    String envoyUrl = validUrls.get(0);
+                    // the first listed url should be the fastest option
+                    // this will be triggered multiple times as additional urls are validated
+                    // consider adding code so that Cronet is only initialized once
+                    CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
+                }
+            } else if (intent.action == BROADCAST_URL_VALIDATION_FAILED) {
+                final List<String> invalidUrls = intent.getStringArrayListExtra(org.greatfire.envoy.NetworkIntentServiceKt..EXTENDED_DATA_INVALID_URLS);
+                Log.i("BroadcastReceiver", "Received invalid urls: " + TextUtils.join(", ", validUrls));
+            } else if (intent.action == ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST) {
+                final int shadowsocksResult = intent.getIntExtra(ShadowsocksService.SHADOWSOCKS_SERVICE_RESULT, 0);
+                // check service result as described above
+                // consider submitting urls only after the shadowsocks service has had a chance to start
+            }
+        }
+    }
 };
 ```
 
