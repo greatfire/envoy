@@ -42,11 +42,11 @@ You can set up a broadcast receiver and check for the intent action `Shadowsocks
 protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     // register to receive results
-    LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, IntentFilter().apply {
-        addAction(BROADCAST_URL_VALIDATION_SUCCEEDED)
-        addAction(BROADCAST_URL_VALIDATION_FAILED)
-        addAction(ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST) // see shadowsocks service behavior above
-    });
+    IntentFilter filter = new IntentFilter();
+    filter.addAction(BROADCAST_URL_VALIDATION_SUCCEEDED);
+    filter.addAction(BROADCAST_URL_VALIDATION_FAILED);
+    filter.addAction(ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST); // see shadowsocks service behavior above
+    LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, filter);
 
     List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList("https://allowed.example.com/path/", "socks5://127.0.0.1:1080"));
     NetworkIntentService.submit(this, envoyUrls);
