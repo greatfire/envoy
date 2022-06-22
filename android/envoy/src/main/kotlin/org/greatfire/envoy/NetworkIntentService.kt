@@ -125,7 +125,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             val request: UrlRequest = requestBuilder.build()
             request.start()
-            Log.d(TAG, "enqueue url at index $index to test $captive_portal_url")
+            Log.d(TAG, "enqueue url $envoyUrl at index $index to test $captive_portal_url")
         }
     }
 
