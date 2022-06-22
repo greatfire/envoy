@@ -41,7 +41,7 @@ object CronetNetworking {
     @Synchronized
     @JvmOverloads
     fun initializeCronetEngine(context: Context, envoyUrl: String?, reInitializeIfNeeded: Boolean = false) {
-        Log.d(TAG, "try to build cronet engine with $envoyUrl")
+        Log.d(TAG, "try to initialize cronet engine with url $envoyUrl")
         if (this.mCronetEngine != null && !reInitializeIfNeeded) {
             Log.d(TAG, "cronet engine is initialized already, and reInitializeIfNeeded is $reInitializeIfNeeded")
             return
@@ -82,7 +82,7 @@ object CronetNetworking {
                     }
                 }
             } else {
-                Log.e(TAG, "failed to build cronet engine")
+                Log.e(TAG, "failed to initialize cronet engine")
             }
         }
     }

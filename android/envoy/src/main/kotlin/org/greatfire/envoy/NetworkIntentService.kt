@@ -125,7 +125,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             val request: UrlRequest = requestBuilder.build()
             request.start()
-            Log.d(TAG, "enqueue $index-th url $envoyUrl to test $captive_portal_url")
+            Log.d(TAG, "enqueue url $envoyUrl at index $index to test $captive_portal_url")
         }
     }
 
@@ -207,6 +207,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
+            // logs captive portal url used to validate envoy url
             Log.i(TAG, "onSucceeded method called for " + info?.url)
             if (info != null) {
                 this@NetworkIntentService.validUrls.add(envoyUrl)
@@ -231,6 +232,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 info: UrlResponseInfo?,
                 error: CronetException?
         ) {
+            // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called for " + info?.url + " " + error?.message)
             // broadcast intent with invalid urls so application can handle errors
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
