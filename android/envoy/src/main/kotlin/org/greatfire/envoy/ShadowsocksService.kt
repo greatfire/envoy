@@ -1,15 +1,10 @@
 package org.greatfire.envoy
 
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
-import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -45,29 +40,6 @@ class ShadowsocksService : Service() {
         val configFile = File(ContextCompat.getNoBackupFilesDir(this), "shadowsocks.conf")
         // val configFile = File("/data/local/tmp/shadowsocks-envoy.conf")
         configFile.writeText(config.toString())
-        val channelId = "shadowsocks-channel"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "shadowsocks-channel"
-            val channel = NotificationChannel(
-                    channelId, name, NotificationManager.IMPORTANCE_LOW)
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-        }
-        // val notificationIntent = Intent(this, MainActivity::class.java)
-        // val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0)
-        @Suppress("DEPRECATION")
-        val notification: Notification = Notification.Builder(this, channelId)
-                .setAutoCancel(false)
-                .setOngoing(true)
-                .setContentTitle("Shadowsocks in running")
-                .setContentText("Shadowsocks in running")
-                // .setSmallIcon(R.drawable.ic_notification)
-                // .setContentIntent(pendingIntent)
-                // deprecated in API level 26, see NotificationChannel#setImportance(int)
-                .setPriority(Notification.PRIORITY_LOW)
-                .setTicker("Shadowsocks in running")
-                .build()
-        startForeground(SystemClock.uptimeMillis().toInt(), notification)
 
         val nativeLibraryDir = applicationInfo.nativeLibraryDir
         val executableFile = File(nativeLibraryDir, "libsslocal.so")
