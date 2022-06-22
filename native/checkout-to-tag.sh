@@ -3,21 +3,14 @@
 # [Working with Release Branches - The Chromium Projects](https://www.chromium.org/developers/how-tos/get-the-code/working-with-release-branches)
 # [Issue 440273002: Reland: Add --no-history option to fetch and gclient for shallow clones. - Code Review](https://codereview.chromium.org/440273002/)
 
-set -e
+set -euo pipefail
 export DEPOT_TOOLS_UPDATE=0
-#CHROMIUM_SRC_ROOT=/media/data/chromium/chromium/src
-#DEPOT_TOOLS_ROOT=/media/data/chromium/depot_tools
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
 DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 export PATH="$DEPOT_TOOLS_ROOT:$PATH"
-TAG=102.0.5005.41 # 100.0.4896.79 87.0.4280.66 #86.0.4240.99 85.0.4153.2 84.0.4147.18 83.0.4103.76 81.0.4044.122 81.0.4020.0 72.0.3626.122
+TAG=${1:-102.0.5005.41}
 
 cd "$CHROMIUM_SRC_ROOT" || exit 1
-if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
-    git fetch --unshallow # for --no-history when fetching
-fi
-# https://groups.google.com/a/chromium.org/forum/#!topic/infra-dev/HQJ2mcmfBVQ
-gclient recurse --ignore sh -c "git fetch --unshallow"
 
 # check chrome://about or http://omahaproxy.appspot.com
 git fetch origin "refs/tags/$TAG:refs/tags/$TAG" --no-tags --verbose

@@ -11,6 +11,8 @@
 # https://chromium.googlesource.com/chromium/src/+/master/components/cronet/android/sample/README
 # https://console.cloud.google.com/storage/browser/chromium-cronet/android/81.0.4039.0/Release/cronet
 
+set -euo pipefail
+
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
 DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 CRONET_OUTPUT_DIR=${CRONET_OUTPUT_DIR:-$CHROMIUM_SRC_ROOT/out/Cronet/cronet}
@@ -19,10 +21,7 @@ source $CHROMIUM_SRC_ROOT/chrome/VERSION
 CHROME_VERSION=$MAJOR.$MINOR.$BUILD.$PATCH
 export PATH="$DEPOT_TOOLS_ROOT/bin:$PATH"
 
-trap 'rm --recursive --force "$build_tmp_dir"' EXIT
-if [[ -z "$build_tmp_dir" ]]; then
-    build_tmp_dir="$(mktemp --tmpdir=/tmp --directory -t cronet-build-"$(date +%Y-%m-%d)"-XXXXXXXXXX)"
-fi
+build_tmp_dir="$(mktemp --tmpdir=/tmp --directory -t cronet-build-"$(date +%Y-%m-%d)"-XXXXXXXXXX)"
 
 mkdir -p "$build_tmp_dir"
 cd "$build_tmp_dir" || exit 1

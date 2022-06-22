@@ -6,6 +6,8 @@ DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 export PATH="$DEPOT_TOOLS_ROOT:$PATH"
 BUILD_VARIANT=${1:-release}
 
+set -euo pipefail
+
 cd "$(dirname "$0")" || exit 1
 PATCH_DIR="$(pwd)"
 
@@ -16,7 +18,7 @@ source $CHROMIUM_SRC_ROOT/chrome/VERSION
 CHROME_VERSION=$MAJOR.$MINOR.$BUILD.$PATCH
 git clean -ffd
 git checkout .
-set -e
+
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0001-Add-envoy_url-to-URLRequestContext.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0002-Add-envoy-scheme.patch"
 
