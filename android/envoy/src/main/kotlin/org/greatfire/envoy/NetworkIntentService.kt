@@ -207,23 +207,39 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
-            // logs captive portal url used to validate envoy url
-            Log.i(TAG, "onSucceeded method called for " + info?.url)
             if (info != null) {
-                this@NetworkIntentService.validUrls.add(envoyUrl)
-                // this@NetworkIntentService.handleActionQuery()
-                val sharedPreferences =
-                        PreferenceManager.getDefaultSharedPreferences(this@NetworkIntentService)
-                val editor: SharedPreferences.Editor = sharedPreferences.edit()
-                val json = JSONArray(this@NetworkIntentService.validUrls)
-                editor.putString(PREF_VALID_URLS, json.toString())
-                editor.apply()
+                // only a 200 status code is valid, otherwise return invalid url as in onFailed
+                if (info?.httpStatusCode in 200..299) {
+                    // logs captive portal url used to validate envoy url
+                    Log.i(TAG, "onSucceeded method called for " + info?.url + " -> got " + info?.httpStatusCode + " response code so tested url is valid")
+                    this@NetworkIntentService.validUrls.add(envoyUrl)
 
-                val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
-                    // Puts the status into the Intent
-                    putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
+                    // store valid urls in preferences
+                    val sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(this@NetworkIntentService)
+                    val editor: SharedPreferences.Editor = sharedPreferences.edit()
+                    val json = JSONArray(this@NetworkIntentService.validUrls)
+                    editor.putString(PREF_VALID_URLS, json.toString())
+                    editor.apply()
+
+                    val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
+                        // puts the validation status into the intent
+                        putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
+                    }
+                    LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                } else {
+                    // logs captive portal url used to validate envoy url
+                    Log.e(TAG, "onSucceeded method called for " + info?.url + " -> got " + info?.httpStatusCode + " response code so tested url is invalid")
+                    this@NetworkIntentService.invalidUrls.add(envoyUrl)
+
+                    val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
+                        // puts the validation status into the intent
+                        putStringArrayListExtra(EXTENDED_DATA_INVALID_URLS, ArrayList(invalidUrls))
+                    }
+                    LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                 }
-                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+            } else {
+                Log.i(TAG, "onSucceeded method called but UrlResponseInfo was null")
             }
         }
 
@@ -233,11 +249,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 error: CronetException?
         ) {
             // logs captive portal url used to validate envoy url
-            Log.e(TAG, "onFailed method called for " + info?.url + " " + error?.message)
+            Log.e(TAG, "onFailed method called for " + info?.url + " -> " + error?.message)
             // broadcast intent with invalid urls so application can handle errors
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
             val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
-                // Puts the status into the Intent
+                // puts the validation status into the intent
                 putStringArrayListExtra(EXTENDED_DATA_INVALID_URLS, ArrayList(invalidUrls))
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
