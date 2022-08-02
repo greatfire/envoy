@@ -28,12 +28,9 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --for
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-Add-host-map-rules-for-envoy-scheme.patch"
 # disabled cipher suites
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0005-Add-disabled-cipher-suites-parameter.patch"
-# as feature
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0006-Add-as-features-and-android-preferences.patch"
 
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0007-Add-cmdline-switch.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0008-Set-host-header-for-http2.patch"
-#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0009-Add-setting-page-for-envoy-url.patch"
+
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0010-Disable-external-intent.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0011-Add-salt-parameter.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0012-Add-socks5-proxy-for-cronet.patch"
