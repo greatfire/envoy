@@ -4,6 +4,38 @@
 
 cd $(dirname $0)
 
+if [[ -f ./secrets.sh ]]; then
+    source ./secrets.sh
+else
+    echo "WARNING: secrets.sh not found, most services won't work without it"
+fi
+
+BUILD_ARGS=""
+
+if [[ -n "$DNSTT_SERVER" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -Pdnsttserver=$DNSTT_SERVER"
+fi
+
+if [[ -n "$DNSTT_KEY" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -Pdnsttkey=$DNSTT_KEY"
+fi
+
+if [[ -n "$DNSTT_PATH" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -Pdnsttpath=$DNSTT_PATH"
+fi
+
+if [[ -n "$DNSTT_DOH_URL" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -Pdohurl=$DNSTT_DOH_URL"
+fi
+
+if [[ -n "$DNSTT_DOT_ADDR" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -PdotAddr=$DNSTT_DOT_ADDR"
+fi
+
+if [[ -n "$HYSTERIA_CERT" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -Phystcert=$HYSTERIA_CERT"
+fi
+
 export ANDROID_COMPILE_SDK=29
 export ANDROID_BUILD_TOOLS=30.0.2
 export ANDROID_SDK_TOOLS=4333796
@@ -37,7 +69,7 @@ set -o pipefail
 BUILD=${1:-release}
 cp "../native/cronet-$BUILD.aar" ./cronet/
 if [[ $BUILD == "debug" ]]; then
-    ./gradlew assembleDebug
+    ./gradlew assembleDebug $BUILD_ARGS
 else
-    ./gradlew assembleRelease
+    ./gradlew assembleRelease $BUILD_ARGS
 fi
