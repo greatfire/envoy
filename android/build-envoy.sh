@@ -25,7 +25,7 @@ if [[ -n "$DNSTT_PATH" ]]; then
 fi
 
 if [[ -n "$DNSTT_DOH_URL" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -Pdohurl=$DNSTT_DOH_URL"
+    BUILD_ARGS="$BUILD_ARGS -PdohUrl=$DNSTT_DOH_URL"
 fi
 
 if [[ -n "$DNSTT_DOT_ADDR" ]]; then
