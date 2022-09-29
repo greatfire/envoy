@@ -152,7 +152,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             handleDirectRequest(directUrl, dnsttUrls)
         }
 
-        urls?.forEachIndexed { index, envoyUrl ->
+        urls?.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
             if (envoyUrl.startsWith("v2ws://")) {
                 // TEMP: current v2ray host uses an ip not a url
@@ -260,7 +260,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // start v2ray websocket service
         val v2wsParts = url.split(":")
-        if (v2wsParts == null || v2wsParts.size < 4) {
+        if (v2wsParts.size < 4) {
             Log.e(TAG, "some arguments required for v2ray websocket service are missing")
         } else {
             val v2wsPort = IEnvoyProxy.startV2RayWs(v2wsParts[0], v2wsParts[1], v2wsParts[2], v2wsParts[3])
@@ -283,7 +283,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // start v2ray srtp service
         val v2srtpParts = url.split(":")
-        if (v2srtpParts == null || v2srtpParts.size < 3) {
+        if (v2srtpParts.size < 3) {
             Log.e(TAG, "some arguments required for v2ray srtp service are missing")
         } else {
             val v2srtpPort = IEnvoyProxy.startV2raySrtp(v2srtpParts[0], v2srtpParts[1], v2srtpParts[2])
@@ -306,7 +306,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // start v2ray wechat service
         val v2wechatParts = url.split(":")
-        if (v2wechatParts == null || v2wechatParts.size < 3) {
+        if (v2wechatParts.size < 3) {
             Log.e(TAG, "some arguments required for v2ray wechat service are missing")
         } else {
             val v2wechatPort = IEnvoyProxy.startV2RayWechat(v2wechatParts[0], v2wechatParts[1], v2wechatParts[2])
@@ -488,7 +488,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                         var urlList = mutableListOf<String>()
 
-                        for (i in 0 until envoyUrlArray!!.length()) {
+                        for (i in 0 until envoyUrlArray.length()) {
                             if (submittedUrls.contains(envoyUrlArray.getString(i))) {
                                 Log.d(TAG, "dnstt url " + envoyUrlArray.getString(i) + " has already been submitted")
                             } else {
@@ -638,9 +638,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 }
 
                 // only a 200 status code is valid, otherwise return invalid url as in onFailed
-                if (info?.httpStatusCode in 200..299) {
+                if (info.httpStatusCode in 200..299) {
                     // logs captive portal url used to validate envoy url
-                    Log.d(TAG, "onSucceeded method called for " + info?.url + " -> got " + info?.httpStatusCode + " response code so tested url is valid")
+                    Log.d(TAG, "onSucceeded method called for " + info.url + " -> got " + info.httpStatusCode + " response code so tested url is valid")
                     this@NetworkIntentService.validUrls.add(envoyUrl)
 
                     // store valid urls in preferences
@@ -658,8 +658,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                 } else {
                     // logs captive portal url used to validate envoy url
-                    Log.e(TAG, "onSucceeded method called for " + info?.url + " -> got " + info?.httpStatusCode + " response code so tested url is invalid")
-                    handleInvalidUrl(request, info)
+                    Log.e(TAG, "onSucceeded method called for " + info.url + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
+                    handleInvalidUrl()
                 }
             } else {
                 Log.w(TAG, "onSucceeded method called but UrlResponseInfo was null")
@@ -673,10 +673,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         ) {
             // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " -> " + error?.message)
-            handleInvalidUrl(request, info)
+            handleInvalidUrl()
         }
 
-        fun handleInvalidUrl(request: UrlRequest?, info: UrlResponseInfo?) {
+        fun handleInvalidUrl() {
             handleCleanup(envoyUrl)
 
             // broadcast intent with invalid urls so application can handle errors
