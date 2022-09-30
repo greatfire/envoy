@@ -8,13 +8,23 @@ Download cronet-debug.aar and cronet-release.aar [here](https://github.com/steve
 Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./gradlew assembleDebug` or `./gradlew assembleRelease` to build the project.
 
 Additional parameters are required for the optional dnstt service:
- - -Pdnsttserver="..." (the url of a dnstt server, do not include "http://" or a trailing slash)
+ - -Pdnsttserver="..." (the hostname of a dnstt server)
  - -Pdnsttkey="..." (the authentication key for the dnstt server)
  - -Pdnsttpath="..." (the path to the file on the dnstt server that contains additional urls)
  - -PdohUrl="..." OR  -PdotAddr="..." (the url or address of a reachable dns provider)
 
 Additional parameters are required for the optional hysteria service:
  - -Phystcert="..." (the key and certificate for the hysteria server in the form of a comma separated list of the key and each line of the certificate)
+ 
+To use the build-envoy.sh script, include these values in a secrets.sh file in the android folder with the following format:
+
+```java
+export DNSTT_SERVER=...
+export DNSTT_KEY=...
+export DNSTT_PATH=...
+export DNSTT_DOH_URL=... (OR export DNSTT_DOT_ADDR=...)
+export HYSTERIA_CERT=...
+```
 
 ## Get Started
 
