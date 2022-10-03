@@ -3,22 +3,26 @@
 
 Download cronet-debug.aar and cronet-release.aar [here](https://github.com/stevenmcdonald/envoy/releases/tag/102.0.5005.41-4). Download the latest version of IEnvoyProxy.aar [here](https://github.com/stevenmcdonald/IEnvoyProxy/releases) or use the existing maven dependency.
 
+## Server setup
+
+Some documentation and example Ansible playbooks are available [here](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/). The values used below will be based on what's used when configuring the server.
+
 ## Build
 
-Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./gradlew assembleDebug` or `./gradlew assembleRelease` to build the project.
+Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./build-envoy.sh debug` or `./build-envoy.sh release` to build the project.
 
-Additional parameters are required for the optional dnstt service:
- - -Pdnsttserver="..." (the hostname of a dnstt server)
- - -Pdnsttkey="..." (the authentication key for the dnstt server)
- - -Pdnsttpath="..." (the path to the file on the dnstt server that contains additional urls)
- - -PdohUrl="..." OR  -PdotAddr="..." (the url or address of a reachable dns provider)
+Create a file called `secrets.sh` in the `android/` directory that sets environment variables with the secret values.
+
+Additional parameters are required for the optional DNSTT service:
+ - DNSTT_DOMAIN="..." (the domain name used for DNSTT)
+ - DNSTT_KEY="..." (the authentication key for DNSTT)
+ - DNSTT_PATH="..." (the path to the file on the DNSTT HTTP server that contains additional urls)
+ - DNSTT_DOH_URL="..." OR  DNSTT_DOT_ADDR="..." (the URL or address of a reachable DNS over HTTP or DNS over TCP provider, respectively)
 
 Additional parameters are required for the optional hysteria service:
- - -Phystcert="..." (the key and certificate for the hysteria server in the form of a comma separated list of the key and each line of the certificate)
- 
-To use the build-envoy.sh script, include these values in a secrets.sh file in the android folder with the following format:
+ - -HYSTERIA_CERT="..." (self generated root certificate for the hysteria server in PEM format)
 
-```java
+```bash
 export DNSTT_SERVER=...
 export DNSTT_KEY=...
 export DNSTT_PATH=...
