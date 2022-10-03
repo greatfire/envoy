@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-def dnsttServerProp = ""
+def dnsttDomainProp = ""
 def dnsttKeyProp = ""
 def dnsttPathProp = ""
 def dohUrlProp = ""
@@ -10,10 +10,10 @@ def hystCertProp = ""
 
 android {
 
-    if (project.hasProperty("dnsttserver")) {
-        dnsttServerProp = dnsttserver
+    if (project.hasProperty("dnsttdomain")) {
+        dnsttDomainProp = dnsttdomain
     } else {
-        println "WARNING: no dnsttserver prop found"
+        println "WARNING: no dnsttdomain prop found"
     }
 
     if (project.hasProperty("dnsttkey")) {
@@ -60,7 +60,7 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         consumerProguardFiles 'consumer-rules.pro'
 
-        buildConfigField "String", "DNSTT_SERVER", "\"$dnsttServerProp\""
+        buildConfigField "String", "DNSTT_DOMAIN", "\"$dnsttDomainProp\""
         buildConfigField "String", "DNSTT_KEY", "\"$dnsttKeyProp\""
         buildConfigField "String", "DNSTT_PATH", "\"$dnsttPathProp\""
         buildConfigField "String", "DOH_URL", "\"$dohUrlProp\""

@@ -13,7 +13,7 @@ fi
 BUILD_ARGS=""
 
 if [[ -n "$DNSTT_DOMAIN" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -Pdnsttserver=$DNSTT_DOMAIN"
+    BUILD_ARGS="$BUILD_ARGS -Pdnsttdomain=$DNSTT_DOMAIN"
 fi
 
 if [[ -n "$DNSTT_KEY" ]]; then

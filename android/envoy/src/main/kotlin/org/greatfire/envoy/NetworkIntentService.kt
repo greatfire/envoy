@@ -429,7 +429,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     fun getDnsttUrls() {
 
         // check for dnstt project properties
-        if (BuildConfig.DNSTT_SERVER.isNullOrEmpty() ||
+        if (BuildConfig.DNSTT_DOMAIN.isNullOrEmpty() ||
             BuildConfig.DNSTT_KEY.isNullOrEmpty() ||
             BuildConfig.DNSTT_PATH.isNullOrEmpty() ||
             (BuildConfig.DOH_URL.isNullOrEmpty() && BuildConfig.DOT_ADDR.isNullOrEmpty())) {
@@ -452,9 +452,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             try {
                 // provide either DOH or DOT address, and provide an empty string for the other
-                Log.d(TAG, "start dnstt service: " + BuildConfig.DNSTT_SERVER + " / " + BuildConfig.DOH_URL + " / " + BuildConfig.DOT_ADDR + " / " + BuildConfig.DNSTT_KEY)
+                Log.d(TAG, "start dnstt service: " + BuildConfig.DNSTT_DOMAIN + " / " + BuildConfig.DOH_URL + " / " + BuildConfig.DOT_ADDR + " / " + BuildConfig.DNSTT_KEY)
                 val dnsttPort = IEnvoyProxy.startDnstt(
-                    BuildConfig.DNSTT_SERVER,
+                    BuildConfig.DNSTT_DOMAIN,
                     BuildConfig.DOH_URL,
                     BuildConfig.DOT_ADDR,
                     BuildConfig.DNSTT_KEY
