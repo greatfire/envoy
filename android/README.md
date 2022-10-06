@@ -75,7 +75,7 @@ If the optional dnsttConfig parameter is included, Envoy will attempt to fetch a
 ## Basic envoy integration
 
 ```kotlin
-    private val mBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+    private val envoyBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent != null && context != null) {
                 if (intent.action == org.greatfire.envoy.BROADCAST_URL_VALIDATION_SUCCEEDED) {
@@ -105,14 +105,14 @@ If the optional dnsttConfig parameter is included, Envoy will attempt to fetch a
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, IntentFilter().apply {
+        LocalBroadcastManager.getInstance(this).registerReceiver(envoyBroadcastReceiver, IntentFilter().apply {
             addAction(org.greatfire.envoy.BROADCAST_URL_VALIDATION_SUCCEEDED)
             addAction(org.greatfire.envoy.BROADCAST_URL_VALIDATION_FAILED)
         })
     
         val listOfUrls = mutableListOf<String>()
-        listOfUrls.add(foo)
-        listOfUrls.add(bar)
+        listOfUrls.add(urlOne)
+        listOfUrls.add(urlTwo)
         /* expected format:
            0. dnstt domain
            1. dnstt key
