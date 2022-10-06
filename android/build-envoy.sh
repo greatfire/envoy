@@ -12,26 +12,6 @@ fi
 
 BUILD_ARGS=""
 
-if [[ -n "$DNSTT_DOMAIN" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -Pdnsttdomain=$DNSTT_DOMAIN"
-fi
-
-if [[ -n "$DNSTT_KEY" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -Pdnsttkey=$DNSTT_KEY"
-fi
-
-if [[ -n "$DNSTT_PATH" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -Pdnsttpath=$DNSTT_PATH"
-fi
-
-if [[ -n "$DNSTT_DOH_URL" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -PdohUrl=$DNSTT_DOH_URL"
-fi
-
-if [[ -n "$DNSTT_DOT_ADDR" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -PdotAddr=$DNSTT_DOT_ADDR"
-fi
-
 if [[ -n "$HYSTERIA_CERT" ]]; then
     BUILD_ARGS="$BUILD_ARGS -Phystcert=$HYSTERIA_CERT"
 fi

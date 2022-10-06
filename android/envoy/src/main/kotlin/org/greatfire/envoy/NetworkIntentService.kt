@@ -37,6 +37,7 @@ private const val ACTION_QUERY = "org.greatfire.envoy.action.QUERY"
 
 private const val EXTRA_PARAM_SUBMIT = "org.greatfire.envoy.extra.PARAM_SUBMIT"
 private const val EXTRA_PARAM_DIRECT = "org.greatfire.envoy.extra.PARAM_DIRECT"
+private const val EXTRA_PARAM_CONFIG = "org.greatfire.envoy.extra.PARAM_CONFIG"
 private const val EXTRA_PARAM_DNSTT = "org.greatfire.envoy.extra.PARAM_DNSTT"
 
 // Defines a custom Intent action
@@ -97,8 +98,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             ACTION_SUBMIT -> {
                 val urls = intent.getStringArrayListExtra(EXTRA_PARAM_SUBMIT)
                 val directUrl = intent.getStringExtra(EXTRA_PARAM_DIRECT)
+                val dnsttConfig = intent.getStringArrayListExtra(EXTRA_PARAM_CONFIG)
                 val dnsttUrls = intent.getBooleanExtra(EXTRA_PARAM_DNSTT, false)
-                handleActionSubmit(urls, directUrl, dnsttUrls)
+                handleActionSubmit(urls, directUrl, dnsttConfig, dnsttUrls)
             }
             ACTION_QUERY -> {
                 handleActionQuery()
@@ -135,6 +137,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
      */
     private fun handleActionSubmit(urls: List<String>?,
                                    directUrl: String?,
+                                   dnsttConfig: List<String>?,
                                    dnsttUrls: Boolean,
                                    captive_portal_url: String = "https://www.google.com/generate_204") {
 
@@ -146,29 +149,29 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (directUrl != null) {
             Log.d(TAG, "found direct url: " + directUrl)
             submittedUrls.add(directUrl)
-            handleDirectRequest(directUrl, dnsttUrls)
+            handleDirectRequest(directUrl, dnsttConfig, dnsttUrls)
         }
 
         urls?.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
             if (envoyUrl.startsWith("v2ws://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
-                handleV2rayWsSubmit(envoyUrl, captive_portal_url, dnsttUrls)
+                handleV2rayWsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("v2srtp://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
-                handleV2raySrtpSubmit(envoyUrl, captive_portal_url, dnsttUrls)
+                handleV2raySrtpSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("v2wechat://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
-                handleV2rayWechatSubmit(envoyUrl, captive_portal_url, dnsttUrls)
+                handleV2rayWechatSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("hysteria://")) {
                 Log.d(TAG, "found hysteria url: " + envoyUrl)
-                handleHysteriaSubmit(envoyUrl, captive_portal_url, dnsttUrls)
+                handleHysteriaSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
-                handleShadowsocksSubmit(envoyUrl, captive_portal_url, dnsttUrls)
+                handleShadowsocksSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else {
                 Log.d(TAG, "found (https?) url: " + envoyUrl)
-                handleHttpsSubmit(envoyUrl, captive_portal_url, dnsttUrls)
+                handleHttpsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
 
@@ -177,12 +180,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.w(TAG, "no additional dnstt urls submitted, cannot continue")
             } else {
                 Log.w(TAG, "no urls submitted, fetch additional urls from dnstt")
-                getDnsttUrls()
+                getDnsttUrls(dnsttConfig)
             }
         }
     }
 
-    private fun handleHttpsSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleHttpsSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         // nothing to parse at this time, leave url in string format
 
@@ -194,11 +197,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start https delay")
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
-            handleRequest(url, captive_portal_url, dnsttUrls)
+            handleRequest(url, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
-    private fun handleShadowsocksSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleShadowsocksSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         // nothing to parse at this time, leave url in string format
 
@@ -216,11 +219,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start shadowsocks delay")
             delay(10000L) // wait 10 seconds
             Log.d(TAG, "end shadowsocks delay")
-            handleRequest(LOCAL_URL_BASE + 1080, captive_portal_url, dnsttUrls)
+            handleRequest(LOCAL_URL_BASE + 1080, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
-    private fun handleHysteriaSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleHysteriaSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         val uri = URI(url)
         var hystKey = ""
@@ -254,12 +257,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start hysteria delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end hysteria delay")
-                handleRequest(LOCAL_URL_BASE + hysteriaPort, captive_portal_url, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + hysteriaPort, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
 
-    private fun handleV2rayWsSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleV2rayWsSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         val uri = URI(url)
         var path = ""
@@ -290,12 +293,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray websocket delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray websocket delay")
-                handleRequest(LOCAL_URL_BASE + v2wsPort, captive_portal_url, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2wsPort, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
 
-    private fun handleV2raySrtpSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleV2raySrtpSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         val uri = URI(url)
         var id = ""
@@ -323,12 +326,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray srtp delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray srtp delay")
-                handleRequest(LOCAL_URL_BASE + v2srtpPort, captive_portal_url, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2srtpPort, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
 
-    private fun handleV2rayWechatSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleV2rayWechatSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         val uri = URI(url)
         var id = ""
@@ -355,13 +358,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray wechat delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray wechat delay")
-                handleRequest(LOCAL_URL_BASE + v2wechatPort, captive_portal_url, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2wechatPort, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
 
     // test direct connection to avoid using proxy resources when not required
-    private fun handleDirectRequest(directUrl: String, dnsttUrls: Boolean) {
+    private fun handleDirectRequest(directUrl: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         Log.d(TAG, "create direct request to " + directUrl)
 
@@ -371,7 +374,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
-            MyUrlRequestCallback(directUrl, dnsttUrls),
+            MyUrlRequestCallback(directUrl, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -379,7 +382,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     // TODO: do we just hard code captive portal url or add the default here?
-    private fun handleRequest(envoyUrl: String, captive_portal_url: String, dnsttUrls: Boolean) {
+    private fun handleRequest(envoyUrl: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         if (dnsttUrls) {
             Log.d(TAG, "create request to " + captive_portal_url + " for dnstt url: " + envoyUrl)
@@ -394,7 +397,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             captive_portal_url,
-            MyUrlRequestCallback(envoyUrl, dnsttUrls),
+            MyUrlRequestCallback(envoyUrl, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -461,14 +464,21 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    fun getDnsttUrls() {
+    fun getDnsttUrls(dnsttConfig: List<String>?) {
 
         // check for dnstt project properties
-        if (BuildConfig.DNSTT_DOMAIN.isNullOrEmpty() ||
-            BuildConfig.DNSTT_KEY.isNullOrEmpty() ||
-            BuildConfig.DNSTT_PATH.isNullOrEmpty() ||
-            (BuildConfig.DOH_URL.isNullOrEmpty() && BuildConfig.DOT_ADDR.isNullOrEmpty())) {
-            Log.e(TAG, "dnstt parameters are not defined, cannot fetch metadata with dnstt")
+        if (dnsttConfig.isNullOrEmpty()) {
+            Log.e(TAG, "no dnstt parameters were provided, cannot fetch metadata with dnstt")
+            return
+        } else if (dnsttConfig.size != 5) {
+            Log.e(TAG, "the wrong dnstt parameters were provided, cannot fetch metadata with dnstt")
+            return
+        } else if (dnsttConfig[0].isNullOrEmpty() ||
+            dnsttConfig[1].isNullOrEmpty() ||
+            dnsttConfig[2].isNullOrEmpty() ||
+            (dnsttConfig[3].isNullOrEmpty() && dnsttConfig[4].isNullOrEmpty())) {
+            Log.e(TAG, "incorrect dnstt parameters were defined, cannot fetch metadata with dnstt")
+            return
         } else {
 
             // set time limit for dnstt (dnstt allows a long timeout and retries, may never return)
@@ -485,18 +495,26 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 }
             }
 
+            /* expected format:
+               0. dnstt domain
+               1. dnstt key
+               2. dnstt path
+               3. doh url
+               4. dot address
+               (either 4 or 5 should be an empty string) */
+
             try {
                 // provide either DOH or DOT address, and provide an empty string for the other
-                Log.d(TAG, "start dnstt service: " + BuildConfig.DNSTT_DOMAIN + " / " + BuildConfig.DOH_URL + " / " + BuildConfig.DOT_ADDR + " / " + BuildConfig.DNSTT_KEY)
+                Log.d(TAG, "start dnstt service: " + dnsttConfig[0] + " / " + dnsttConfig[3] + " / " + dnsttConfig[4] + " / " + dnsttConfig[1])
                 val dnsttPort = IEnvoyProxy.startDnstt(
-                    BuildConfig.DNSTT_DOMAIN,
-                    BuildConfig.DOH_URL,
-                    BuildConfig.DOT_ADDR,
-                    BuildConfig.DNSTT_KEY
+                    dnsttConfig[0],
+                    dnsttConfig[3],
+                    dnsttConfig[4],
+                    dnsttConfig[1]
                 )
 
                 Log.d(TAG, "get list of possible urls")
-                val url = URL("http://127.0.0.1:" + dnsttPort + BuildConfig.DNSTT_PATH)
+                val url = URL("http://127.0.0.1:" + dnsttPort + dnsttConfig[2])
                 Log.d(TAG, "open connection: " + url)
                 val connection = url.openConnection() as HttpURLConnection
                 try {
@@ -534,7 +552,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                         if (urlList.size > 0) {
                             Log.d(TAG, "submit " + urlList.size + " additional urls from dnstt")
-                            submitDnstt(this@NetworkIntentService, urlList)
+                            submitDnstt(this@NetworkIntentService, urlList, dnsttConfig)
                         } else {
                             Log.w(TAG, "no additional urls from dnstt to submit")
                         }
@@ -586,31 +604,36 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
          * @see IntentService
          */
         @JvmStatic
-        fun submit(context: Context, urls: List<String>, directUrl: String?) {
+        fun submit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?) {
             Log.d(TAG, "jvm submit with direct")
-            processSubmit(context, urls, directUrl, false)
+            processSubmit(context, urls, directUrl, dnsttConfig, false)
         }
 
         @JvmStatic
-        fun submit(context: Context, urls: List<String>) {
+        fun submit(context: Context, urls: List<String>, dnsttConfig: List<String>?) {
             Log.d(TAG, "jvm submit with direct")
-            processSubmit(context, urls, null, false)
+            processSubmit(context, urls, null, dnsttConfig, false)
         }
 
         // no jvm annotation, not for external use
-        fun submitDnstt(context: Context, urls: List<String>) {
+        fun submitDnstt(context: Context, urls: List<String>, dnsttConfig: List<String>?) {
             Log.d(TAG, "dnstt submit")
-            processSubmit(context, urls, null, true)
+            processSubmit(context, urls, null, dnsttConfig, true)
         }
 
         // no jvm annotation, not for external use
-        fun processSubmit(context: Context, urls: List<String>, directUrl: String?, dnsttUrls: Boolean) {
+        fun processSubmit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
             Log.d(TAG, "process submit")
             val intent = Intent(context, NetworkIntentService::class.java).apply {
                 action = ACTION_SUBMIT
                 putStringArrayListExtra(EXTRA_PARAM_SUBMIT, ArrayList<String>(urls))
                 if (directUrl != null) {
                     putExtra(EXTRA_PARAM_DIRECT, directUrl)
+                }
+                if (dnsttConfig != null) {
+                    putStringArrayListExtra(EXTRA_PARAM_CONFIG,
+                        dnsttConfig as java.util.ArrayList<String>?
+                    )
                 }
                 putExtra(EXTRA_PARAM_DNSTT, dnsttUrls)
             }
@@ -632,7 +655,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    inner class MyUrlRequestCallback(private val envoyUrl: String, private val dnsttUrls: Boolean) : UrlRequest.Callback() {
+    inner class MyUrlRequestCallback(private val envoyUrl: String, private val dnsttConfig: List<String>?, private val dnsttUrls: Boolean) : UrlRequest.Callback() {
 
         override fun onRedirectReceived(
                 request: UrlRequest?,
@@ -729,7 +752,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.w(TAG, "all additional dnstt urls submitted have failed, cannot continue")
                 } else {
                     Log.w(TAG, "all urls submitted have failed, fetch additional urls from dnstt")
-                    getDnsttUrls()
+                    getDnsttUrls(dnsttConfig)
                 }
             } else {
                 Log.d(TAG, "" + submittedUrls.size + " were submitted, " + invalidUrls.size + " have failed")

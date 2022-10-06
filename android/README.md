@@ -13,20 +13,10 @@ Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./build-envo
 
 Create a file called `secrets.sh` in the `android/` directory that sets environment variables with the secret values.
 
-Additional parameters are required for the optional DNSTT service:
- - DNSTT_DOMAIN="..." (the domain name used for DNSTT)
- - DNSTT_KEY="..." (the authentication key for DNSTT)
- - DNSTT_PATH="..." (the path to the file on the DNSTT HTTP server that contains additional urls)
- - DNSTT_DOH_URL="..." OR  DNSTT_DOT_ADDR="..." (the URL or address of a reachable DNS over HTTP or DNS over TCP provider, respectively)
-
-Additional parameters are required for the optional hysteria service:
+Currently a certificate is required for the optional hysteria service:
  - -HYSTERIA_CERT="..." (self generated root certificate for the hysteria server in PEM format)
 
 ```bash
-export DNSTT_DOMAIN=...
-export DNSTT_KEY=...
-export DNSTT_PATH=...
-export DNSTT_DOH_URL=... (OR export DNSTT_DOT_ADDR=...)
 export HYSTERIA_CERT=...
 ```
 
@@ -59,15 +49,28 @@ V2Ray SRTP:
 
 V2Ray WeChar:
  - v2wechat://ip:port?id=...
+
+## DNSTT config format
+
+Additional parameters are required for the optional DNSTT service:
+- the domain name used for DNSTT
+- the authentication key for DNSTT
+- the path to the file on the DNSTT HTTP server that contains additional urls
+- the URL or address of a reachable DNS over HTTP provider
+- the URL or address of a reachable DNS over TCP provider
+
+Only a DNS over HTTP or DNS over TCP provider is required, an empty string should be provided for the other
     
 ## Submit envoy urls
     
 There are two options for submitting envoy urls:
     
- - submit(context: Context, urls: List<String>)
- - submit(context: Context, urls: List<String>, directUrl: String)
+ - submit(context: Context, urls: List<String>, dnsttConfig: List<String>?)
+ - submit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?)
     
 If the optional directUrl parameter is included, Envoy will attempt to connect to that url directly first.  This can be included to avoid using proxy resources when the target domain is not blocked.
+
+If the optional dnsttConfig parameter is included, Envoy will attempt to fetch additional proxy URLs using DNSTT if all of the provided URLs fail
 
 ## Basic envoy integration
 
@@ -110,7 +113,20 @@ If the optional directUrl parameter is included, Envoy will attempt to connect t
         val listOfUrls = mutableListOf<String>()
         listOfUrls.add(foo)
         listOfUrls.add(bar)
-        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls)
+        /* expected format:
+           0. dnstt domain
+           1. dnstt key
+           2. dnstt path
+           3. doh url
+           4. dot address
+           (either 4 or 5 should be an empty string) */
+        val dnsttConfig = mutableListOf<String>()
+        listOfUrls.add(dnsttDomain)
+        listOfUrls.add(dnsttKey)
+        listOfUrls.add(dnsttPath)
+        listOfUrls.add(dohUrl)
+        listOfUrls.add("")
+        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls, dnsttConfig)
     }
 ```
 
