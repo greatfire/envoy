@@ -23,10 +23,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.FileNotFoundException
-import java.net.ConnectException
-import java.net.HttpURLConnection
-import java.net.SocketTimeoutException
-import java.net.URL
+import java.net.*
 import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.Executor
@@ -155,25 +152,17 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         urls?.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
             if (envoyUrl.startsWith("v2ws://")) {
-                // TEMP: current v2ray host uses an ip not a url
-                var shortUrl = envoyUrl.replace("v2ws://", "")
-                Log.d(TAG, "found v2ray url: " + shortUrl)
-                handleV2rayWsSubmit(shortUrl, captive_portal_url, dnsttUrls)
+                Log.d(TAG, "found v2ray url: " + envoyUrl)
+                handleV2rayWsSubmit(envoyUrl, captive_portal_url, dnsttUrls)
             } else if (envoyUrl.startsWith("v2srtp://")) {
-                // TEMP: current v2ray host uses an ip not a url
-                var shortUrl = envoyUrl.replace("v2srtp://", "")
-                Log.d(TAG, "found v2ray url: " + shortUrl)
-                handleV2raySrtpSubmit(shortUrl, captive_portal_url, dnsttUrls)
+                Log.d(TAG, "found v2ray url: " + envoyUrl)
+                handleV2raySrtpSubmit(envoyUrl, captive_portal_url, dnsttUrls)
             } else if (envoyUrl.startsWith("v2wechat://")) {
-                // TEMP: current v2ray host uses an ip not a url
-                var shortUrl = envoyUrl.replace("v2wechat://", "")
-                Log.d(TAG, "found v2ray url: " + shortUrl)
-                handleV2rayWechatSubmit(shortUrl, captive_portal_url, dnsttUrls)
+                Log.d(TAG, "found v2ray url: " + envoyUrl)
+                handleV2rayWechatSubmit(envoyUrl, captive_portal_url, dnsttUrls)
             } else if (envoyUrl.startsWith("hysteria://")) {
-                // TEMP: current hysteria host uses an ip not a url
-                var shortUrl = envoyUrl.replace("hysteria://", "")
-                Log.d(TAG, "found hysteria url: " + shortUrl)
-                handleHysteriaSubmit(shortUrl, captive_portal_url, dnsttUrls)
+                Log.d(TAG, "found hysteria url: " + envoyUrl)
+                handleHysteriaSubmit(envoyUrl, captive_portal_url, dnsttUrls)
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, dnsttUrls)
@@ -195,6 +184,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun handleHttpsSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
 
+        // nothing to parse at this time, leave url in string format
+
         httpsUrls.add(url)
 
         // add a slight delay to give the direct connection a chance
@@ -208,6 +199,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private fun handleShadowsocksSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
+
+        // nothing to parse at this time, leave url in string format
 
         // start shadowsocks service
         val shadowsocksIntent = Intent(this, ShadowsocksService::class.java)
@@ -229,18 +222,28 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun handleHysteriaSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
 
+        val uri = URI(url)
+        var hystKey = ""
+        val rawQuery = uri.rawQuery
+        val queries = rawQuery.split("&")
+        for (i in 0 until queries.size) {
+            val queryParts = queries[i].split("=")
+            if (queryParts[0].equals("obfs")) {
+                hystKey = queryParts[1]
+            }
+        }
+
         // start hysteria service
-        if (BuildConfig.HYST_CERT.isNullOrEmpty()) {
+        if (hystKey.isNullOrEmpty() || BuildConfig.HYST_CERT.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for hysteria service are missing")
         } else {
             val hystCertParts = BuildConfig.HYST_CERT.split(",")
-            val hystKey = hystCertParts[0]
             var hystCert = "-----BEGIN CERTIFICATE-----\n"
-            for (i in 1 until hystCertParts.size) {
+            for (i in 0 until hystCertParts.size) {
                 hystCert = hystCert + hystCertParts[i] + "\n"
             }
             hystCert = hystCert + "-----END CERTIFICATE-----"
-            val hysteriaPort = IEnvoyProxy.startHysteria(url, hystKey, hystCert)
+            val hysteriaPort = IEnvoyProxy.startHysteria(uri.host + ":" + uri.port, hystKey, hystCert)
             Log.d(TAG, "hysteria service started at " + LOCAL_URL_BASE + hysteriaPort)
 
             hysteriaUrls.add(LOCAL_URL_BASE + hysteriaPort)
@@ -258,12 +261,25 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun handleV2rayWsSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
 
+        val uri = URI(url)
+        var path = ""
+        var id = ""
+        val rawQuery = uri.rawQuery
+        val queries = rawQuery.split("&")
+        for (i in 0 until queries.size) {
+            val queryParts = queries[i].split("=")
+            if (queryParts[0].equals("path")) {
+                path = "/" + queryParts[1]
+            } else if (queryParts[0].equals("id")) {
+                id = queryParts[1]
+            }
+        }
+
         // start v2ray websocket service
-        val v2wsParts = url.split(":")
-        if (v2wsParts.size < 4) {
+        if (path.isNullOrEmpty() || id.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for v2ray websocket service are missing")
         } else {
-            val v2wsPort = IEnvoyProxy.startV2RayWs(v2wsParts[0], v2wsParts[1], v2wsParts[2], v2wsParts[3])
+            val v2wsPort = IEnvoyProxy.startV2RayWs(uri.host, "" + uri.port, path, id)
             Log.d(TAG, "v2ray websocket service started at " + LOCAL_URL_BASE + v2wsPort)
 
             v2rayWsUrls.add(LOCAL_URL_BASE + v2wsPort)
@@ -281,12 +297,22 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun handleV2raySrtpSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
 
+        val uri = URI(url)
+        var id = ""
+        val rawQuery = uri.rawQuery
+        val queries = rawQuery.split("&")
+        for (i in 0 until queries.size) {
+            val queryParts = queries[i].split("=")
+            if (queryParts[0].equals("id")) {
+                id = queryParts[1]
+            }
+        }
+
         // start v2ray srtp service
-        val v2srtpParts = url.split(":")
-        if (v2srtpParts.size < 3) {
+        if (id.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for v2ray srtp service are missing")
         } else {
-            val v2srtpPort = IEnvoyProxy.startV2raySrtp(v2srtpParts[0], v2srtpParts[1], v2srtpParts[2])
+            val v2srtpPort = IEnvoyProxy.startV2raySrtp(uri.host, "" + uri.port, id)
             Log.d(TAG, "v2ray srtp service started at " + LOCAL_URL_BASE + v2srtpPort)
 
             v2raySrtpUrls.add(LOCAL_URL_BASE + v2srtpPort)
@@ -304,12 +330,21 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun handleV2rayWechatSubmit(url: String, captive_portal_url: String, dnsttUrls: Boolean) {
 
+        val uri = URI(url)
+        var id = ""
+        val rawQuery = uri.rawQuery
+        val queries = rawQuery.split("&")
+        for (i in 0 until queries.size) {
+            val queryParts = queries[i].split("=")
+            if (queryParts[0].equals("id")) {
+                id = queryParts[1]
+            }
+        }
         // start v2ray wechat service
-        val v2wechatParts = url.split(":")
-        if (v2wechatParts.size < 3) {
+        if (id.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for v2ray wechat service are missing")
         } else {
-            val v2wechatPort = IEnvoyProxy.startV2RayWechat(v2wechatParts[0], v2wechatParts[1], v2wechatParts[2])
+            val v2wechatPort = IEnvoyProxy.startV2RayWechat(uri.host, "" + uri.port, id)
             Log.d(TAG, "v2ray wechat service started at " + LOCAL_URL_BASE + v2wechatPort)
 
             v2rayWechatUrls.add(LOCAL_URL_BASE + v2wechatPort)

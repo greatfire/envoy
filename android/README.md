@@ -49,16 +49,16 @@ Shadowsocks:
  - ss://encrypted login@ip:port/
 
 Hysteria:
- - hysteria://ip:port
+ - hysteria://ip:port?obfs=...
 
 V2Ray Websocket:
- - v2ws://domain:port:/id:uuid
+ - v2ws://domain:port?path=...&id=...
 
 V2Ray SRTP:
- - v2srtp://ip:port:uuid
+ - v2srtp://ip:port?id=...
 
 V2Ray WeChar:
- - v2wechat://ip:port:uuid
+ - v2wechat://ip:port?id=...
     
 ## Submit envoy urls
     
@@ -111,6 +111,16 @@ If the optional directUrl parameter is included, Envoy will attempt to connect t
         listOfUrls.add(foo)
         listOfUrls.add(bar)
         org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls)
+    }
+```
+
+Elsewhere, add the CronetInterceptor to your network client. This interceptor will be automatically bypassed if CronetEngine has not been initialized.
+
+```kotlin
+    private fun createClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+                .addInterceptor(CronetInterceptor())
+                .build()
     }
 ```
 
