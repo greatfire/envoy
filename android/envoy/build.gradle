@@ -1,7 +1,16 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
+def hystCertProp = ""
+
 android {
+
+    if (project.hasProperty("hystcert")) {
+        hystCertProp = hystcert
+    } else {
+        println "WARNING: no hystcert prop found"
+    }
+
     compileSdkVersion 29
     buildToolsVersion '30.0.2'
     //ndkVersion '20.0.5594570'
@@ -15,6 +24,8 @@ android {
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         consumerProguardFiles 'consumer-rules.pro'
+
+        buildConfigField "String", "HYST_CERT", "\"$hystCertProp\""
     }
 
     buildTypes {
@@ -58,4 +69,5 @@ dependencies {
     releaseImplementation project(path: ':cronet', configuration: 'release')
     debugImplementation project(path: ':cronet', configuration: 'debug')
     // implementation files('libs/cronet.aar')
+    implementation 'org.greatfire:IEnvoyProxy:1.2.0'
 }

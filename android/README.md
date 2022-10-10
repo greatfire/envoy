@@ -1,11 +1,24 @@
 
 ## Download
 
-Download cronet-debug.aar and cronet-release.aar [here](https://github.com/stevenmcdonald/envoy/releases/tag/102.0.5005.41-beta3).  Corresponding .aar files for Envoy can be found there if there are no local changes that need to be included.
+Download cronet-debug.aar and cronet-release.aar [here](https://github.com/stevenmcdonald/envoy/releases/tag/102.0.5005.41-4). Download the latest version of IEnvoyProxy.aar [here](https://github.com/stevenmcdonald/IEnvoyProxy/releases) or use the existing maven dependency.
+
+## Server setup
+
+Some documentation and example Ansible playbooks are available [here](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/). The values used below will be based on what's used when configuring the server.
 
 ## Build
 
-Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./gradlew assembleDebug` or `./gradlew assembleRelease` to build the project.
+Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./build-envoy.sh debug` or `./build-envoy.sh release` to build the project.
+
+Create a file called `secrets.sh` in the `android/` directory that sets environment variables with the secret values.
+
+Currently a certificate is required for the optional hysteria service:
+ - -HYSTERIA_CERT="..." (self generated root certificate for the hysteria server in PEM format)
+
+```bash
+export HYSTERIA_CERT=...
+```
 
 ## Get Started
 
@@ -16,73 +29,115 @@ Build the demo module to see it in action, or just call this in `Activity`'s `on
 ```java
 CronetNetworking.initializeCronetEngine(getApplicationContext(), "YOUR-ENVOY-URL"); // set envoy url here, read native/README.md for all supported formats.
 ```
+## Envoy url format
 
-## Shadowsocks Service
+Http/Https:
+ - http://domain:port (no trailing slash)
+ - https://domain:port (no trailing slash)
 
-You can start the optional Shadowsocks service(ss-local) when the above envoy url is in socks5 protocol such as `socks5://127.0.0.1:1080`.
-```java
-String ssUri = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234"; // your ss server connection url
-Intent shadowsocksIntent = new Intent(this, ShadowsocksService.class);
-shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", ssUri);
-ContextCompat.startForegroundService(getApplicationContext(), shadowsocksIntent);
-```
+Shadowsocks:
+ - ss://encrypted login@ip:port/
 
-You can customize the local listen address/port.  The default values 127.0.0.1 and 1080 will be used if no values are provided.
-```java
-shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_ADDRESS", "127.0.0.2"); // socks5 host(also host for envoy url)
-shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1081); // socks5 port(also port for envoy url)
-```
+Hysteria:
+ - hysteria://ip:port?obfs=...
 
-You can set up a broadcast receiver and check for the intent action `ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST`.  If the intent action matches, check the integer extra `ShadowsocksService.SHADOWSOCKS_SERVICE_RESULT`.  If the extra is greater than zero, it indicates that the Shadowsocks service was started successfully.
+V2Ray Websocket:
+ - v2ws://domain:port?path=...&id=...
 
-## Multiple envoy urls
+V2Ray SRTP:
+ - v2srtp://ip:port?id=...
 
-```java
-@Override
-protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    // register to receive results
-    IntentFilter filter = new IntentFilter();
-    filter.addAction(BROADCAST_URL_VALIDATION_SUCCEEDED);
-    filter.addAction(BROADCAST_URL_VALIDATION_FAILED);
-    filter.addAction(ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST); // see shadowsocks service behavior above
-    LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, filter);
+V2Ray WeChar:
+ - v2wechat://ip:port?id=...
 
-    List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList("https://allowed.example.com/path/", "socks5://127.0.0.1:1080"));
-    NetworkIntentService.submit(this, envoyUrls);
+## DNSTT config format
 
-    // or call NetworkIntentService.enqueueQuery, and
-    // we will get responses in Receiver's onReceive
-    // NetworkIntentService.enqueueQuery(this);
-    ...
-}
+Additional parameters are required for the optional DNSTT service:
+- the domain name used for DNSTT
+- the authentication key for DNSTT
+- the path to the file on the DNSTT HTTP server that contains additional urls
+- the URL or address of a reachable DNS over HTTP provider
+- the URL or address of a reachable DNS over TCP provider
 
-protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+Only a DNS over HTTP or DNS over TCP provider is required, an empty string should be provided for the other
+    
+## Submit envoy urls
+    
+There are two options for submitting envoy urls:
+    
+ - submit(context: Context, urls: List<String>, dnsttConfig: List<String>?)
+ - submit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?)
+    
+If the optional directUrl parameter is included, Envoy will attempt to connect to that url directly first.  This can be included to avoid using proxy resources when the target domain is not blocked.
 
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        if (intent != null) {
-            if (intent.action == BROADCAST_URL_VALIDATION_SUCCEEDED) {
-                final List<String> validUrls = intent.getStringArrayListExtra(org.greatfire.envoy.NetworkIntentServiceKt..EXTENDED_DATA_VALID_URLS);
-                Log.i("BroadcastReceiver", "Received valid urls: " + TextUtils.join(", ", validUrls));
-                if (validUrls != null && !validUrls.isEmpty()) {
-                    String envoyUrl = validUrls.get(0);
-                    // the first listed url should be the fastest option
-                    // this will be triggered multiple times as additional urls are validated
-                    // consider adding code so that Cronet is only initialized once
-                    CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
+If the optional dnsttConfig parameter is included, Envoy will attempt to fetch additional proxy URLs using DNSTT if all of the provided URLs fail
+
+## Basic envoy integration
+
+```kotlin
+    private val envoyBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent != null && context != null) {
+                if (intent.action == org.greatfire.envoy.BROADCAST_URL_VALIDATION_SUCCEEDED) {
+                    val validUrls = intent.getStringArrayListExtra(org.greatfire.envoy.EXTENDED_DATA_VALID_URLS)
+                    if (validUrls != null && !validUrls.isEmpty()) {
+                        val envoyUrl = validUrls[0]
+                        CronetNetworking.initializeCronetEngine(context, envoyUrl)
+                    } else {
+                        // received empty list
+                    }
+                } else if (intent.action == org.greatfire.envoy.BROADCAST_URL_VALIDATION_FAILED) {
+                    val invalidUrls = intent.getStringArrayListExtra(org.greatfire.envoy.EXTENDED_DATA_INVALID_URLS)
+                    if (invalidUrls != null && !invalidUrls.isEmpty()) {
+                        // handle error state
+                    } else {
+                        // received empty list
+                    }
+                } else {
+                    // received unexpected intent
                 }
-            } else if (intent.action == BROADCAST_URL_VALIDATION_FAILED) {
-                final List<String> invalidUrls = intent.getStringArrayListExtra(org.greatfire.envoy.NetworkIntentServiceKt..EXTENDED_DATA_INVALID_URLS);
-                Log.i("BroadcastReceiver", "Received invalid urls: " + TextUtils.join(", ", validUrls));
-            } else if (intent.action == ShadowsocksService.SHADOWSOCKS_SERVICE_BROADCAST) {
-                final int shadowsocksResult = intent.getIntExtra(ShadowsocksService.SHADOWSOCKS_SERVICE_RESULT, 0);
-                // check service result as described above
-                // consider submitting urls only after the shadowsocks service has had a chance to start
+            } else {
+                // received null intent or context
             }
         }
     }
-};
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(envoyBroadcastReceiver, IntentFilter().apply {
+            addAction(org.greatfire.envoy.BROADCAST_URL_VALIDATION_SUCCEEDED)
+            addAction(org.greatfire.envoy.BROADCAST_URL_VALIDATION_FAILED)
+        })
+    
+        val listOfUrls = mutableListOf<String>()
+        listOfUrls.add(urlOne)
+        listOfUrls.add(urlTwo)
+        /* expected format:
+           0. dnstt domain
+           1. dnstt key
+           2. dnstt path
+           3. doh url
+           4. dot address
+           (either 4 or 5 should be an empty string) */
+        val dnsttConfig = mutableListOf<String>()
+        listOfUrls.add(dnsttDomain)
+        listOfUrls.add(dnsttKey)
+        listOfUrls.add(dnsttPath)
+        listOfUrls.add(dohUrl)
+        listOfUrls.add("")
+        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls, dnsttConfig)
+    }
+```
+
+Elsewhere, add the CronetInterceptor to your network client. This interceptor will be automatically bypassed if CronetEngine has not been initialized.
+
+```kotlin
+    private fun createClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+                .addInterceptor(CronetInterceptor())
+                .build()
+    }
 ```
 
 Add uses-permission and services to AndroidManifest.xml

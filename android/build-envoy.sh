@@ -4,6 +4,18 @@
 
 cd $(dirname $0)
 
+if [[ -f ./secrets.sh ]]; then
+    source ./secrets.sh
+else
+    echo "WARNING: secrets.sh not found, most services won't work without it"
+fi
+
+BUILD_ARGS=""
+
+if [[ -n "$HYSTERIA_CERT" ]]; then
+    BUILD_ARGS="$BUILD_ARGS -Phystcert=$HYSTERIA_CERT"
+fi
+
 export ANDROID_COMPILE_SDK=29
 export ANDROID_BUILD_TOOLS=30.0.2
 export ANDROID_SDK_TOOLS=4333796
@@ -37,7 +49,7 @@ set -o pipefail
 BUILD=${1:-release}
 cp "../native/cronet-$BUILD.aar" ./cronet/
 if [[ $BUILD == "debug" ]]; then
-    ./gradlew assembleDebug
+    ./gradlew assembleDebug $BUILD_ARGS
 else
-    ./gradlew assembleRelease
+    ./gradlew assembleRelease $BUILD_ARGS
 fi
