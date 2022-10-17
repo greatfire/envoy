@@ -93,7 +93,7 @@ public class MainActivity extends FragmentActivity {
         String envoyUrl = "socks5://127.0.0.1:1080"; // Keep this if no port conflicts
 
         List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList(envoyUrl, "https://allowed.example.com/path/"));
-        NetworkIntentService.submit(this, envoyUrls, null);
+        NetworkIntentService.submit(this, envoyUrls);
         // we will get responses in NetworkIntentServiceReceiver's onReceive
 
         // NetworkIntentService.enqueueQuery(this); // async

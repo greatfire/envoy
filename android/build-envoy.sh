@@ -4,12 +4,6 @@
 
 cd $(dirname $0)
 
-if [[ -f ./secrets.sh ]]; then
-    source ./secrets.sh
-else
-    echo "WARNING: secrets.sh not found, most services won't work without it"
-fi
-
 BUILD_ARGS=""
 
 if [[ -n "$HYSTERIA_CERT" ]]; then
