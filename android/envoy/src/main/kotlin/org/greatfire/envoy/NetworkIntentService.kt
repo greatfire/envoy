@@ -37,6 +37,7 @@ private const val ACTION_QUERY = "org.greatfire.envoy.action.QUERY"
 
 private const val EXTRA_PARAM_SUBMIT = "org.greatfire.envoy.extra.PARAM_SUBMIT"
 private const val EXTRA_PARAM_DIRECT = "org.greatfire.envoy.extra.PARAM_DIRECT"
+private const val EXTRA_PARAM_CERT = "org.greatfire.envoy.extra.PARAM_CERT"
 private const val EXTRA_PARAM_CONFIG = "org.greatfire.envoy.extra.PARAM_CONFIG"
 private const val EXTRA_PARAM_DNSTT = "org.greatfire.envoy.extra.PARAM_DNSTT"
 
@@ -98,9 +99,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             ACTION_SUBMIT -> {
                 val urls = intent.getStringArrayListExtra(EXTRA_PARAM_SUBMIT)
                 val directUrl = intent.getStringExtra(EXTRA_PARAM_DIRECT)
+                val hysteriaCert = intent.getStringExtra(EXTRA_PARAM_CERT)
                 val dnsttConfig = intent.getStringArrayListExtra(EXTRA_PARAM_CONFIG)
                 val dnsttUrls = intent.getBooleanExtra(EXTRA_PARAM_DNSTT, false)
-                handleActionSubmit(urls, directUrl, dnsttConfig, dnsttUrls)
+                handleActionSubmit(urls, directUrl, hysteriaCert, dnsttConfig, dnsttUrls)
             }
             ACTION_QUERY -> {
                 handleActionQuery()
@@ -137,6 +139,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
      */
     private fun handleActionSubmit(urls: List<String>?,
                                    directUrl: String?,
+                                   hysteriaCert: String?,
                                    dnsttConfig: List<String>?,
                                    dnsttUrls: Boolean,
                                    captive_portal_url: String = "https://www.google.com/generate_204") {
@@ -149,7 +152,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (directUrl != null) {
             Log.d(TAG, "found direct url: " + directUrl)
             submittedUrls.add(directUrl)
-            handleDirectRequest(directUrl, dnsttConfig, dnsttUrls)
+            handleDirectRequest(directUrl, hysteriaCert, dnsttConfig, dnsttUrls)
         }
 
         urls?.forEach { envoyUrl ->
@@ -165,7 +168,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 handleV2rayWechatSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("hysteria://")) {
                 Log.d(TAG, "found hysteria url: " + envoyUrl)
-                handleHysteriaSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleHysteriaSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
@@ -180,7 +183,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.w(TAG, "no additional dnstt urls submitted, cannot continue")
             } else {
                 Log.w(TAG, "no urls submitted, fetch additional urls from dnstt")
-                getDnsttUrls(dnsttConfig)
+                getDnsttUrls(dnsttConfig, hysteriaCert)
             }
         }
     }
@@ -223,8 +226,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    private fun handleHysteriaSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
-
+    private fun handleHysteriaSubmit(url: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
         val uri = URI(url)
         var hystKey = ""
         val rawQuery = uri.rawQuery
@@ -237,10 +239,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         // start hysteria service
-        if (hystKey.isNullOrEmpty() || BuildConfig.HYST_CERT.isNullOrEmpty()) {
+        if (hystKey.isNullOrEmpty() || hysteriaCert.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for hysteria service are missing")
         } else {
-            val hystCertParts = BuildConfig.HYST_CERT.split(",")
+            val hystCertParts = hysteriaCert.split(",")
             var hystCert = "-----BEGIN CERTIFICATE-----\n"
             for (i in 0 until hystCertParts.size) {
                 hystCert = hystCert + hystCertParts[i] + "\n"
@@ -364,7 +366,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     // test direct connection to avoid using proxy resources when not required
-    private fun handleDirectRequest(directUrl: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleDirectRequest(directUrl: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         Log.d(TAG, "create direct request to " + directUrl)
 
@@ -374,7 +376,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
-            MyUrlRequestCallback(directUrl, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(directUrl, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -382,7 +384,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     // TODO: do we just hard code captive portal url or add the default here?
+
     private fun handleRequest(envoyUrl: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+        handleRequest(envoyUrl, captive_portal_url, null, dnsttConfig, dnsttUrls)
+    }
+
+    private fun handleRequest(envoyUrl: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         if (dnsttUrls) {
             Log.d(TAG, "create request to " + captive_portal_url + " for dnstt url: " + envoyUrl)
@@ -397,7 +404,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             captive_portal_url,
-            MyUrlRequestCallback(envoyUrl, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(envoyUrl, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -464,7 +471,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    fun getDnsttUrls(dnsttConfig: List<String>?) {
+    fun getDnsttUrls(dnsttConfig: List<String>?, hysteriaCert: String?) {
 
         // check for dnstt project properties
         if (dnsttConfig.isNullOrEmpty()) {
@@ -552,7 +559,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                         if (urlList.size > 0) {
                             Log.d(TAG, "submit " + urlList.size + " additional urls from dnstt")
-                            submitDnstt(this@NetworkIntentService, urlList, dnsttConfig)
+                            submitDnstt(this@NetworkIntentService, urlList, hysteriaCert)
                         } else {
                             Log.w(TAG, "no additional urls from dnstt to submit")
                         }
@@ -604,31 +611,34 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
          * @see IntentService
          */
         @JvmStatic
-        fun submit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?) {
-            Log.d(TAG, "jvm submit with direct")
-            processSubmit(context, urls, directUrl, dnsttConfig, false)
+        fun submit(context: Context, urls: List<String>, directUrl: String?, hysteriaCert: String?, dnsttConfig: List<String>?) {
+            Log.d(TAG, "jvm submit")
+            processSubmit(context, urls, directUrl, hysteriaCert, dnsttConfig, false)
         }
 
         @JvmStatic
-        fun submit(context: Context, urls: List<String>, dnsttConfig: List<String>?) {
-            Log.d(TAG, "jvm submit with direct")
-            processSubmit(context, urls, null, dnsttConfig, false)
+        fun submit(context: Context, urls: List<String>) {
+            Log.d(TAG, "backwards compatible submit")
+            processSubmit(context, urls, null, null, null, false)
         }
 
         // no jvm annotation, not for external use
-        fun submitDnstt(context: Context, urls: List<String>, dnsttConfig: List<String>?) {
+        fun submitDnstt(context: Context, urls: List<String>, hysteriaCert: String?) {
             Log.d(TAG, "dnstt submit")
-            processSubmit(context, urls, null, dnsttConfig, true)
+            processSubmit(context, urls, null, hysteriaCert, null, true)
         }
 
         // no jvm annotation, not for external use
-        fun processSubmit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+        fun processSubmit(context: Context, urls: List<String>, directUrl: String?, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
             Log.d(TAG, "process submit")
             val intent = Intent(context, NetworkIntentService::class.java).apply {
                 action = ACTION_SUBMIT
                 putStringArrayListExtra(EXTRA_PARAM_SUBMIT, ArrayList<String>(urls))
                 if (directUrl != null) {
                     putExtra(EXTRA_PARAM_DIRECT, directUrl)
+                }
+                if (hysteriaCert != null) {
+                    putExtra(EXTRA_PARAM_CERT, hysteriaCert)
                 }
                 if (dnsttConfig != null) {
                     putStringArrayListExtra(EXTRA_PARAM_CONFIG,
@@ -655,7 +665,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    inner class MyUrlRequestCallback(private val envoyUrl: String, private val dnsttConfig: List<String>?, private val dnsttUrls: Boolean) : UrlRequest.Callback() {
+    inner class MyUrlRequestCallback(private val envoyUrl: String, private val hysteriaCert: String?, private val dnsttConfig: List<String>?, private val dnsttUrls: Boolean) : UrlRequest.Callback() {
 
         override fun onRedirectReceived(
                 request: UrlRequest?,
@@ -750,9 +760,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             if (submittedUrls.size > 0 && invalidUrls.size > 0 && submittedUrls.size == invalidUrls.size) {
                 if (dnsttUrls) {
                     Log.w(TAG, "all additional dnstt urls submitted have failed, cannot continue")
+                } else if (dnsttConfig.isNullOrEmpty()) {
+                    Log.w(TAG, "no dnstt config was found, cannot continue")
                 } else {
                     Log.w(TAG, "all urls submitted have failed, fetch additional urls from dnstt")
-                    getDnsttUrls(dnsttConfig)
+                    getDnsttUrls(dnsttConfig, hysteriaCert)
                 }
             } else {
                 Log.d(TAG, "" + submittedUrls.size + " were submitted, " + invalidUrls.size + " have failed")

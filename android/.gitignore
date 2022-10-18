@@ -13,5 +13,3 @@
 .externalNativeBuild
 .cxx
 .idea
-# secret values passed in at build time
-secrets.sh

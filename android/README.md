@@ -11,15 +11,6 @@ Some documentation and example Ansible playbooks are available [here](https://gi
 
 Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./build-envoy.sh debug` or `./build-envoy.sh release` to build the project.
 
-Create a file called `secrets.sh` in the `android/` directory that sets environment variables with the secret values.
-
-Currently a certificate is required for the optional hysteria service:
- - -HYSTERIA_CERT="..." (self generated root certificate for the hysteria server in PEM format)
-
-```bash
-export HYSTERIA_CERT=...
-```
-
 ## Get Started
 
 Envoy has only one more extra API call than Google's [chromium](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/)/android [cronet library](https://developer.android.com/guide/topics/connectivity/cronet): `CronetEngine.Builder.setEnvoyUrl` .
@@ -65,12 +56,16 @@ Only a DNS over HTTP or DNS over TCP provider is required, an empty string shoul
     
 There are two options for submitting envoy urls:
     
- - submit(context: Context, urls: List<String>, dnsttConfig: List<String>?)
- - submit(context: Context, urls: List<String>, directUrl: String?, dnsttConfig: List<String>?)
-    
-If the optional directUrl parameter is included, Envoy will attempt to connect to that url directly first.  This can be included to avoid using proxy resources when the target domain is not blocked.
+ - submit(context: Context, urls: List<String>)
+ - submit(context: Context, urls: List<String>, directUrl: String?, hysteriaCert: String?, dnsttConfig: List<String>?)
 
-If the optional dnsttConfig parameter is included, Envoy will attempt to fetch additional proxy URLs using DNSTT if all of the provided URLs fail
+The first method signature is intended for backwards compatibility, it will not support a Hysteria URL or fetch additional URLs with DNSTT.
+
+If the optional directUrl parameter is included, Envoy will attempt to connect to that url directly first. This can be included to avoid using proxy resources when the target domain is not blocked.
+
+The optional hysteriaCert parameter must be included if you submit any Hysteria URLs. It is a comma delimited string representing a self generated root certificate for the hysteria server in PEM format.
+
+If the optional dnsttConfig parameter is included, Envoy will attempt to fetch additional proxy URLs using DNSTT if all of the provided URLs fail.
 
 ## Basic envoy integration
 
