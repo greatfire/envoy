@@ -1,15 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-def hystCertProp = ""
-
 android {
-
-    if (project.hasProperty("hystcert")) {
-        hystCertProp = hystcert
-    } else {
-        println "WARNING: no hystcert prop found"
-    }
 
     compileSdkVersion 29
     buildToolsVersion '30.0.2'
@@ -24,8 +16,6 @@ android {
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         consumerProguardFiles 'consumer-rules.pro'
-
-        buildConfigField "String", "HYST_CERT", "\"$hystCertProp\""
     }
 
     buildTypes {
