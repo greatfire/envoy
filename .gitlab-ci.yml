@@ -5,10 +5,10 @@
 - export DEBIAN_FRONTEND=noninteractive
 - echo Etc/UTC > /etc/timezone
 - echo 'quiet "1";'
+       'APT::Get::Assume-Yes "true";'
        'APT::Install-Recommends "0";'
        'APT::Install-Suggests "0";'
-       'APT::Acquire::Retries "20";'
-       'APT::Get::Assume-Yes "true";'
+       'Acquire::Retries "20";'
        'Dpkg::Use-Pty "0";'
       > /etc/apt/apt.conf.d/99gitlab
 - apt-get update
