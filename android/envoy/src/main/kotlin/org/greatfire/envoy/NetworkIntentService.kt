@@ -48,6 +48,18 @@ const val BROADCAST_URL_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAIL
 // Defines the key for the status "extra" in an Intent
 const val EXTENDED_DATA_VALID_URLS = "org.greatfire.envoy.VALID_URLS"
 const val EXTENDED_DATA_INVALID_URLS = "org.greatfire.envoy.INVALID_URLS"
+const val EXTENDED_DATA_VALID_URL = "org.greatfire.envoy.VALID_URL"
+const val EXTENDED_DATA_INVALID_URL = "org.greatfire.envoy.INVALID_URL"
+const val EXTENDED_DATA_VALID_SERVICE = "org.greatfire.envoy.VALID_SERVICE"
+const val EXTENDED_DATA_INVALID_SERVICE = "org.greatfire.envoy.INVALID_SERVICE"
+
+const val SERVICE_DIRECT = "direct"
+const val SERVICE_V2WS = "v2ws"
+const val SERVICE_V2SRTP = "v2srtp"
+const val SERVICE_V2WECHAT = "v2wechat"
+const val SERVICE_HYSTERIA = "hysteria"
+const val SERVICE_SS = "ss"
+const val SERVICE_HTTPS = "https"
 
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
@@ -200,7 +212,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start https delay")
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
-            handleRequest(url, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(url, SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
@@ -222,7 +234,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start shadowsocks delay")
             delay(10000L) // wait 10 seconds
             Log.d(TAG, "end shadowsocks delay")
-            handleRequest(LOCAL_URL_BASE + 1080, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(LOCAL_URL_BASE + 1080, SERVICE_SS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
@@ -259,7 +271,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start hysteria delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end hysteria delay")
-                handleRequest(LOCAL_URL_BASE + hysteriaPort, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + hysteriaPort, SERVICE_HYSTERIA, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -295,7 +307,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray websocket delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray websocket delay")
-                handleRequest(LOCAL_URL_BASE + v2wsPort, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2wsPort, SERVICE_V2WS, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -328,7 +340,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray srtp delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray srtp delay")
-                handleRequest(LOCAL_URL_BASE + v2srtpPort, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2srtpPort, SERVICE_V2SRTP, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -360,7 +372,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray wechat delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray wechat delay")
-                handleRequest(LOCAL_URL_BASE + v2wechatPort, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2wechatPort, SERVICE_V2WECHAT, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -376,7 +388,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
-            MyUrlRequestCallback(directUrl, hysteriaCert, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(directUrl, SERVICE_DIRECT, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -385,11 +397,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     // TODO: do we just hard code captive portal url or add the default here?
 
-    private fun handleRequest(envoyUrl: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
-        handleRequest(envoyUrl, captive_portal_url, null, dnsttConfig, dnsttUrls)
+    private fun handleRequest(envoyUrl: String, envoyService: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+        handleRequest(envoyUrl, envoyService, captive_portal_url, null, dnsttConfig, dnsttUrls)
     }
 
-    private fun handleRequest(envoyUrl: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleRequest(envoyUrl: String, envoyService: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         if (dnsttUrls) {
             Log.d(TAG, "create request to " + captive_portal_url + " for dnstt url: " + envoyUrl)
@@ -404,7 +416,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             captive_portal_url,
-            MyUrlRequestCallback(envoyUrl, hysteriaCert, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(envoyUrl, envoyService, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -665,7 +677,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    inner class MyUrlRequestCallback(private val envoyUrl: String, private val hysteriaCert: String?, private val dnsttConfig: List<String>?, private val dnsttUrls: Boolean) : UrlRequest.Callback() {
+    inner class MyUrlRequestCallback(private val envoyUrl: String,
+                                     private val envoyService: String,
+                                     private val hysteriaCert: String?,
+                                     private val dnsttConfig: List<String>?,
+                                     private val dnsttUrls: Boolean) : UrlRequest.Callback() {
 
         override fun onRedirectReceived(
                 request: UrlRequest?,
@@ -708,7 +724,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 // only a 200 status code is valid, otherwise return invalid url as in onFailed
                 if (info.httpStatusCode in 200..299) {
                     // logs captive portal url used to validate envoy url
-                    Log.d(TAG, "onSucceeded method called for " + info.url + " -> got " + info.httpStatusCode + " response code so tested url is valid")
+                    Log.d(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is valid")
                     this@NetworkIntentService.validUrls.add(envoyUrl)
 
                     // store valid urls in preferences
@@ -722,11 +738,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
                         // puts the validation status into the intent
                         putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
+                        putExtra(EXTENDED_DATA_VALID_URL, envoyUrl)
+                        putExtra(EXTENDED_DATA_VALID_SERVICE, envoyService)
                     }
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                 } else {
                     // logs captive portal url used to validate envoy url
-                    Log.e(TAG, "onSucceeded method called for " + info.url + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
+                    Log.e(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
                     handleInvalidUrl()
                 }
             } else {
@@ -740,7 +758,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 error: CronetException?
         ) {
             // logs captive portal url used to validate envoy url
-            Log.e(TAG, "onFailed method called for invalid url " + info?.url + " -> " + error?.message)
+            Log.e(TAG, "onFailed method called for invalid url " + info?.url + " / " + envoyService + " -> " + error?.message)
             handleInvalidUrl()
         }
 
@@ -752,6 +770,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
                 // puts the validation status into the intent
                 putStringArrayListExtra(EXTENDED_DATA_INVALID_URLS, ArrayList(invalidUrls))
+                putExtra(EXTENDED_DATA_INVALID_URL, envoyUrl)
+                putExtra(EXTENDED_DATA_INVALID_SERVICE, envoyService)
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
