@@ -67,3 +67,58 @@ dependencies {
     implementation 'org.greatfire.envoy:cronet:102.0.5005.41'
     implementation 'org.greatfire:IEnvoyProxy:1.2.0'
 }
+
+def stdout = new ByteArrayOutputStream()
+exec {
+    commandLine 'git', 'describe', '--tags', '--always'
+    standardOutput = stdout
+}
+version = stdout.toString().trim()
+group = 'org.greatfire'
+
+apply plugin: 'maven'
+
+task writeNewPom {
+    pom {
+        project {
+            name 'Envoy'
+	    packaging 'aar'
+            artifactId 'envoy'
+            inceptionYear '2018'
+            url 'https://github.com/greatfire/envoy'
+	    description 'C and Java Library derived from Chromium cronet'
+            licenses {
+                license {
+                    name 'The Apache Software License, Version 2.0'
+                    url 'https://github.com/greatfire/envoy/blob/master/LICENSE'
+                    distribution 'repo'
+                }
+		license {
+		    name 'BSD-3-clause'
+		    url 'https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE'
+		    distribution 'repo'
+		}
+            }
+            developers {
+                developer {
+                    id = 'greatfire'
+                    name = 'GreatFire'
+                    email = 'support@greatfire.org'
+                }
+                developer {
+                    id = 'guardianproject'
+                    name = 'Guardian Project'
+                    email = 'support@guardianproject.info'
+                }
+            }
+            issueManagement {
+                url = "https://github.com/greatfire/envoy/issues"
+		system = "GitHub"
+            }
+            scm {
+                connection = 'scm:git:https://github.com/greatfire/envoy.git'
+                url = 'https://github.com/greatfire/envoy'
+            }
+        }
+    }.writeTo(project.getBuildDir().toString() + "/outputs/aar/" + "envoy" + "-" + project.version + ".pom")
+}
