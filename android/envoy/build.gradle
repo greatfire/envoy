@@ -66,6 +66,23 @@ exec {
 version = stdout.toString().trim()
 group = 'org.greatfire'
 
+task sourcesZip {
+  def src = 'https://github.com/greatfire/envoy/archive/refs/tags/' + project.version + '.zip'
+  def destdir = project.getBuildDir().toString() + "/outputs/aar"
+  def destfile = "$destdir/envoy-" + project.version + "-sources.zip"
+  doLast {
+    def url = new URL(src)
+    def f = new File(destfile)
+    if (f.exists()) {
+      println "file $destfile already exists, skipping download"
+    } else {
+      mkdir "$destdir"
+      println "Downloading $destfile from $url..."
+      url.withInputStream { i -> f.withOutputStream { it << i } }
+    }
+  }
+}
+
 apply plugin: 'maven'
 
 task writeNewPom {
