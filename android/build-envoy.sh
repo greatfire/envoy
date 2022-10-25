@@ -6,10 +6,6 @@ cd $(dirname $0)
 
 BUILD_ARGS=""
 
-if [[ -n "$HYSTERIA_CERT" ]]; then
-    BUILD_ARGS="$BUILD_ARGS -Phystcert=$HYSTERIA_CERT"
-fi
-
 export ANDROID_COMPILE_SDK=29
 export ANDROID_BUILD_TOOLS=30.0.2
 export ANDROID_SDK_TOOLS=4333796

@@ -42,24 +42,24 @@ private const val EXTRA_PARAM_CONFIG = "org.greatfire.envoy.extra.PARAM_CONFIG"
 private const val EXTRA_PARAM_DNSTT = "org.greatfire.envoy.extra.PARAM_DNSTT"
 
 // Defines a custom Intent action
-const val BROADCAST_URL_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
-const val BROADCAST_URL_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
+const val ENVOY_BROADCAST_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
+const val ENVOY_BROADCAST_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
 
 // Defines the key for the status "extra" in an Intent
-const val EXTENDED_DATA_VALID_URLS = "org.greatfire.envoy.VALID_URLS"
-const val EXTENDED_DATA_INVALID_URLS = "org.greatfire.envoy.INVALID_URLS"
-const val EXTENDED_DATA_VALID_URL = "org.greatfire.envoy.VALID_URL"
-const val EXTENDED_DATA_INVALID_URL = "org.greatfire.envoy.INVALID_URL"
-const val EXTENDED_DATA_VALID_SERVICE = "org.greatfire.envoy.VALID_SERVICE"
-const val EXTENDED_DATA_INVALID_SERVICE = "org.greatfire.envoy.INVALID_SERVICE"
+const val ENVOY_DATA_URLS_SUCCEEDED = "org.greatfire.envoy.URLS_SUCCEEDED"
+const val ENVOY_DATA_URLS_FAILED = "org.greatfire.envoy.URLS_FAILED"
+const val ENVOY_DATA_URL_SUCCEEDED = "org.greatfire.envoy.URL_SUCCEEDED"
+const val ENVOY_DATA_URL_FAILED = "org.greatfire.envoy.URL_FAILED"
+const val ENVOY_DATA_SERVICE_SUCCEEDED = "org.greatfire.envoy.SERVICE_SUCCEEDED"
+const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
 
-const val SERVICE_DIRECT = "direct"
-const val SERVICE_V2WS = "v2ws"
-const val SERVICE_V2SRTP = "v2srtp"
-const val SERVICE_V2WECHAT = "v2wechat"
-const val SERVICE_HYSTERIA = "hysteria"
-const val SERVICE_SS = "ss"
-const val SERVICE_HTTPS = "https"
+const val ENVOY_SERVICE_DIRECT = "direct"
+const val ENVOY_SERVICE_V2WS = "v2ws"
+const val ENVOY_SERVICE_V2SRTP = "v2srtp"
+const val ENVOY_SERVICE_V2WECHAT = "v2wechat"
+const val ENVOY_SERVICE_HYSTERIA = "hysteria"
+const val ENVOY_SERVICE_SS = "ss"
+const val ENVOY_SERVICE_HTTPS = "https"
 
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
@@ -212,7 +212,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start https delay")
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
-            handleRequest(url, SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
@@ -234,7 +234,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start shadowsocks delay")
             delay(10000L) // wait 10 seconds
             Log.d(TAG, "end shadowsocks delay")
-            handleRequest(LOCAL_URL_BASE + 1080, SERVICE_SS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(LOCAL_URL_BASE + 1080, ENVOY_SERVICE_SS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
@@ -271,7 +271,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start hysteria delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end hysteria delay")
-                handleRequest(LOCAL_URL_BASE + hysteriaPort, SERVICE_HYSTERIA, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + hysteriaPort, ENVOY_SERVICE_HYSTERIA, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -307,7 +307,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray websocket delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray websocket delay")
-                handleRequest(LOCAL_URL_BASE + v2wsPort, SERVICE_V2WS, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2wsPort, ENVOY_SERVICE_V2WS, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -340,7 +340,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray srtp delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray srtp delay")
-                handleRequest(LOCAL_URL_BASE + v2srtpPort, SERVICE_V2SRTP, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2srtpPort, ENVOY_SERVICE_V2SRTP, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -372,7 +372,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray wechat delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray wechat delay")
-                handleRequest(LOCAL_URL_BASE + v2wechatPort, SERVICE_V2WECHAT, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(LOCAL_URL_BASE + v2wechatPort, ENVOY_SERVICE_V2WECHAT, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -388,7 +388,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
-            MyUrlRequestCallback(directUrl, SERVICE_DIRECT, hysteriaCert, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(directUrl, ENVOY_SERVICE_DIRECT, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -602,9 +602,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
      * parameters.
      */
     private fun handleActionQuery() {
-        val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
+        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
             // Puts the status into the Intent
-            putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
+            putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(validUrls))
         }
         // Broadcasts the Intent to receivers in this app.
         LocalBroadcastManager.getInstance(this).sendBroadcast(localIntent)
@@ -735,11 +735,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     editor.putString(PREF_VALID_URLS, json.toString())
                     editor.apply()
 
-                    val localIntent = Intent(BROADCAST_URL_VALIDATION_SUCCEEDED).apply {
+                    val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
                         // puts the validation status into the intent
-                        putStringArrayListExtra(EXTENDED_DATA_VALID_URLS, ArrayList(validUrls))
-                        putExtra(EXTENDED_DATA_VALID_URL, envoyUrl)
-                        putExtra(EXTENDED_DATA_VALID_SERVICE, envoyService)
+                        putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(validUrls))
+                        putExtra(ENVOY_DATA_URL_SUCCEEDED, envoyUrl)
+                        putExtra(ENVOY_DATA_SERVICE_SUCCEEDED, envoyService)
                     }
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                 } else {
@@ -767,11 +767,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             // broadcast intent with invalid urls so application can handle errors
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
-            val localIntent = Intent(BROADCAST_URL_VALIDATION_FAILED).apply {
+            val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_FAILED).apply {
                 // puts the validation status into the intent
-                putStringArrayListExtra(EXTENDED_DATA_INVALID_URLS, ArrayList(invalidUrls))
-                putExtra(EXTENDED_DATA_INVALID_URL, envoyUrl)
-                putExtra(EXTENDED_DATA_INVALID_SERVICE, envoyService)
+                putStringArrayListExtra(ENVOY_DATA_URLS_FAILED, ArrayList(invalidUrls))
+                putExtra(ENVOY_DATA_URL_FAILED, envoyUrl)
+                putExtra(ENVOY_DATA_SERVICE_FAILED, envoyService)
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
