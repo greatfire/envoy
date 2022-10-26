@@ -96,5 +96,6 @@ android:
     - sed -i 's,/bin/bash$,/bin/bash -x,' a*/*.sh # show commands as they run
     - ./native/build_cronet.sh release
     - ./native/build_cronet.sh debug  # build-envoy.sh wants both release and debug
+    - mkdir -p android/cronet
     - cp native/cronet-debug.aar android/cronet/
     - ./android/build-envoy.sh
