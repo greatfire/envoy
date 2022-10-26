@@ -84,9 +84,7 @@ android:
     - fetch --no-history android
     - cd src
     - build/install-build-deps-android.sh
-    - git fetch origin refs/tags/87.0.4280.66:refs/tags/87.0.4280.66 --verbose
-    - git checkout -B 87.0.4280.66 tags/87.0.4280.66
-    - gclient sync --reset --with_branch_heads
+    - $CI_PROJECT_DIR/native/checkout-to-tag.sh
 
     # set up dev env in case manual work is needed
     - echo >> /etc/profile.d/env.sh
