@@ -57,11 +57,11 @@ Only a DNS over HTTP or DNS over TCP provider is required, an empty string shoul
 There are two options for submitting envoy urls:
     
  - submit(context: Context, urls: List<String>)
- - submit(context: Context, urls: List<String>, directUrl: String?, hysteriaCert: String?, dnsttConfig: List<String>?)
+ - submit(context: Context, urls: List<String>, directUrls: List<String>?, hysteriaCert: String?, dnsttConfig: List<String>?)
 
 The first method signature is intended for backwards compatibility, it will not support a Hysteria URL or fetch additional URLs with DNSTT.
 
-If the optional directUrl parameter is included, Envoy will attempt to connect to that url directly first. This can be included to avoid using proxy resources when the target domain is not blocked.
+If the optional directUrls parameter is included, Envoy will attempt to connect to those urls directly first. This can be included to avoid using proxy resources when the target domain is not blocked.
 
 The optional hysteriaCert parameter must be included if you submit any Hysteria URLs. It is a comma delimited string representing a self generated root certificate for the hysteria server in PEM format.
 
