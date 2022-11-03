@@ -110,11 +110,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         when (intent?.action) {
             ACTION_SUBMIT -> {
                 val urls = intent.getStringArrayListExtra(EXTRA_PARAM_SUBMIT)
-                val directUrl = intent.getStringExtra(EXTRA_PARAM_DIRECT)
+                val directUrls = intent.getStringArrayListExtra(EXTRA_PARAM_DIRECT)
                 val hysteriaCert = intent.getStringExtra(EXTRA_PARAM_CERT)
                 val dnsttConfig = intent.getStringArrayListExtra(EXTRA_PARAM_CONFIG)
                 val dnsttUrls = intent.getBooleanExtra(EXTRA_PARAM_DNSTT, false)
-                handleActionSubmit(urls, directUrl, hysteriaCert, dnsttConfig, dnsttUrls)
+                handleActionSubmit(urls, directUrls, hysteriaCert, dnsttConfig, dnsttUrls)
             }
             ACTION_QUERY -> {
                 handleActionQuery()
@@ -150,7 +150,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
      * parameters.
      */
     private fun handleActionSubmit(urls: List<String>?,
-                                   directUrl: String?,
+                                   directUrls: List<String>?,
                                    hysteriaCert: String?,
                                    dnsttConfig: List<String>?,
                                    dnsttUrls: Boolean,
@@ -161,10 +161,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             submittedUrls.clear()
         }
 
-        if (directUrl != null) {
-            Log.d(TAG, "found direct url: " + directUrl)
-            submittedUrls.add(directUrl)
-            handleDirectRequest(directUrl, hysteriaCert, dnsttConfig, dnsttUrls)
+        if (!directUrls.isNullOrEmpty()) {
+            directUrls.forEach { directUrl ->
+                Log.d(TAG, "found direct url: " + directUrl)
+                submittedUrls.add(directUrl)
+                handleDirectRequest(directUrl, hysteriaCert, dnsttConfig, dnsttUrls)
+            }
         }
 
         urls?.forEach { envoyUrl ->
@@ -623,9 +625,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
          * @see IntentService
          */
         @JvmStatic
-        fun submit(context: Context, urls: List<String>, directUrl: String?, hysteriaCert: String?, dnsttConfig: List<String>?) {
+        fun submit(context: Context, urls: List<String>, directUrls: List<String>?, hysteriaCert: String?, dnsttConfig: List<String>?) {
             Log.d(TAG, "jvm submit")
-            processSubmit(context, urls, directUrl, hysteriaCert, dnsttConfig, false)
+            processSubmit(context, urls, directUrls, hysteriaCert, dnsttConfig, false)
         }
 
         @JvmStatic
@@ -641,19 +643,23 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         // no jvm annotation, not for external use
-        fun processSubmit(context: Context, urls: List<String>, directUrl: String?, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+        fun processSubmit(context: Context, urls: List<String>, directUrls: List<String>?, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
             Log.d(TAG, "process submit")
             val intent = Intent(context, NetworkIntentService::class.java).apply {
                 action = ACTION_SUBMIT
                 putStringArrayListExtra(EXTRA_PARAM_SUBMIT, ArrayList<String>(urls))
-                if (directUrl != null) {
-                    putExtra(EXTRA_PARAM_DIRECT, directUrl)
+                if (!directUrls.isNullOrEmpty()) {
+                    putStringArrayListExtra(
+                        EXTRA_PARAM_DIRECT,
+                        directUrls as java.util.ArrayList<String>?
+                    )
                 }
-                if (hysteriaCert != null) {
+                if (!hysteriaCert.isNullOrEmpty()) {
                     putExtra(EXTRA_PARAM_CERT, hysteriaCert)
                 }
-                if (dnsttConfig != null) {
-                    putStringArrayListExtra(EXTRA_PARAM_CONFIG,
+                if (!dnsttConfig.isNullOrEmpty()) {
+                    putStringArrayListExtra(
+                        EXTRA_PARAM_CONFIG,
                         dnsttConfig as java.util.ArrayList<String>?
                     )
                 }
