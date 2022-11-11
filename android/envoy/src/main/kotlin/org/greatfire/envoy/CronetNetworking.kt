@@ -52,7 +52,6 @@ object CronetNetworking {
             val cacheDir = File(context.cacheDir, "cronet-cache")
             cacheDir.mkdirs()
             mCronetEngine = CronetEngine.Builder(context)
-                    // .setUserAgent("curl/7.66.0")
                     .enableBrotli(true)
                     .enableHttp2(true)
                     .enableQuic(true)
