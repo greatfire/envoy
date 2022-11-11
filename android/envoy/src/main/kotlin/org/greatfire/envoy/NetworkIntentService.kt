@@ -414,8 +414,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val executor: Executor = Executors.newSingleThreadExecutor()
         val myBuilder = CronetEngine.Builder(applicationContext)
         val cronetEngine: CronetEngine = myBuilder
+            .enableBrotli(true)
+            .enableHttp2(true)
+            .enableQuic(true)
             .setEnvoyUrl(envoyUrl)
-            .setUserAgent(DEFAULT_USER_AGENT).build()
+            .setUserAgent(DEFAULT_USER_AGENT)
+            .build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             captive_portal_url,
             MyUrlRequestCallback(envoyUrl, envoyService, hysteriaCert, dnsttConfig, dnsttUrls),
