@@ -22,6 +22,7 @@ import org.chromium.net.UrlResponseInfo
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.FileNotFoundException
 import java.net.*
 import java.nio.ByteBuffer
@@ -411,11 +412,21 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "create request to " + captive_portal_url + " for url: " + envoyUrl)
         }
 
+        // set up http cache dir
+        val cacheDir = File(applicationContext.cacheDir, envoyService + "-cache")
+        if (!cacheDir.exists()) {
+            Log.d(TAG, "cache setup, create " + cacheDir.absolutePath)
+            cacheDir.mkdirs()
+        }
+
         val executor: Executor = Executors.newSingleThreadExecutor()
         val myBuilder = CronetEngine.Builder(applicationContext)
         val cronetEngine: CronetEngine = myBuilder
             .setEnvoyUrl(envoyUrl)
-            .setUserAgent(DEFAULT_USER_AGENT).build()
+            .setStoragePath(cacheDir.absolutePath)
+            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1 * 1024 * 1024) // 1 megaByte
+            .setUserAgent(DEFAULT_USER_AGENT)
+            .build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             captive_portal_url,
             MyUrlRequestCallback(envoyUrl, envoyService, hysteriaCert, dnsttConfig, dnsttUrls),
@@ -483,6 +494,24 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         } else {
             Log.d(TAG, "url was not previously cached")
         }
+    }
+
+    fun cacheCleanup(envoyService: String) {
+        // clean up http cache dir
+        val cacheDir = File(applicationContext.cacheDir, envoyService + "-cache")
+        if (cacheDir.exists()) {
+            cacheDir.let {
+                if (it.exists()) {
+                    val files = it.listFiles()
+                    if (files != null) {
+                        for (file in files) {
+                            Log.d(TAG, "cache cleanup, delete " + file.absolutePath)
+                            file.delete()
+                        }
+                    }
+                }
+            }
+        } 
     }
 
     fun getDnsttUrls(dnsttConfig: List<String>?, hysteriaCert: String?) {
@@ -756,6 +785,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else {
                 Log.w(TAG, "onSucceeded method called but UrlResponseInfo was null")
             }
+
+            cacheCleanup(envoyService)
         }
 
         override fun onFailed(
@@ -766,6 +797,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " / " + envoyService + " -> " + error?.message)
             handleInvalidUrl()
+
+            cacheCleanup(envoyService)
         }
 
         fun handleInvalidUrl() {
