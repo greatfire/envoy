@@ -33,7 +33,7 @@ index d188a1f1d4047..560c10e91be8e 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index ead911c099228..74cf5a723044c 100644
+index 1b64e70df766c..35daa93c74ff2 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -20,6 +20,7 @@
@@ -52,7 +52,7 @@ index ead911c099228..74cf5a723044c 100644
  #include "net/http/http_auth_handler_factory.h"
  #include "net/http/http_cache.h"
  #include "net/http/http_network_layer.h"
-@@ -424,7 +426,26 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -429,7 +431,26 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
      }
    }
    host_resolver_->SetRequestContext(context.get());

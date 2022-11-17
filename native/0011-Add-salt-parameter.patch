@@ -2,7 +2,7 @@
  1 file changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index 2116e7f2d769b..f658e2c06f83e 100644
+index e965b0ecce59a..4ff0a08d9c011 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -18,7 +18,7 @@
@@ -14,7 +14,7 @@ index 2116e7f2d769b..f658e2c06f83e 100644
  #include "base/location.h"
  #include "base/memory/ptr_util.h"
  #include "base/metrics/field_trial.h"
-@@ -562,13 +562,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -559,13 +559,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
            !throttling_entry_->ShouldRejectRequest(*request_)) {
          if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
              request_->context()->envoy_url().rfind("https://", 0) == 0) {
@@ -31,16 +31,16 @@ index 2116e7f2d769b..f658e2c06f83e 100644
            auto envoy_url = GURL(request_->context()->envoy_url());
            if (envoy_url.SchemeIsHTTPOrHTTPS()) {
              request_info_.url = envoy_url; // TODO check is_vaid() before set
-@@ -583,6 +579,8 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -580,6 +576,8 @@ void URLRequestHttpJob::StartTransactionInternal() {
                  // see GetUnescapedValue, TODO check is_valid() before set
                  request_info_.url =
-                     GURL(net::UnescapeURLComponent(value, UnescapeRule::NORMAL));
+                     GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
 +             } else if (key.compare("salt") == 0) {
-+                     salt = value;
++                    salt = value;
                } else if (key.rfind(headerPrefix, 0) == 0 &&
                           key.size() > headerPrefixLength) {
                  request_info_.extra_headers.SetHeader(
-@@ -592,8 +590,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -589,8 +587,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
            }
  
            // count for cache key

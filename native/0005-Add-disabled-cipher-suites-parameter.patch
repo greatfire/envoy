@@ -6,7 +6,7 @@
  5 files changed, 46 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/browser/ssl/ssl_config_service_manager.cc b/chrome/browser/ssl/ssl_config_service_manager.cc
-index 08fe7667d9ae9..ad013cae172cf 100644
+index 8845f3cc833fb..2614b30387cec 100644
 --- a/chrome/browser/ssl/ssl_config_service_manager.cc
 +++ b/chrome/browser/ssl/ssl_config_service_manager.cc
 @@ -13,6 +13,7 @@
@@ -25,7 +25,7 @@ index 08fe7667d9ae9..ad013cae172cf 100644
  #include "net/cert/cert_verifier.h"
  #include "net/ssl/ssl_cipher_suite_names.h"
  #include "net/ssl/ssl_config_service.h"
-@@ -172,6 +174,7 @@ void SSLConfigServiceManager::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -176,6 +178,7 @@ void SSLConfigServiceManager::RegisterPrefs(PrefRegistrySimple* registry) {
  
  void SSLConfigServiceManager::AddToNetworkContextParams(
      network::mojom::NetworkContextParams* network_context_params) {
@@ -33,7 +33,7 @@ index 08fe7667d9ae9..ad013cae172cf 100644
    network_context_params->initial_ssl_config = GetSSLConfigFromPrefs();
    mojo::Remote<network::mojom::SSLConfigClient> ssl_config_client;
    network_context_params->ssl_config_client_receiver =
-@@ -244,6 +247,14 @@ void SSLConfigServiceManager::OnDisabledCipherSuitesChange(
+@@ -249,6 +252,14 @@ void SSLConfigServiceManager::OnDisabledCipherSuitesChange(
    const base::ListValue* value = &base::Value::AsListValue(
        *local_state->GetList(prefs::kCipherSuiteBlacklist));
    disabled_cipher_suites_ = ParseCipherSuites(ListValueToStringVector(value));
@@ -92,7 +92,7 @@ index c77a29140df77..5289c938b09c7 100644
    // Returns the default SSL config settings.
    SSLContextConfig GetSSLContextConfig() override;
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 74cf5a723044c..43bcee9811b6a 100644
+index 35daa93c74ff2..7f4480eb5d4c7 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -13,6 +13,7 @@
@@ -111,7 +111,7 @@ index 74cf5a723044c..43bcee9811b6a 100644
  #include "net/ssl/ssl_config_service_defaults.h"
  #include "net/url_request/static_http_user_agent_settings.h"
  #include "net/url_request/url_request_context.h"
-@@ -450,8 +452,29 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -455,8 +457,29 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
    if (ssl_config_service_) {
      storage->set_ssl_config_service(std::move(ssl_config_service_));
    } else {

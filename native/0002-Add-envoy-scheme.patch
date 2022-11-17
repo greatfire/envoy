@@ -16,18 +16,18 @@ index 3185d5934aea9..d188a1f1d4047 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index 9ddcafa7df548..2116e7f2d769b 100644
+index a12c958127c85..e965b0ecce59a 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -35,6 +35,7 @@
- #include "base/trace_event/trace_event.h"
- #include "base/values.h"
- #include "build/build_config.h"
-+#include "net/base/escape.h"
- #include "net/base/features.h"
- #include "net/base/host_port_pair.h"
- #include "net/base/http_user_agent_settings.h"
-@@ -566,12 +567,36 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -27,6 +27,7 @@
+ #include "base/numerics/safe_conversions.h"
+ #include "base/rand_util.h"
+ #include "base/stl_util.h"
++#include "base/strings/escape.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/stringprintf.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -563,12 +564,36 @@ void URLRequestHttpJob::StartTransactionInternal() {
            base::MD5Update(&md5ctx, request_->url().spec());
            base::MD5Digest digest;
            base::MD5Final(&digest, &md5ctx);
@@ -49,7 +49,7 @@ index 9ddcafa7df548..2116e7f2d769b 100644
 +              if (key.compare("url") == 0) {
 +                // see GetUnescapedValue, TODO check is_valid() before set
 +                request_info_.url =
-+                    GURL(net::UnescapeURLComponent(value, UnescapeRule::NORMAL));
++                    GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
 +              } else if (key.rfind(headerPrefix, 0) == 0 &&
 +                         key.size() > headerPrefixLength) {
 +                request_info_.extra_headers.SetHeader(

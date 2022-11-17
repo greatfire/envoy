@@ -2,7 +2,7 @@
  1 file changed, 5 insertions(+)
 
 diff --git a/net/spdy/spdy_http_utils.cc b/net/spdy/spdy_http_utils.cc
-index 80ca0386e6328..7a299fa0ed2e9 100644
+index 147d9fc85c43d..50f4faecdf48a 100644
 --- a/net/spdy/spdy_http_utils.cc
 +++ b/net/spdy/spdy_http_utils.cc
 @@ -111,6 +111,11 @@ void CreateSpdyHeadersFromHttpRequest(const HttpRequestInfo& info,

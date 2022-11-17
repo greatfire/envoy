@@ -5,7 +5,7 @@
  4 files changed, 28 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index bef24dc7872ac..361494be19579 100644
+index b3deee96b309a..35abd154e9420 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -103,6 +103,16 @@ void CronetContextAdapter::InitRequestContextOnInitThread(
@@ -26,7 +26,7 @@ index bef24dc7872ac..361494be19579 100644
      JNIEnv* env,
      const JavaParamRef<jobject>& jcaller,
 diff --git a/components/cronet/android/cronet_context_adapter.h b/components/cronet/android/cronet_context_adapter.h
-index 271256f79ab5c..3985562592698 100644
+index 244a2226e8963..74842c067f3a5 100644
 --- a/components/cronet/android/cronet_context_adapter.h
 +++ b/components/cronet/android/cronet_context_adapter.h
 @@ -51,6 +51,11 @@ class CronetContextAdapter : public CronetContext::Callback {
@@ -41,7 +41,7 @@ index 271256f79ab5c..3985562592698 100644
    // Releases all resources for the request context and deletes the object.
    // Blocks until network thread is destroyed after running all pending tasks.
    void Destroy(JNIEnv* env,
-@@ -95,6 +100,9 @@ class CronetContextAdapter : public CronetContext::Callback {
+@@ -99,6 +104,9 @@ class CronetContextAdapter : public CronetContext::Callback {
    // Called on init Java thread to initialize URLRequestContext.
    void InitRequestContextOnInitThread();
  
@@ -52,10 +52,10 @@ index 271256f79ab5c..3985562592698 100644
    // to use smaller responses when estimating throughput, and to disable the
    // device offline checks when computing the effective connection type or when
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index 8e2f755183fe8..5fbcc645b5370 100644
+index 1fa4ab2b9b9eb..3653dbdcb567b 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-@@ -197,8 +197,13 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -231,8 +231,13 @@ public class CronetUrlRequestContext extends CronetEngineBase {
                      // mUrlRequestContextAdapter is guaranteed to exist until
                      // initialization on init and network threads completes and
                      // initNetworkThread is called back on network thread.
@@ -69,7 +69,7 @@ index 8e2f755183fe8..5fbcc645b5370 100644
                  }
              }
          });
-@@ -765,6 +770,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -815,6 +820,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
          @NativeClassQualifiedName("CronetContextAdapter")
          void initRequestContextOnInitThread(long nativePtr, CronetUrlRequestContext caller);
  

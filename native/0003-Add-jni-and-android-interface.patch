@@ -2,17 +2,15 @@
  .../cronet/android/api/src/org/chromium/net/CronetEngine.java |  5 +++++
  .../api/src/org/chromium/net/ICronetEngineBuilder.java        |  1 +
  components/cronet/android/cronet_context_adapter.cc           |  2 ++
- components/cronet/android/implementation_api_version.txt      |  2 +-
- components/cronet/android/interface_api_version.txt           |  2 +-
  .../src/org/chromium/net/impl/CronetEngineBuilderImpl.java    | 11 +++++++++++
  .../src/org/chromium/net/impl/CronetUrlRequestContext.java    | 10 +++++-----
  .../java/src/org/chromium/net/impl/JavaCronetEngine.java      |  1 +
  .../org/chromium/cronet_sample_apk/CronetSampleActivity.java  |  1 +
  components/cronet/url_request_context_config.cc               |  2 +-
- 11 files changed, 32 insertions(+), 9 deletions(-)
+ 9 files changed, 30 insertions(+), 7 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index 730e51520ee2d..cc19e7d3317fc 100644
+index 76479bb91452c..1cec048621efe 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
 @@ -57,6 +57,7 @@ public class org.chromium.net.CronetEngine$Builder {
@@ -23,7 +21,7 @@ index 730e51520ee2d..cc19e7d3317fc 100644
    public org.chromium.net.CronetEngine$Builder setStoragePath(java.lang.String);
    public org.chromium.net.CronetEngine$Builder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
    public org.chromium.net.CronetEngine$Builder enableQuic(boolean);
-@@ -217,6 +218,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+@@ -218,6 +219,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
    public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
    public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
    public abstract java.lang.String getDefaultUserAgent();
@@ -31,12 +29,12 @@ index 730e51520ee2d..cc19e7d3317fc 100644
    public abstract org.chromium.net.ExperimentalCronetEngine build();
    public org.chromium.net.ICronetEngineBuilder enableNetworkQualityEstimator(boolean);
    public org.chromium.net.ICronetEngineBuilder setThreadPriority(int);
-@@ -401,4 +403,4 @@ public abstract class org.chromium.net.UrlResponseInfo {
+@@ -402,4 +404,4 @@ public abstract class org.chromium.net.UrlResponseInfo {
    public abstract java.lang.String getProxyServer();
    public abstract long getReceivedByteCount();
  }
--Stamp: c760ed0e85d0a71dd2dfa3a34bfbbd08
-+Stamp: bffce221f97cb5b4511b1058a20d82e2
+-Stamp: bfdd219e38031474ec7a93b265352d94
++Stamp: 81095f63a4196db122d1e19dabb974b6
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 index b7720524560d1..cf7a6c385349f 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
@@ -66,10 +64,10 @@ index 1f6694d4cc7bd..9a9bcb4940e05 100644
  
      // Experimental API methods.
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index 9fa90f00a8ff7..bef24dc7872ac 100644
+index d6be7672a0a01..b3deee96b309a 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
-@@ -238,6 +238,7 @@ int CronetContextAdapter::default_load_flags() const {
+@@ -243,6 +243,7 @@ int CronetContextAdapter::default_load_flags() const {
  static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
      JNIEnv* env,
      const JavaParamRef<jstring>& juser_agent,
@@ -77,7 +75,7 @@ index 9fa90f00a8ff7..bef24dc7872ac 100644
      const JavaParamRef<jstring>& jstorage_path,
      jboolean jquic_enabled,
      const JavaParamRef<jstring>& jquic_default_user_agent_id,
-@@ -261,6 +262,7 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
+@@ -266,6 +267,7 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
            ConvertNullableJavaStringToUTF8(env, jstorage_path),
            /* accept_languages */ std::string(),
            ConvertNullableJavaStringToUTF8(env, juser_agent),
@@ -85,25 +83,11 @@ index 9fa90f00a8ff7..bef24dc7872ac 100644
            ConvertNullableJavaStringToUTF8(
                env, jexperimental_quic_connection_options),
            base::WrapUnique(
-diff --git a/components/cronet/android/implementation_api_version.txt b/components/cronet/android/implementation_api_version.txt
-index 60d3b2f4a4cd5..b6a7d89c68e0c 100644
---- a/components/cronet/android/implementation_api_version.txt
-+++ b/components/cronet/android/implementation_api_version.txt
-@@ -1 +1 @@
--15
-+16
-diff --git a/components/cronet/android/interface_api_version.txt b/components/cronet/android/interface_api_version.txt
-index 60d3b2f4a4cd5..b6a7d89c68e0c 100644
---- a/components/cronet/android/interface_api_version.txt
-+++ b/components/cronet/android/interface_api_version.txt
-@@ -1 +1 @@
--15
-+16
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
-index 586963dfa40b2..860e2cbe5e709 100644
+index 977158d8872ed..1a60847f12dd1 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
-@@ -80,6 +80,7 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
+@@ -139,6 +139,7 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
      private final List<Pkp> mPkps = new LinkedList<>();
      private boolean mPublicKeyPinningBypassForLocalTrustAnchorsEnabled;
      private String mUserAgent;
@@ -111,7 +95,7 @@ index 586963dfa40b2..860e2cbe5e709 100644
      private String mStoragePath;
      private boolean mQuicEnabled;
      private boolean mHttp2Enabled;
-@@ -121,6 +122,16 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
+@@ -181,6 +182,16 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
          return mUserAgent;
      }
  
@@ -129,10 +113,10 @@ index 586963dfa40b2..860e2cbe5e709 100644
      public CronetEngineBuilderImpl setStoragePath(String value) {
          if (!new File(value).isDirectory()) {
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index e5f557a65f336..8e2f755183fe8 100644
+index f6a3289ef47cf..1fa4ab2b9b9eb 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-@@ -208,7 +208,7 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -249,7 +249,7 @@ public class CronetUrlRequestContext extends CronetEngineBase {
      public static long createNativeUrlRequestContextConfig(CronetEngineBuilderImpl builder) {
          final long urlRequestContextConfig =
                  CronetUrlRequestContextJni.get().createRequestContextConfig(builder.getUserAgent(),
@@ -141,7 +125,7 @@ index e5f557a65f336..8e2f755183fe8 100644
                          builder.getDefaultQuicUserAgentId(), builder.http2Enabled(),
                          builder.brotliEnabled(), builder.cacheDisabled(), builder.httpCacheMode(),
                          builder.httpCacheMaxSize(), builder.experimentalOptions(),
-@@ -735,10 +735,10 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -785,10 +785,10 @@ public class CronetUrlRequestContext extends CronetEngineBase {
      // Native methods are implemented in cronet_url_request_context_adapter.cc.
      @NativeMethods
      interface Natives {
@@ -157,15 +141,15 @@ index e5f557a65f336..8e2f755183fe8 100644
                  boolean bypassPublicKeyPinningForLocalTrustAnchors, int networkThreadPriority);
  
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java b/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
-index 8bdd6f013ae14..e472c24d3c720 100644
+index b3981a3e08681..d4b7ff31d85d2 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
-@@ -81,6 +81,7 @@ public final class JavaCronetEngine extends CronetEngineBase {
+@@ -104,6 +104,7 @@ public final class JavaCronetEngine extends CronetEngineBase {
                      "The multi-network API is not supported by the Java implementation "
                      + "of Cronet Engine");
          }
 +        // TODO add mEnvoyUrl
-         return new JavaUrlRequest(callback, mExecutorService, executor, url, mUserAgent,
+         return new JavaUrlRequest(this, callback, mExecutorService, executor, url, mUserAgent,
                  allowDirectExecutor, trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet,
                  trafficStatsUid);
 diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
@@ -181,15 +165,15 @@ index 0d72426a568a6..1ff0b8f2433ec 100644
  
          mCronetEngine = myBuilder.build();
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 4468310d7b5a0..a16f9469dce6b 100644
+index 136cc8017cfed..a20b11fd2c570 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
-@@ -377,7 +377,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -389,7 +389,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
    return base::WrapUnique(new URLRequestContextConfig(
        enable_quic, quic_user_agent_id, enable_spdy, enable_brotli, http_cache,
        http_cache_max_size, load_disable_cache, storage_path, accept_language,
--      user_agent, std::move(experimental_options.value()),
-+      user_agent, envoy_url, std::move(experimental_options.value()),
+-      user_agent, std::move(experimental_options).value(),
++      user_agent, envoy_url, std::move(experimental_options).value(),
        std::move(mock_cert_verifier), enable_network_quality_estimator,
        bypass_public_key_pinning_for_local_trust_anchors,
        network_thread_priority));
