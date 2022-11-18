@@ -1,12 +1,12 @@
 package org.greatfire.envoy
 
 import android.util.Log
-import okhttp3.Call
-import okhttp3.Interceptor
-import okhttp3.Request
-import okhttp3.Response
+import okhttp3.*
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.chromium.net.CronetEngine
 import java.io.IOException
+import java.net.SocketException
+import java.net.SocketTimeoutException
 
 class CronetInterceptor(private var mCronetEngine: CronetEngine?) : Interceptor {
 
@@ -20,13 +20,51 @@ class CronetInterceptor(private var mCronetEngine: CronetEngine?) : Interceptor 
     override fun intercept(chain: Interceptor.Chain): Response {
         return when {
             mCronetEngine != null -> {
-                Log.d(TAG, "hit interceptor for " + chain.request().url)
-                proxyToCronet(chain.request(), chain.call(), mCronetEngine!!)
+                try {
+                    Log.d(TAG, "hit interceptor for " + chain.request().url)
+                    proxyToCronet(chain.request(), chain.call(), mCronetEngine!!)
+                } catch (se: SocketTimeoutException) {
+                    Log.e(TAG, "got socket timeout exception for " + chain.request().url + " skipping interceptor")
+                    return Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(400)
+                        .message("socket timeout exception")
+                        .body("socket timeout exception".toResponseBody(null))
+                        .build()
+                } catch (e: Exception) {
+                    Log.e(TAG, "got other exception for " + chain.request().url + " skipping interceptor")
+                    return Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(400)
+                        .message("other exception")
+                        .body("other exception".toResponseBody(null))
+                        .build()                }
             }
             CronetNetworking.cronetEngine() != null -> {
-                Log.d(TAG, "hit global interceptor for " + chain.request().url)
-                // This will stop later interceptors
-                proxyToCronet(chain.request(), chain.call())
+                try {
+                    Log.d(TAG, "hit global interceptor for " + chain.request().url)
+                    // This will stop later interceptors
+                    proxyToCronet(chain.request(), chain.call())
+                } catch (se: SocketTimeoutException) {
+                    Log.e(TAG, "got socket timeout exception for " + chain.request().url + " skipping global interceptor")
+                    return Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(400)
+                        .message("socket timeout exception")
+                        .body("socket timeout exception".toResponseBody(null))
+                        .build()
+                } catch (e: Exception) {
+                    Log.e(TAG, "got other exception for " + chain.request().url + " skipping global interceptor")
+                    return Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(400)
+                        .message("other exception")
+                        .body("other exception".toResponseBody(null))
+                        .build()                }
             }
             else -> {
                 Log.d(TAG, "bypass interceptor for " + chain.request().url)
