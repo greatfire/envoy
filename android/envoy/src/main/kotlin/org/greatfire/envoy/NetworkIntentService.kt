@@ -102,6 +102,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     // Binder given to clients
     private val binder = NetworkBinder()
 
+    // map urls to their cache for testing and cleanup
+    private var cacheCounter = 0
+    private val cacheMap = Collections.synchronizedMap(mutableMapOf<String, String>())
+
     inner class NetworkBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
         fun getService(): NetworkIntentService = this@NetworkIntentService
@@ -412,11 +416,19 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "create request to " + captive_portal_url + " for url: " + envoyUrl)
         }
 
+        // increment cache counter, create folder name
+        cacheCounter = cacheCounter + 1
+        cacheMap.put(envoyUrl, "cache_" + cacheCounter)
+        Log.d(TAG, "caching: " + envoyUrl + " -> cache_" + cacheCounter)
+
         // set up http cache dir
-        val cacheDir = File(applicationContext.cacheDir, envoyService + "-cache")
+        // val cacheDir = File(applicationContext.cacheDir, envoyService + "-cache")
+        val cacheDir = File(applicationContext.cacheDir, cacheMap.get(envoyUrl))
         if (!cacheDir.exists()) {
             Log.d(TAG, "cache setup, create " + cacheDir.absolutePath)
             cacheDir.mkdirs()
+        } else {
+            Log.d(TAG, "cache setup, use " + cacheDir.absolutePath)
         }
 
         val executor: Executor = Executors.newSingleThreadExecutor()
@@ -496,22 +508,39 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    fun cacheCleanup(envoyService: String) {
+    fun cacheCleanup(envoyUrl: String) {
+
+        Log.d(TAG, "cache keys: " + cacheMap.keys.toString())
+
+        if (envoyUrl.isNullOrEmpty()) {
+            Log.e(TAG, "can't do cache cleanup for null url")
+            return
+        } else if (!cacheMap.containsKey(envoyUrl)) {
+            Log.e(TAG, "no cache directory found for url " + envoyUrl)
+            return
+        } else {
+            Log.d(TAG, "cache cleanup for url " + cacheMap.get(envoyUrl))
+        }
         // clean up http cache dir
-        val cacheDir = File(applicationContext.cacheDir, envoyService + "-cache")
+        val cacheDir = File(applicationContext.cacheDir, cacheMap.get(envoyUrl))
         if (cacheDir.exists()) {
             cacheDir.let {
                 if (it.exists()) {
                     val files = it.listFiles()
                     if (files != null) {
                         for (file in files) {
-                            Log.d(TAG, "cache cleanup, delete " + file.absolutePath)
-                            file.delete()
+                            if (file.deleteRecursively()) {
+                                Log.d(TAG, "cache cleanup, delete " + file.absolutePath)
+                            } else {
+                                Log.e(TAG, "cache cleanup, failed to delete " + file.absolutePath)
+                            }
                         }
                     }
                 }
             }
-        } 
+            cacheDir.deleteRecursively()
+        }
+        cacheMap.remove(envoyUrl)
     }
 
     fun getDnsttUrls(dnsttConfig: List<String>?, hysteriaCert: String?) {
@@ -786,7 +815,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.w(TAG, "onSucceeded method called but UrlResponseInfo was null")
             }
 
-            cacheCleanup(envoyService)
+            cacheCleanup(envoyUrl)
         }
 
         override fun onFailed(
@@ -798,7 +827,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " / " + envoyService + " -> " + error?.message)
             handleInvalidUrl()
 
-            cacheCleanup(envoyService)
+            cacheCleanup(envoyUrl)
         }
 
         fun handleInvalidUrl() {
