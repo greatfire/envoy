@@ -156,10 +156,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                    dnsttUrls: Boolean,
                                    captive_portal_url: String = "https://www.google.com/generate_204") {
 
-        if (dnsttUrls) {
-            Log.d(TAG, "got additional dnstt urls, clear previously submitted urls")
-            submittedUrls.clear()
-        }
+        Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
+        submittedUrls.clear()
 
         if (!directUrls.isNullOrEmpty()) {
             directUrls.forEach { directUrl ->
@@ -754,7 +752,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                 } else {
                     // logs captive portal url used to validate envoy url
-                    Log.e(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
+                    Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
                     handleInvalidUrl()
                 }
             } else {
@@ -768,7 +766,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 error: CronetException?
         ) {
             // logs captive portal url used to validate envoy url
-            Log.e(TAG, "onFailed method called for invalid url " + info?.url + " / " + envoyService + " -> " + error?.message)
+            Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
             handleInvalidUrl()
         }
 
