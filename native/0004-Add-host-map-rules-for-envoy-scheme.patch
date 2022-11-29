@@ -3,7 +3,7 @@
  2 files changed, 39 insertions(+), 3 deletions(-)
 
 diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index d188a1f1d4047..560c10e91be8e 100644
+index 0976fd8f2770d..347aeb7aa4088 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
 @@ -14,8 +14,23 @@ Cronet_EnginePtr CreateCronetEngine() {
@@ -33,10 +33,10 @@ index d188a1f1d4047..560c10e91be8e 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 1b64e70df766c..35daa93c74ff2 100644
+index eb907b9ad540f..14e4f64f5100e 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
-@@ -20,6 +20,7 @@
+@@ -21,6 +21,7 @@
  #include "net/base/cache_type.h"
  #include "net/base/net_errors.h"
  #include "net/base/network_delegate_impl.h"
@@ -44,7 +44,7 @@ index 1b64e70df766c..35daa93c74ff2 100644
  #include "net/cert/cert_verifier.h"
  #include "net/cert/ct_log_verifier.h"
  #include "net/cert/ct_policy_enforcer.h"
-@@ -30,6 +31,7 @@
+@@ -31,6 +32,7 @@
  #include "net/dns/context_host_resolver.h"
  #include "net/dns/host_resolver.h"
  #include "net/dns/host_resolver_manager.h"
@@ -52,11 +52,11 @@ index 1b64e70df766c..35daa93c74ff2 100644
  #include "net/http/http_auth_handler_factory.h"
  #include "net/http/http_cache.h"
  #include "net/http/http_network_layer.h"
-@@ -429,7 +431,26 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -369,7 +371,26 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
      }
    }
    host_resolver_->SetRequestContext(context.get());
--  storage->set_host_resolver(std::move(host_resolver_));
+-  context->set_host_resolver(std::move(host_resolver_));
 +
 +  auto envoy_url = GURL(envoy_url_);
 +  std::string value;
@@ -68,15 +68,15 @@ index 1b64e70df766c..35daa93c74ff2 100644
 +    std::unique_ptr<net::MappedHostResolver> remapped_resolver(
 +        new net::MappedHostResolver(std::move(host_resolver_)));
 +    remapped_resolver->SetRulesFromString(value);
-+    storage->set_host_resolver(std::move(remapped_resolver));
++    context->set_host_resolver(std::move(remapped_resolver));
 +  } else if (GetValueForKeyInQuery(envoy_url, "address", &value)) {
 +    std::unique_ptr<net::MappedHostResolver> remapped_resolver(
 +        new net::MappedHostResolver(std::move(host_resolver_)));
 +    remapped_resolver->SetRulesFromString("MAP " + url.host() + " " + value);
-+    storage->set_host_resolver(std::move(remapped_resolver));
++    context->set_host_resolver(std::move(remapped_resolver));
 +  } else {
-+    storage->set_host_resolver(std::move(host_resolver_));
++    context->set_host_resolver(std::move(host_resolver_));
 +  }
  
    if (ssl_config_service_) {
-     storage->set_ssl_config_service(std::move(ssl_config_service_));
+     context->set_ssl_config_service(std::move(ssl_config_service_));

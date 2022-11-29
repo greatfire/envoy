@@ -2,7 +2,7 @@
  1 file changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index e965b0ecce59a..4ff0a08d9c011 100644
+index 4d3d5c06ca619..2cfa95293d2f4 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -18,7 +18,7 @@
@@ -14,7 +14,7 @@ index e965b0ecce59a..4ff0a08d9c011 100644
  #include "base/location.h"
  #include "base/memory/ptr_util.h"
  #include "base/metrics/field_trial.h"
-@@ -559,13 +559,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -562,13 +562,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
            !throttling_entry_->ShouldRejectRequest(*request_)) {
          if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
              request_->context()->envoy_url().rfind("https://", 0) == 0) {
@@ -31,7 +31,7 @@ index e965b0ecce59a..4ff0a08d9c011 100644
            auto envoy_url = GURL(request_->context()->envoy_url());
            if (envoy_url.SchemeIsHTTPOrHTTPS()) {
              request_info_.url = envoy_url; // TODO check is_vaid() before set
-@@ -580,6 +576,8 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -583,6 +579,8 @@ void URLRequestHttpJob::StartTransactionInternal() {
                  // see GetUnescapedValue, TODO check is_valid() before set
                  request_info_.url =
                      GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
@@ -40,7 +40,7 @@ index e965b0ecce59a..4ff0a08d9c011 100644
                } else if (key.rfind(headerPrefix, 0) == 0 &&
                           key.size() > headerPrefixLength) {
                  request_info_.extra_headers.SetHeader(
-@@ -589,8 +587,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -592,8 +590,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
            }
  
            // count for cache key

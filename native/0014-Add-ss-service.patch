@@ -8,7 +8,7 @@
  7 files changed, 135 insertions(+)
 
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index ef7662c465e3b..00ef78ac42a2a 100644
+index 3885315993c0c..480ae699754d2 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
 @@ -42,6 +42,7 @@ chrome_java_sources = [
@@ -20,10 +20,10 @@ index ef7662c465e3b..00ef78ac42a2a 100644
    "java/src/org/chromium/chrome/browser/SnackbarActivity.java",
    "java/src/org/chromium/chrome/browser/SwipeRefreshHandler.java",
 diff --git a/chrome/android/chrome_public_apk_tmpl.gni b/chrome/android/chrome_public_apk_tmpl.gni
-index f55b7dd451f3d..055661dec247b 100644
+index 22ac3a037a7fc..5313b0ee30c91 100644
 --- a/chrome/android/chrome_public_apk_tmpl.gni
 +++ b/chrome/android/chrome_public_apk_tmpl.gni
-@@ -253,10 +253,12 @@ template("chrome_public_common_apk_or_module_tmpl") {
+@@ -254,10 +254,12 @@ template("chrome_public_common_apk_or_module_tmpl") {
          "//components/crash/core/app:chrome_crashpad_handler_named_as_so",
          "//third_party/icu:icu_assets",
        ]
@@ -37,10 +37,10 @@ index f55b7dd451f3d..055661dec247b 100644
          library_always_compress = []
        }
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
-index a3b0ac4f93818..58790d38ea92a 100644
+index ec150499fd92d..f6db1b13aab8d 100644
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
-@@ -26,6 +26,7 @@ by a child template that "extends" this file.
+@@ -28,6 +28,7 @@ by a child template that "extends" this file.
      <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
      <uses-permission-sdk-23 android:name="android.permission.ACCESS_WIFI_STATE" />
      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -48,7 +48,7 @@ index a3b0ac4f93818..58790d38ea92a 100644
  
      <!--
        Enable runtime permissions as uses-permission in tip of tree builds
-@@ -869,6 +870,11 @@ by a child template that "extends" this file.
+@@ -871,6 +872,11 @@ by a child template that "extends" this file.
              android:name="org.chromium.chrome.browser.browserservices.ui.trustedwebactivity.DisclosureAcceptanceBroadcastReceiver"
              android:exported="false" />
  
@@ -61,10 +61,10 @@ index a3b0ac4f93818..58790d38ea92a 100644
          <service
              android:description="@string/decoder_description"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-index 419cbde4e1cdf..917ba26b7e449 100644
+index 6df71fa44b611..0fbe86dfb0a01 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-@@ -32,6 +32,7 @@ import androidx.annotation.IntDef;
+@@ -33,6 +33,7 @@ import androidx.annotation.IntDef;
  import androidx.annotation.Nullable;
  import androidx.annotation.RequiresApi;
  import androidx.annotation.VisibleForTesting;
@@ -72,7 +72,7 @@ index 419cbde4e1cdf..917ba26b7e449 100644
  import androidx.lifecycle.Lifecycle;
  import androidx.lifecycle.LifecycleObserver;
  import androidx.lifecycle.LifecycleRegistry;
-@@ -1766,6 +1767,8 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
+@@ -1770,6 +1771,8 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
      @Override
      public void performPostInflationStartup() {
          super.performPostInflationStartup();
@@ -166,12 +166,12 @@ index 0000000000000..e961a33a2835e
 +    }
 +}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java b/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java
-index df8ff99ef16b5..d3cd7496a98dc 100644
+index 2f37a523c46c7..8d2f041557677 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/base/SplitChromeApplication.java
 @@ -19,6 +19,15 @@ import org.chromium.base.TraceEvent;
- import org.chromium.base.annotations.IdentifierNameString;
  import org.chromium.base.metrics.RecordHistogram;
+ import org.chromium.build.annotations.IdentifierNameString;
  
 +import org.json.JSONException;
 +import org.json.JSONObject;

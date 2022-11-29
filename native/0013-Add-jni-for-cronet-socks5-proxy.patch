@@ -5,7 +5,7 @@
  4 files changed, 28 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index b3deee96b309a..35abd154e9420 100644
+index 99fc5f16ae2ac..dfd1ea05b3e1c 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -103,6 +103,16 @@ void CronetContextAdapter::InitRequestContextOnInitThread(
@@ -26,7 +26,7 @@ index b3deee96b309a..35abd154e9420 100644
      JNIEnv* env,
      const JavaParamRef<jobject>& jcaller,
 diff --git a/components/cronet/android/cronet_context_adapter.h b/components/cronet/android/cronet_context_adapter.h
-index 244a2226e8963..74842c067f3a5 100644
+index 6c256da0a28ce..57478fe7d4044 100644
 --- a/components/cronet/android/cronet_context_adapter.h
 +++ b/components/cronet/android/cronet_context_adapter.h
 @@ -51,6 +51,11 @@ class CronetContextAdapter : public CronetContext::Callback {
@@ -52,7 +52,7 @@ index 244a2226e8963..74842c067f3a5 100644
    // to use smaller responses when estimating throughput, and to disable the
    // device offline checks when computing the effective connection type or when
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index 1fa4ab2b9b9eb..3653dbdcb567b 100644
+index 0ac80eb23964c..757e5065a9687 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 @@ -231,8 +231,13 @@ public class CronetUrlRequestContext extends CronetEngineBase {
@@ -80,7 +80,7 @@ index 1fa4ab2b9b9eb..3653dbdcb567b 100644
          void configureNetworkQualityEstimatorForTesting(long nativePtr,
                  CronetUrlRequestContext caller, boolean useLocalHostRequests,
 diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
-index 1ff0b8f2433ec..fce8343c460d4 100644
+index 9538b5072539a..399b4b9be683e 100644
 --- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
 +++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
 @@ -125,7 +125,8 @@ public class CronetSampleActivity extends Activity {

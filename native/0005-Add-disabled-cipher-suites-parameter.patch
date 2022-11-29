@@ -2,11 +2,11 @@
  components/cronet/native/sample/main.cc          |  5 +++++
  net/ssl/ssl_config_service_defaults.cc           |  4 ++++
  net/ssl/ssl_config_service_defaults.h            |  1 +
- net/url_request/url_request_context_builder.cc   | 27 ++++++++++++++++++++++--
- 5 files changed, 46 insertions(+), 2 deletions(-)
+ net/url_request/url_request_context_builder.cc   | 26 ++++++++++++++++++++++--
+ 5 files changed, 45 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/browser/ssl/ssl_config_service_manager.cc b/chrome/browser/ssl/ssl_config_service_manager.cc
-index 8845f3cc833fb..2614b30387cec 100644
+index 6537a65ed4cd3..66cf928be46cb 100644
 --- a/chrome/browser/ssl/ssl_config_service_manager.cc
 +++ b/chrome/browser/ssl/ssl_config_service_manager.cc
 @@ -13,6 +13,7 @@
@@ -25,7 +25,7 @@ index 8845f3cc833fb..2614b30387cec 100644
  #include "net/cert/cert_verifier.h"
  #include "net/ssl/ssl_cipher_suite_names.h"
  #include "net/ssl/ssl_config_service.h"
-@@ -176,6 +178,7 @@ void SSLConfigServiceManager::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -177,6 +179,7 @@ void SSLConfigServiceManager::RegisterPrefs(PrefRegistrySimple* registry) {
  
  void SSLConfigServiceManager::AddToNetworkContextParams(
      network::mojom::NetworkContextParams* network_context_params) {
@@ -33,10 +33,10 @@ index 8845f3cc833fb..2614b30387cec 100644
    network_context_params->initial_ssl_config = GetSSLConfigFromPrefs();
    mojo::Remote<network::mojom::SSLConfigClient> ssl_config_client;
    network_context_params->ssl_config_client_receiver =
-@@ -249,6 +252,14 @@ void SSLConfigServiceManager::OnDisabledCipherSuitesChange(
-   const base::ListValue* value = &base::Value::AsListValue(
-       *local_state->GetList(prefs::kCipherSuiteBlacklist));
-   disabled_cipher_suites_ = ParseCipherSuites(ListValueToStringVector(value));
+@@ -250,6 +253,14 @@ void SSLConfigServiceManager::OnDisabledCipherSuitesChange(
+   const base::Value::List& list =
+       local_state->GetList(prefs::kCipherSuiteBlacklist);
+   disabled_cipher_suites_ = ParseCipherSuites(ValueListToStringVector(list));
 +
 +  auto envoy_url = GURL(local_state->GetString(prefs::kEnvoyUrl));
 +  std::string disabled_cipher_suites;
@@ -49,7 +49,7 @@ index 8845f3cc833fb..2614b30387cec 100644
  
  void SSLConfigServiceManager::CacheVariationsPolicy(PrefService* local_state) {
 diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index 560c10e91be8e..7b21245fdb8aa 100644
+index 347aeb7aa4088..f69f8e5d3cd49 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
 @@ -30,6 +30,11 @@ Cronet_EnginePtr CreateCronetEngine() {
@@ -65,7 +65,7 @@ index 560c10e91be8e..7b21245fdb8aa 100644
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
 diff --git a/net/ssl/ssl_config_service_defaults.cc b/net/ssl/ssl_config_service_defaults.cc
-index 9348bb1648927..5fa9090f85cb1 100644
+index c48064549ced4..f2831cdb04ea1 100644
 --- a/net/ssl/ssl_config_service_defaults.cc
 +++ b/net/ssl/ssl_config_service_defaults.cc
 @@ -9,6 +9,10 @@ namespace net {
@@ -80,7 +80,7 @@ index 9348bb1648927..5fa9090f85cb1 100644
    return default_config_;
  }
 diff --git a/net/ssl/ssl_config_service_defaults.h b/net/ssl/ssl_config_service_defaults.h
-index c77a29140df77..5289c938b09c7 100644
+index 4bf47d05b527f..4cc06b182d624 100644
 --- a/net/ssl/ssl_config_service_defaults.h
 +++ b/net/ssl/ssl_config_service_defaults.h
 @@ -21,6 +21,7 @@ class NET_EXPORT SSLConfigServiceDefaults : public SSLConfigService {
@@ -92,7 +92,7 @@ index c77a29140df77..5289c938b09c7 100644
    // Returns the default SSL config settings.
    SSLContextConfig GetSSLContextConfig() override;
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 35daa93c74ff2..7f4480eb5d4c7 100644
+index 14e4f64f5100e..883d2e49dc032 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -13,6 +13,7 @@
@@ -103,7 +103,7 @@ index 35daa93c74ff2..7f4480eb5d4c7 100644
  #include "base/task/single_thread_task_runner.h"
  #include "base/task/thread_pool.h"
  #include "base/threading/thread_task_runner_handle.h"
-@@ -47,6 +48,7 @@
+@@ -48,6 +49,7 @@
  #include "net/quic/quic_context.h"
  #include "net/quic/quic_stream_factory.h"
  #include "net/socket/network_binding_client_socket_factory.h"
@@ -111,13 +111,12 @@ index 35daa93c74ff2..7f4480eb5d4c7 100644
  #include "net/ssl/ssl_config_service_defaults.h"
  #include "net/url_request/static_http_user_agent_settings.h"
  #include "net/url_request/url_request_context.h"
-@@ -455,8 +457,29 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -395,8 +397,28 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
    if (ssl_config_service_) {
-     storage->set_ssl_config_service(std::move(ssl_config_service_));
+     context->set_ssl_config_service(std::move(ssl_config_service_));
    } else {
--    storage->set_ssl_config_service(
+-    context->set_ssl_config_service(
 -        std::make_unique<SSLConfigServiceDefaults>());
-+
 +    SSLContextConfig ssl_context_config;
 +    std::vector<uint16_t> disabled_ciphers;
 +    if (GetValueForKeyInQuery(envoy_url, "disabled_cipher_suites", &value)) {
@@ -139,7 +138,7 @@ index 35daa93c74ff2..7f4480eb5d4c7 100644
 +      ssl_context_config.disabled_cipher_suites =  cipher_suites;
 +    }
 +    auto ssl_config_service_ptr = std::make_unique<SSLConfigServiceDefaults>(ssl_context_config);
-+    storage->set_ssl_config_service(std::move(ssl_config_service_ptr));
++    context->set_ssl_config_service(std::move(ssl_config_service_ptr));
    }
  
    if (http_auth_handler_factory_) {

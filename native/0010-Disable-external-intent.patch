@@ -2,10 +2,10 @@
  1 file changed, 3 insertions(+)
 
 diff --git a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-index 7c354a6efbca4..b7c321451ee96 100644
+index 7bccc6fdb561b..f8863ee8c02b6 100644
 --- a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
 +++ b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-@@ -835,6 +835,8 @@ public class ExternalNavigationHandler {
+@@ -1048,6 +1048,8 @@ public class ExternalNavigationHandler {
      }
  
      private boolean externalIntentRequestsDisabledForUrl(ExternalNavigationParams params) {
@@ -14,7 +14,7 @@ index 7c354a6efbca4..b7c321451ee96 100644
          // TODO(changwan): check if we need to handle URL even when external intent is off.
          if (CommandLine.getInstance().hasSwitch(
                      ExternalIntentsSwitches.DISABLE_EXTERNAL_INTENT_REQUESTS)) {
-@@ -847,6 +849,7 @@ public class ExternalNavigationHandler {
+@@ -1060,6 +1062,7 @@ public class ExternalNavigationHandler {
              return true;
          }
          return false;

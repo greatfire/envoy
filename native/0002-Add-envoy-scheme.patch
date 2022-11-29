@@ -3,7 +3,7 @@
  2 files changed, 32 insertions(+), 5 deletions(-)
 
 diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index 3185d5934aea9..d188a1f1d4047 100644
+index c0a357140d140..0976fd8f2770d 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
 @@ -14,6 +14,8 @@ Cronet_EnginePtr CreateCronetEngine() {
@@ -16,18 +16,18 @@ index 3185d5934aea9..d188a1f1d4047 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index a12c958127c85..e965b0ecce59a 100644
+index bbf36b7d0c5bc..4d3d5c06ca619 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -27,6 +27,7 @@
+@@ -26,6 +26,7 @@
+ #include "base/metrics/histogram_macros.h"
  #include "base/numerics/safe_conversions.h"
  #include "base/rand_util.h"
- #include "base/stl_util.h"
 +#include "base/strings/escape.h"
  #include "base/strings/string_util.h"
  #include "base/strings/stringprintf.h"
  #include "base/task/single_thread_task_runner.h"
-@@ -563,12 +564,36 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -566,12 +567,36 @@ void URLRequestHttpJob::StartTransactionInternal() {
            base::MD5Update(&md5ctx, request_->url().spec());
            base::MD5Digest digest;
            base::MD5Final(&digest, &md5ctx);

@@ -15,7 +15,7 @@
  14 files changed, 144 insertions(+), 3 deletions(-)
 
 diff --git a/components/cronet/native/cronet.idl b/components/cronet/native/cronet.idl
-index f0be146362360..85b9547085b1d 100644
+index ddb3ad5b3b705..0bdf3ef4059b0 100644
 --- a/components/cronet/native/cronet.idl
 +++ b/components/cronet/native/cronet.idl
 @@ -510,6 +510,7 @@ struct EngineParams {
@@ -27,7 +27,7 @@ index f0be146362360..85b9547085b1d 100644
    /**
     * Sets a default value for the Accept-Language header value for UrlRequests
 diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
-index 8c110870a0c4f..41394fda40683 100644
+index 6f27d1a6d0059..d6ea7f8c8e3e0 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
 @@ -149,6 +149,7 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
@@ -39,7 +39,7 @@ index 8c110870a0c4f..41394fda40683 100644
    context_config_builder.bypass_public_key_pinning_for_local_trust_anchors =
        params->enable_public_key_pinning_bypass_for_local_trust_anchors;
 diff --git a/components/cronet/native/generated/cronet.idl_c.h b/components/cronet/native/generated/cronet.idl_c.h
-index 041fd8f58813d..749938a50780f 100644
+index 988e6efacb0f3..b00b185572ef1 100644
 --- a/components/cronet/native/generated/cronet.idl_c.h
 +++ b/components/cronet/native/generated/cronet.idl_c.h
 @@ -795,6 +795,9 @@ CRONET_EXPORT
@@ -63,7 +63,7 @@ index 041fd8f58813d..749938a50780f 100644
      const Cronet_EngineParamsPtr self);
  CRONET_EXPORT
 diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.cc b/components/cronet/native/generated/cronet.idl_impl_struct.cc
-index 9ff9bc81ccb26..a7767ff223ee3 100644
+index 61667e399148b..abb6dd92c71db 100644
 --- a/components/cronet/native/generated/cronet.idl_impl_struct.cc
 +++ b/components/cronet/native/generated/cronet.idl_impl_struct.cc
 @@ -249,6 +249,12 @@ void Cronet_EngineParams_user_agent_set(Cronet_EngineParamsPtr self,
@@ -93,7 +93,7 @@ index 9ff9bc81ccb26..a7767ff223ee3 100644
      const Cronet_EngineParamsPtr self) {
    DCHECK(self);
 diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.h b/components/cronet/native/generated/cronet.idl_impl_struct.h
-index 84d6db6c3cfd1..592cae0e3efa1 100644
+index a665b85ac93cb..95841a7e18296 100644
 --- a/components/cronet/native/generated/cronet.idl_impl_struct.h
 +++ b/components/cronet/native/generated/cronet.idl_impl_struct.h
 @@ -83,6 +83,7 @@ struct Cronet_EngineParams {
@@ -105,7 +105,7 @@ index 84d6db6c3cfd1..592cae0e3efa1 100644
    std::string storage_path;
    bool enable_quic = true;
 diff --git a/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc b/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc
-index 06f48ee97b4e1..4bc6c6d6223df 100644
+index 11991a5a9ba48..9a2c19a8f8624 100644
 --- a/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc
 +++ b/components/cronet/native/generated/cronet.idl_impl_struct_unittest.cc
 @@ -107,6 +107,10 @@ TEST_F(CronetStructTest, TestCronet_EngineParams) {
@@ -120,7 +120,7 @@ index 06f48ee97b4e1..4bc6c6d6223df 100644
        second, Cronet_EngineParams_accept_language_get(first));
    EXPECT_STREQ(Cronet_EngineParams_accept_language_get(first),
 diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index fb2272e713711..3185d5934aea9 100644
+index 0cbbdce569e14..c0a357140d140 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
 @@ -12,6 +12,8 @@ Cronet_EnginePtr CreateCronetEngine() {
@@ -133,7 +133,7 @@ index fb2272e713711..3185d5934aea9 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index f11dfa66bd2cd..136cc8017cfed 100644
+index b03411758c0d7..99332ef6a38db 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -276,6 +276,46 @@ URLRequestContextConfig::PreloadedNelAndReportingHeader::
@@ -211,7 +211,7 @@ index f11dfa66bd2cd..136cc8017cfed 100644
        network_thread_priority);
  }
 diff --git a/components/cronet/url_request_context_config.h b/components/cronet/url_request_context_config.h
-index 338048eab391e..154656d45b898 100644
+index 6561e1ccec536..42e076ef83854 100644
 --- a/components/cronet/url_request_context_config.h
 +++ b/components/cronet/url_request_context_config.h
 @@ -130,6 +130,8 @@ struct URLRequestContextConfig {
@@ -285,7 +285,7 @@ index 338048eab391e..154656d45b898 100644
    // experiments and their corresponding configuration options. The format
    // is a JSON object with the name of the experiment as the key, and the
 diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket_pool_manager.cc
-index 3d896b83a56a6..4c56444b3c1e2 100644
+index 521ebc8f5023e..9e5dbfa8c41e8 100644
 --- a/net/socket/client_socket_pool_manager.cc
 +++ b/net/socket/client_socket_pool_manager.cc
 @@ -48,7 +48,7 @@ static_assert(std::size(g_max_sockets_per_pool) ==
@@ -298,10 +298,10 @@ index 3d896b83a56a6..4c56444b3c1e2 100644
  };
  
 diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
-index 68a212dac8951..6bac226c8529b 100644
+index 4ee83f194cbc3..f7370f0487ad5 100644
 --- a/net/url_request/url_request_context.h
 +++ b/net/url_request/url_request_context.h
-@@ -231,6 +231,9 @@ class NET_EXPORT URLRequestContext {
+@@ -231,6 +231,9 @@ class NET_EXPORT URLRequestContext final {
    // context has been bound to.
    handles::NetworkHandle bound_network() const { return bound_network_; }
  
@@ -311,19 +311,19 @@ index 68a212dac8951..6bac226c8529b 100644
    void AssertCalledOnValidThread() {
      DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
    }
-@@ -366,6 +369,7 @@ class NET_EXPORT URLRequestContext {
-   // Triggers a DCHECK if a NetworkIsolationKey/IsolationInfo is not provided to
-   // a request when true.
+@@ -359,6 +362,7 @@ class NET_EXPORT URLRequestContext final {
+   // Triggers a DCHECK if a NetworkAnonymizationKey/IsolationInfo is not
+   // provided to a request when true.
    bool require_network_isolation_key_ = false;
 +  std::string envoy_url_;
  
    handles::NetworkHandle bound_network_;
  
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 50c1b5a964d41..1b64e70df766c 100644
+index 6ee8f97b02225..eb907b9ad540f 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
-@@ -184,6 +184,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
+@@ -125,6 +125,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
    user_agent_ = user_agent;
  }
  
@@ -334,17 +334,17 @@ index 50c1b5a964d41..1b64e70df766c 100644
  void URLRequestContextBuilder::set_http_user_agent_settings(
      std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings) {
    http_user_agent_settings_ = std::move(http_user_agent_settings);
-@@ -338,6 +342,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -278,6 +282,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
    context->set_require_network_isolation_key(require_network_isolation_key_);
    context->set_network_quality_estimator(network_quality_estimator_);
  
 +  if (!envoy_url_.empty())
 +    context->set_envoy_url(envoy_url_);
    if (http_user_agent_settings_) {
-     storage->set_http_user_agent_settings(std::move(http_user_agent_settings_));
+     context->set_http_user_agent_settings(std::move(http_user_agent_settings_));
    } else {
 diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
-index cec74606d04cb..05817a2db0602 100644
+index d2220a6a86bf1..dd0c3bdd107dd 100644
 --- a/net/url_request/url_request_context_builder.h
 +++ b/net/url_request/url_request_context_builder.h
 @@ -193,6 +193,7 @@ class NET_EXPORT URLRequestContextBuilder {
@@ -364,7 +364,7 @@ index cec74606d04cb..05817a2db0602 100644
  
    bool http_cache_enabled_ = true;
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index bd336369896d6..a12c958127c85 100644
+index 0878808a8dc72..bbf36b7d0c5bc 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -18,6 +18,7 @@
@@ -375,7 +375,7 @@ index bd336369896d6..a12c958127c85 100644
  #include "base/location.h"
  #include "base/memory/ptr_util.h"
  #include "base/metrics/field_trial.h"
-@@ -555,6 +556,23 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -558,6 +559,23 @@ void URLRequestHttpJob::StartTransactionInternal() {
  
        if (!throttling_entry_.get() ||
            !throttling_entry_->ShouldRejectRequest(*request_)) {

@@ -12,7 +12,7 @@
  11 files changed, 91 insertions(+)
 
 diff --git a/components/cronet/BUILD.gn b/components/cronet/BUILD.gn
-index 7fa6eb50aa187..243f28f095a1b 100644
+index 06a938227f71b..8da038d769ea2 100644
 --- a/components/cronet/BUILD.gn
 +++ b/components/cronet/BUILD.gn
 @@ -100,6 +100,27 @@ if (is_android) {
@@ -44,7 +44,7 @@ index 7fa6eb50aa187..243f28f095a1b 100644
    group("cronet_package") {
      deps = [ "//components/cronet/ios:cronet_package_ios" ]
 diff --git a/components/cronet/android/cronet_library_loader.cc b/components/cronet/android/cronet_library_loader.cc
-index 2a7a261e98648..4679f80ffe9ed 100644
+index f25be3bfe8146..486eb7c7a990d 100644
 --- a/components/cronet/android/cronet_library_loader.cc
 +++ b/components/cronet/android/cronet_library_loader.cc
 @@ -182,6 +182,17 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
@@ -66,7 +66,7 @@ index 2a7a261e98648..4679f80ffe9ed 100644
  std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
      std::unique_ptr<net::ProxyConfigService> proxy_config_service,
 diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
-index b940d8c62c9ce..d451915fdba7a 100644
+index f5510b6120248..d1b759279174b 100644
 --- a/components/cronet/cronet_context.cc
 +++ b/components/cronet/cronet_context.cc
 @@ -242,6 +242,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
@@ -90,7 +90,7 @@ index b940d8c62c9ce..d451915fdba7a 100644
    DCHECK(OnInitThread());
    // Cannot create this inside Initialize because Android requires this to be
 diff --git a/components/cronet/cronet_context.h b/components/cronet/cronet_context.h
-index 8eaea0487fc11..99119b9082b7b 100644
+index 4570cd1938fb8..15d86089c074d 100644
 --- a/components/cronet/cronet_context.h
 +++ b/components/cronet/cronet_context.h
 @@ -111,6 +111,8 @@ class CronetContext {
@@ -103,7 +103,7 @@ index 8eaea0487fc11..99119b9082b7b 100644
    void InitRequestContextOnInitThread();
  
 diff --git a/components/cronet/cronet_global_state.h b/components/cronet/cronet_global_state.h
-index 10003b0be1f4e..f3e959d817617 100644
+index 327a6cb424265..894221e95dab3 100644
 --- a/components/cronet/cronet_global_state.h
 +++ b/components/cronet/cronet_global_state.h
 @@ -8,6 +8,7 @@
@@ -125,7 +125,7 @@ index 10003b0be1f4e..f3e959d817617 100644
  // system proxy settings. Cronet will call this API only after a prior call
  // to EnsureInitialized() has returned.
 diff --git a/components/cronet/cronet_global_state_stubs.cc b/components/cronet/cronet_global_state_stubs.cc
-index 9afd400bc63a2..ab95d02f34b25 100644
+index d110cae3e4c3b..49782d07e02b7 100644
 --- a/components/cronet/cronet_global_state_stubs.cc
 +++ b/components/cronet/cronet_global_state_stubs.cc
 @@ -60,6 +60,12 @@ void PostTaskToInitThread(const base::Location& posted_from,
@@ -142,7 +142,7 @@ index 9afd400bc63a2..ab95d02f34b25 100644
      const scoped_refptr<base::SequencedTaskRunner>& io_task_runner) {
    return net::ProxyConfigService::CreateSystemProxyConfigService(
 diff --git a/components/cronet/ios/cronet_global_state_ios.mm b/components/cronet/ios/cronet_global_state_ios.mm
-index acd8aa50a09a6..fe294842da3e2 100644
+index 3e215097596d4..ac789f02f77fb 100644
 --- a/components/cronet/ios/cronet_global_state_ios.mm
 +++ b/components/cronet/ios/cronet_global_state_ios.mm
 @@ -72,6 +72,11 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
@@ -158,7 +158,7 @@ index acd8aa50a09a6..fe294842da3e2 100644
      std::unique_ptr<net::ProxyConfigService> proxy_config_service,
      net::NetLog* net_log) {
 diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
-index 41394fda40683..271ab334f5b03 100644
+index d6ea7f8c8e3e0..a4e93b23c5b3f 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
 @@ -200,9 +200,16 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
@@ -179,7 +179,7 @@ index 41394fda40683..271ab334f5b03 100644
  }
  
 diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index 7b21245fdb8aa..1081a640cf726 100644
+index f69f8e5d3cd49..ffdb1a37fd629 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
 @@ -35,6 +35,7 @@ Cronet_EnginePtr CreateCronetEngine() {
@@ -191,7 +191,7 @@ index 7b21245fdb8aa..1081a640cf726 100644
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
 diff --git a/net/proxy_resolution/proxy_config_service.cc b/net/proxy_resolution/proxy_config_service.cc
-index 25d8a3216191b..7bbf5946b244d 100644
+index 27544e1a2952d..5cfd2b922d9b3 100644
 --- a/net/proxy_resolution/proxy_config_service.cc
 +++ b/net/proxy_resolution/proxy_config_service.cc
 @@ -10,6 +10,8 @@
@@ -226,7 +226,7 @@ index 25d8a3216191b..7bbf5946b244d 100644
  std::unique_ptr<ProxyConfigService>
  ProxyConfigService::CreateSystemProxyConfigService(
 diff --git a/net/proxy_resolution/proxy_config_service.h b/net/proxy_resolution/proxy_config_service.h
-index 9c8273781da06..e4d9eeb35e92f 100644
+index d2681d46311cf..6b66539b18557 100644
 --- a/net/proxy_resolution/proxy_config_service.h
 +++ b/net/proxy_resolution/proxy_config_service.h
 @@ -8,6 +8,7 @@

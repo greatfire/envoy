@@ -10,7 +10,7 @@
  9 files changed, 30 insertions(+), 7 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index 76479bb91452c..1cec048621efe 100644
+index f6bef3d5fccc4..4664d1e068a69 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
 @@ -57,6 +57,7 @@ public class org.chromium.net.CronetEngine$Builder {
@@ -29,14 +29,14 @@ index 76479bb91452c..1cec048621efe 100644
    public abstract org.chromium.net.ExperimentalCronetEngine build();
    public org.chromium.net.ICronetEngineBuilder enableNetworkQualityEstimator(boolean);
    public org.chromium.net.ICronetEngineBuilder setThreadPriority(int);
-@@ -402,4 +404,4 @@ public abstract class org.chromium.net.UrlResponseInfo {
-   public abstract java.lang.String getProxyServer();
-   public abstract long getReceivedByteCount();
+@@ -395,4 +397,4 @@ public final class org.chromium.net.apihelpers.UploadDataProviders {
+   public static org.chromium.net.UploadDataProvider create(byte[], int, int);
+   public static org.chromium.net.UploadDataProvider create(byte[]);
  }
--Stamp: bfdd219e38031474ec7a93b265352d94
-+Stamp: 81095f63a4196db122d1e19dabb974b6
+-Stamp: 9ca96d8e2cee4df3a62cefff1a431d5a
++Stamp: d6d4c399618fe3dff865d73c328a9d1f
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
-index b7720524560d1..cf7a6c385349f 100644
+index 9941d67bbd97a..af658b248e122 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 +++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 @@ -113,6 +113,11 @@ public abstract class CronetEngine {
@@ -52,7 +52,7 @@ index b7720524560d1..cf7a6c385349f 100644
           * Sets directory for HTTP Cache and Cookie Storage. The directory must
           * exist.
 diff --git a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
-index 1f6694d4cc7bd..9a9bcb4940e05 100644
+index 4cdb0bf790198..e645c8218dfc8 100644
 --- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
 +++ b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
 @@ -36,6 +36,7 @@ public abstract class ICronetEngineBuilder {
@@ -64,7 +64,7 @@ index 1f6694d4cc7bd..9a9bcb4940e05 100644
  
      // Experimental API methods.
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index d6be7672a0a01..b3deee96b309a 100644
+index 8ae0e429e185e..99fc5f16ae2ac 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -243,6 +243,7 @@ int CronetContextAdapter::default_load_flags() const {
@@ -84,7 +84,7 @@ index d6be7672a0a01..b3deee96b309a 100644
                env, jexperimental_quic_connection_options),
            base::WrapUnique(
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
-index 977158d8872ed..1a60847f12dd1 100644
+index bb406f41cd9f1..f5647db0643ec 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
 @@ -139,6 +139,7 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
@@ -113,7 +113,7 @@ index 977158d8872ed..1a60847f12dd1 100644
      public CronetEngineBuilderImpl setStoragePath(String value) {
          if (!new File(value).isDirectory()) {
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index f6a3289ef47cf..1fa4ab2b9b9eb 100644
+index e4c2df648b454..0ac80eb23964c 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 @@ -249,7 +249,7 @@ public class CronetUrlRequestContext extends CronetEngineBase {
@@ -141,7 +141,7 @@ index f6a3289ef47cf..1fa4ab2b9b9eb 100644
                  boolean bypassPublicKeyPinningForLocalTrustAnchors, int networkThreadPriority);
  
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java b/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
-index b3981a3e08681..d4b7ff31d85d2 100644
+index 2b0e5d8ac6252..c4e350b267afe 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/JavaCronetEngine.java
 @@ -104,6 +104,7 @@ public final class JavaCronetEngine extends CronetEngineBase {
@@ -153,7 +153,7 @@ index b3981a3e08681..d4b7ff31d85d2 100644
                  allowDirectExecutor, trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet,
                  trafficStatsUid);
 diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
-index 0d72426a568a6..1ff0b8f2433ec 100644
+index 5d3a93c519b2b..9538b5072539a 100644
 --- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
 +++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
 @@ -125,6 +125,7 @@ public class CronetSampleActivity extends Activity {
@@ -165,7 +165,7 @@ index 0d72426a568a6..1ff0b8f2433ec 100644
  
          mCronetEngine = myBuilder.build();
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 136cc8017cfed..a20b11fd2c570 100644
+index 99332ef6a38db..733147fc32f4a 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -389,7 +389,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
