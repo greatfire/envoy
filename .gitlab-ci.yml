@@ -1,3 +1,4 @@
+---
 
 # set up apt for automated use
 .apt-template: &apt-template
@@ -27,12 +28,31 @@
 
 # -- jobs ------------------------------------------------------------
 
+envoy:
+  image: debian:bullseye-backports
+  artifacts:
+    name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_JOB_ID}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
+    paths:
+      - android/envoy/build/outputs/aar/*.*
+    expire_in: 1 week
+    when: on_success
+  script:
+    - *apt-template
+    - apt-get install default-jdk-headless git sdkmanager
+    - export ANDROID_SDK_ROOT=/opt/android-sdk
+    - sdkmanager tools platform-tools "build-tools;30.0.2" "platforms;android-29"
+    - cd android
+    - ./gradlew assembleRelease
+
 android:
   image: ubuntu:20.04
   cache:
     paths:
       - .gradle/wrapper
       - .gradle/caches
+  only:
+    changes:
+      - native/
   artifacts:
     name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_JOB_ID}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
     paths:
