@@ -55,7 +55,7 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.1.1'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     implementation 'org.greatfire.envoy:cronet:102.0.5005.41'
-    implementation 'org.greatfire:IEnvoyProxy:1.2.0'
+    implementation 'org.greatfire:IEnvoyProxy:1.2.1'
 }
 
 def stdout = new ByteArrayOutputStream()
