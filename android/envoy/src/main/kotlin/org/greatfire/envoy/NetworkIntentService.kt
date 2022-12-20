@@ -43,15 +43,21 @@ private const val EXTRA_PARAM_DNSTT = "org.greatfire.envoy.extra.PARAM_DNSTT"
 
 // Defines a custom Intent action
 const val ENVOY_BROADCAST_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
+const val ENVOY_BROADCAST_VALIDATION_CONTINUED = "org.greatfire.envoy.VALIDATION_CONTINUED"
 const val ENVOY_BROADCAST_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
+const val ENVOY_BROADCAST_BATCH_SUCCEEDED = "org.greatfire.envoy.BATCH_SUCCEEDED"
+const val ENVOY_BROADCAST_BATCH_FAILED = "org.greatfire.envoy.BATCH_FAILED"
 
 // Defines the key for the status "extra" in an Intent
 const val ENVOY_DATA_URLS_SUCCEEDED = "org.greatfire.envoy.URLS_SUCCEEDED"
+const val ENVOY_DATA_URLS_CONTINUED = "org.greatfire.envoy.URLS_CONTINUED"
 const val ENVOY_DATA_URLS_FAILED = "org.greatfire.envoy.URLS_FAILED"
 const val ENVOY_DATA_URL_SUCCEEDED = "org.greatfire.envoy.URL_SUCCEEDED"
 const val ENVOY_DATA_URL_FAILED = "org.greatfire.envoy.URL_FAILED"
 const val ENVOY_DATA_SERVICE_SUCCEEDED = "org.greatfire.envoy.SERVICE_SUCCEEDED"
 const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
+const val ENVOY_DATA_BATCH_LIST = "org.greatfire.envoy.BATCH_LIST"
+const val ENVOY_DATA_SERVICE_LIST = "org.greatfire.envoy.SERVICE_LIST"
 
 const val ENVOY_SERVICE_DIRECT = "direct"
 const val ENVOY_SERVICE_V2WS = "v2ws"
@@ -86,6 +92,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private var submittedUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var shuffledUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var currentBatch = Collections.synchronizedList(mutableListOf<String>())
+    private var currentBatchChecked = Collections.synchronizedList(mutableListOf<String>())
+    private var currentServiceChecked = Collections.synchronizedList(mutableListOf<String>())
     // currently only a single url is supported for each service but we may support more in the future
     private var v2rayWsUrls = Collections.synchronizedList(mutableListOf<String>())
     private var v2raySrtpUrls = Collections.synchronizedList(mutableListOf<String>())
@@ -153,8 +163,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                    directUrls: List<String>?,
                                    hysteriaCert: String?,
                                    dnsttConfig: List<String>?,
-                                   dnsttUrls: Boolean,
-                                   captive_portal_url: String = "https://www.google.com/generate_204") {
+                                   dnsttUrls: Boolean) {
 
         Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
         submittedUrls.clear()
@@ -167,7 +176,42 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
         }
 
-        urls?.forEach { envoyUrl ->
+        if (urls.isNullOrEmpty()) {
+            if (dnsttUrls) {
+                Log.w(TAG, "no additional dnstt urls submitted, cannot continue")
+            } else {
+                Log.w(TAG, "no urls submitted, fetch additional urls from dnstt")
+                getDnsttUrls(dnsttConfig, hysteriaCert)
+            }
+        } else {
+            Log.d(TAG, "shuffled submitted urls")
+            shuffledUrls.addAll(urls)
+            Collections.shuffle(shuffledUrls)
+            handleBatch(hysteriaCert, dnsttConfig, dnsttUrls)
+        }
+    }
+
+    private fun handleBatch(hysteriaCert: String?,
+                            dnsttConfig: List<String>?,
+                            dnsttUrls: Boolean,
+                            captive_portal_url: String = "https://www.google.com/generate_204") {
+
+        var max = shuffledUrls.size
+        if (max > 3) {
+            max = 3
+        }
+
+        currentBatch.clear()
+        currentBatchChecked.clear()
+        currentServiceChecked.clear()
+
+        repeat(max) { index ->
+            Log.d(TAG, "add " + (index + 1) + " url out of " + max + " to batch: " + shuffledUrls[0])
+            currentBatch.add(shuffledUrls[0])
+            shuffledUrls.removeAt(0)
+        }
+
+        currentBatch.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
             if (envoyUrl.startsWith("v2ws://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
@@ -189,15 +233,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 handleHttpsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
-
-        if (submittedUrls.isEmpty()) {
-            if (dnsttUrls) {
-                Log.w(TAG, "no additional dnstt urls submitted, cannot continue")
-            } else {
-                Log.w(TAG, "no urls submitted, fetch additional urls from dnstt")
-                getDnsttUrls(dnsttConfig, hysteriaCert)
-            }
-        }
     }
 
     private fun handleHttpsSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
@@ -212,7 +247,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start https delay")
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
-            handleRequest(url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
@@ -234,7 +269,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start shadowsocks delay")
             delay(10000L) // wait 10 seconds
             Log.d(TAG, "end shadowsocks delay")
-            handleRequest(LOCAL_URL_BASE + 1080, ENVOY_SERVICE_SS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(url, LOCAL_URL_BASE + 1080, ENVOY_SERVICE_SS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
@@ -271,7 +306,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start hysteria delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end hysteria delay")
-                handleRequest(LOCAL_URL_BASE + hysteriaPort, ENVOY_SERVICE_HYSTERIA, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(url, LOCAL_URL_BASE + hysteriaPort, ENVOY_SERVICE_HYSTERIA, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -307,7 +342,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray websocket delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray websocket delay")
-                handleRequest(LOCAL_URL_BASE + v2wsPort, ENVOY_SERVICE_V2WS, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(url, LOCAL_URL_BASE + v2wsPort, ENVOY_SERVICE_V2WS, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -340,7 +375,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray srtp delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray srtp delay")
-                handleRequest(LOCAL_URL_BASE + v2srtpPort, ENVOY_SERVICE_V2SRTP, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(url, LOCAL_URL_BASE + v2srtpPort, ENVOY_SERVICE_V2SRTP, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -372,7 +407,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray wechat delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray wechat delay")
-                handleRequest(LOCAL_URL_BASE + v2wechatPort, ENVOY_SERVICE_V2WECHAT, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(url,LOCAL_URL_BASE + v2wechatPort, ENVOY_SERVICE_V2WECHAT, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
     }
@@ -388,7 +423,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
-            MyUrlRequestCallback(directUrl, ENVOY_SERVICE_DIRECT, hysteriaCert, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(directUrl, directUrl, ENVOY_SERVICE_DIRECT, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -397,11 +432,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     // TODO: do we just hard code captive portal url or add the default here?
 
-    private fun handleRequest(envoyUrl: String, envoyService: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
-        handleRequest(envoyUrl, envoyService, captive_portal_url, null, dnsttConfig, dnsttUrls)
+    private fun handleRequest(originalUrl: String, envoyUrl: String, envoyService: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+        handleRequest(originalUrl, envoyUrl, envoyService, captive_portal_url, null, dnsttConfig, dnsttUrls)
     }
 
-    private fun handleRequest(envoyUrl: String, envoyService: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleRequest(originalUrl: String, envoyUrl: String, envoyService: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
 
         if (dnsttUrls) {
             Log.d(TAG, "create request to " + captive_portal_url + " for dnstt url: " + envoyUrl)
@@ -420,7 +455,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             captive_portal_url,
-            MyUrlRequestCallback(envoyUrl, envoyService, hysteriaCert, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(originalUrl, envoyUrl, envoyService, hysteriaCert, dnsttConfig, dnsttUrls),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -575,6 +610,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                         if (urlList.size > 0) {
                             Log.d(TAG, "submit " + urlList.size + " additional urls from dnstt")
+
+                            val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_CONTINUED).apply {
+                                putStringArrayListExtra(ENVOY_DATA_URLS_CONTINUED, ArrayList(urlList))
+                            }
+                            LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+
                             submitDnstt(this@NetworkIntentService, urlList, hysteriaCert)
                         } else {
                             Log.w(TAG, "no additional urls from dnstt to submit")
@@ -685,7 +726,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    inner class MyUrlRequestCallback(private val envoyUrl: String,
+    inner class MyUrlRequestCallback(private val originalUrl: String,
+                                     private val envoyUrl: String,
                                      private val envoyService: String,
                                      private val hysteriaCert: String?,
                                      private val dnsttConfig: List<String>?,
@@ -722,6 +764,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // TODO: do we continue to return all urls or can we start cronet here?
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
+            // update batch
+            Log.d(TAG, "batch cleanup, remove valid url: " + originalUrl)
+            this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+            this@NetworkIntentService.currentServiceChecked.add(envoyService)
+            this@NetworkIntentService.currentBatch.remove(originalUrl)
+
             if (info != null) {
 
                 if (this@NetworkIntentService.validUrls.size > 0) {
@@ -745,11 +793,24 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                     val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
                         // puts the validation status into the intent
-                        putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(validUrls))
+                        putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(this@NetworkIntentService.validUrls))
                         putExtra(ENVOY_DATA_URL_SUCCEEDED, envoyUrl)
                         putExtra(ENVOY_DATA_SERVICE_SUCCEEDED, envoyService)
                     }
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+
+                    // check whether batch is complete
+                    if (this@NetworkIntentService.currentBatch.size > 0) {
+                        Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
+                    } else  {
+                        Log.d(TAG, "current batch is empty, but a valid url was found: " + this@NetworkIntentService.validUrls.get(0))
+
+                        val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
+                            putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, ArrayList(this@NetworkIntentService.currentBatchChecked))
+                            putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, ArrayList(this@NetworkIntentService.currentServiceChecked))
+                        }
+                        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                    }
                 } else {
                     // logs captive portal url used to validate envoy url
                     Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
@@ -765,6 +826,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 info: UrlResponseInfo?,
                 error: CronetException?
         ) {
+            // update batch
+            Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
+            this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+            this@NetworkIntentService.currentServiceChecked.add(envoyService)
+            this@NetworkIntentService.currentBatch.remove(originalUrl)
+
             // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
             handleInvalidUrl()
@@ -777,15 +844,46 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
             val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_FAILED).apply {
                 // puts the validation status into the intent
-                putStringArrayListExtra(ENVOY_DATA_URLS_FAILED, ArrayList(invalidUrls))
+                putStringArrayListExtra(ENVOY_DATA_URLS_FAILED, ArrayList(this@NetworkIntentService.invalidUrls))
                 putExtra(ENVOY_DATA_URL_FAILED, envoyUrl)
                 putExtra(ENVOY_DATA_SERVICE_FAILED, envoyService)
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
-            // TODO: should we broadcast an indication that we are trying to fetch urls from dnstt?
-            // check whether all submitted urls have failed
-            if (submittedUrls.size > 0 && invalidUrls.size > 0 && submittedUrls.size == invalidUrls.size) {
+            if (this@NetworkIntentService.currentBatch.size > 0) {
+                // check whether current batch of urls have failed
+                Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
+            } else if (this@NetworkIntentService.validUrls.size > 0) {
+                // a valid url was found, do not continue
+                Log.d(TAG, "current batch is empty, but a valid url was previously found")
+
+                val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
+                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, ArrayList(this@NetworkIntentService.currentBatchChecked))
+                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, ArrayList(this@NetworkIntentService.currentServiceChecked))
+                }
+                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+            } else if (this@NetworkIntentService.shuffledUrls.size > 0) {
+                // create local copies to avoid possible concurrent modification exception
+                val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
+                val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
+                // check whether all submitted urls have failed
+                Log.d(TAG, "current batch is empty, " + this@NetworkIntentService.shuffledUrls.size + " submitted urls remaining")
+
+                val localIntent = Intent(ENVOY_BROADCAST_BATCH_FAILED).apply {
+                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
+                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
+                }
+                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+
+                handleBatch(hysteriaCert, dnsttConfig, dnsttUrls)
+            } else {
+
+                val localIntent = Intent(ENVOY_BROADCAST_BATCH_FAILED).apply {
+                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, ArrayList(this@NetworkIntentService.currentBatchChecked))
+                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, ArrayList(this@NetworkIntentService.currentServiceChecked))
+                }
+                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+
                 if (dnsttUrls) {
                     Log.w(TAG, "all additional dnstt urls submitted have failed, cannot continue")
                 } else if (dnsttConfig.isNullOrEmpty()) {
@@ -794,8 +892,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.w(TAG, "all urls submitted have failed, fetch additional urls from dnstt")
                     getDnsttUrls(dnsttConfig, hysteriaCert)
                 }
-            } else {
-                Log.d(TAG, "" + submittedUrls.size + " were submitted, " + invalidUrls.size + " have failed")
             }
         }
     }
