@@ -97,6 +97,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var currentBatch = Collections.synchronizedList(mutableListOf<String>())
     private var currentBatchChecked = Collections.synchronizedList(mutableListOf<String>())
     private var currentServiceChecked = Collections.synchronizedList(mutableListOf<String>())
+    private var batchInProgress = false
 
     // currently only a single url is supported for each service but we may support more in the future
     private var v2rayWsUrls = Collections.synchronizedList(mutableListOf<String>())
@@ -193,7 +194,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 getDnsttUrls(dnsttConfig, hysteriaCert)
             }
         } else {
-            Log.d(TAG, "shuffled submitted urls")
+            Log.d(TAG, "shuffle " + urls.size + " submitted urls")
             shuffledUrls.addAll(urls)
             Collections.shuffle(shuffledUrls)
             handleBatch(hysteriaCert, dnsttConfig, dnsttUrls)
@@ -204,6 +205,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                             dnsttConfig: List<String>?,
                             dnsttUrls: Boolean,
                             captive_portal_url: String = "https://www.google.com/generate_204") {
+
+        // under certain circumstances this can be called multiple times when a single batch is completed
+        if (batchInProgress) {
+            Log.d(TAG, "batch already in progress")
+            return
+        } else {
+            batchInProgress = true
+            Log.d(TAG, "start new batch")
+        }
 
         var max = shuffledUrls.size
         if (max > 3) {
@@ -261,6 +271,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 handleHttpsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             }
         }
+
+        Log.d(TAG, "batch is finished")
+        batchInProgress = false
     }
 
     private fun handleHttpsSubmit(
