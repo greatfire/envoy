@@ -87,6 +87,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private var submittedUrls = Collections.synchronizedList(mutableListOf<String>())
+
     // currently only a single url is supported for each service but we may support more in the future
     private var v2rayWsUrls = Collections.synchronizedList(mutableListOf<String>())
     private var v2raySrtpUrls = Collections.synchronizedList(mutableListOf<String>())
@@ -102,9 +103,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     // Binder given to clients
     private val binder = NetworkBinder()
 
-    // map urls to their cache for testing and cleanup
-    private var cacheCounter = 0
+    // map urls to their cache and engine for cleanup
+    private var cacheCounter = 1
     private val cacheMap = Collections.synchronizedMap(mutableMapOf<String, String>())
+    private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
 
     inner class NetworkBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
@@ -154,12 +156,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
      * Handle action Submit in the provided background thread with the provided
      * parameters.
      */
-    private fun handleActionSubmit(urls: List<String>?,
-                                   directUrls: List<String>?,
-                                   hysteriaCert: String?,
-                                   dnsttConfig: List<String>?,
-                                   dnsttUrls: Boolean,
-                                   captive_portal_url: String = "https://www.google.com/generate_204") {
+    private fun handleActionSubmit(
+        urls: List<String>?,
+        directUrls: List<String>?,
+        hysteriaCert: String?,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean,
+        captive_portal_url: String = "https://www.google.com/generate_204"
+    ) {
 
         if (dnsttUrls) {
             Log.d(TAG, "got additional dnstt urls, clear previously submitted urls")
@@ -176,6 +180,19 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         urls?.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
+
+            // generate cache directories here where it's synchronized
+            // increment counter after allocating so we don't retry numbers
+            var cacheDir: File
+            do {
+                cacheDir = File(applicationContext.cacheDir, "cache_" + cacheCounter)
+                Log.d(TAG, "cache setup, check directory: " + cacheDir.absolutePath)
+                cacheCounter = cacheCounter + 1
+            } while (cacheDir.exists())
+            cacheMap.put(envoyUrl, cacheDir.name)
+            Log.d(TAG, "cache setup, create directory: " + cacheDir.absolutePath)
+            cacheDir.mkdirs()
+
             if (envoyUrl.startsWith("v2ws://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
                 handleV2rayWsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
@@ -187,7 +204,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 handleV2rayWechatSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("hysteria://")) {
                 Log.d(TAG, "found hysteria url: " + envoyUrl)
-                handleHysteriaSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
+                handleHysteriaSubmit(
+                    envoyUrl,
+                    captive_portal_url,
+                    hysteriaCert,
+                    dnsttConfig,
+                    dnsttUrls
+                )
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
@@ -207,7 +230,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    private fun handleHttpsSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleHttpsSubmit(
+        url: String,
+        captive_portal_url: String,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         // nothing to parse at this time, leave url in string format
 
@@ -219,11 +247,16 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start https delay")
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
-            handleRequest(url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
         }
     }
 
-    private fun handleShadowsocksSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleShadowsocksSubmit(
+        url: String,
+        captive_portal_url: String,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         // nothing to parse at this time, leave url in string format
 
@@ -241,11 +274,24 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start shadowsocks delay")
             delay(10000L) // wait 10 seconds
             Log.d(TAG, "end shadowsocks delay")
-            handleRequest(LOCAL_URL_BASE + 1080, ENVOY_SERVICE_SS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(
+                url,
+                LOCAL_URL_BASE + 1080,
+                ENVOY_SERVICE_SS,
+                captive_portal_url,
+                dnsttConfig,
+                dnsttUrls
+            )
         }
     }
 
-    private fun handleHysteriaSubmit(url: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleHysteriaSubmit(
+        url: String,
+        captive_portal_url: String,
+        hysteriaCert: String?,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
         val uri = URI(url)
         var hystKey = ""
         val rawQuery = uri.rawQuery
@@ -267,7 +313,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 hystCert = hystCert + hystCertParts[i] + "\n"
             }
             hystCert = hystCert + "-----END CERTIFICATE-----"
-            val hysteriaPort = IEnvoyProxy.startHysteria(uri.host + ":" + uri.port, hystKey, hystCert)
+            val hysteriaPort =
+                IEnvoyProxy.startHysteria(uri.host + ":" + uri.port, hystKey, hystCert)
             Log.d(TAG, "hysteria service started at " + LOCAL_URL_BASE + hysteriaPort)
 
             hysteriaUrls.add(LOCAL_URL_BASE + hysteriaPort)
@@ -278,12 +325,24 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start hysteria delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end hysteria delay")
-                handleRequest(LOCAL_URL_BASE + hysteriaPort, ENVOY_SERVICE_HYSTERIA, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(
+                    url,
+                    LOCAL_URL_BASE + hysteriaPort,
+                    ENVOY_SERVICE_HYSTERIA,
+                    captive_portal_url,
+                    dnsttConfig,
+                    dnsttUrls
+                )
             }
         }
     }
 
-    private fun handleV2rayWsSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleV2rayWsSubmit(
+        url: String,
+        captive_portal_url: String,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         val uri = URI(url)
         var path = ""
@@ -314,12 +373,24 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray websocket delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray websocket delay")
-                handleRequest(LOCAL_URL_BASE + v2wsPort, ENVOY_SERVICE_V2WS, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(
+                    url,
+                    LOCAL_URL_BASE + v2wsPort,
+                    ENVOY_SERVICE_V2WS,
+                    captive_portal_url,
+                    dnsttConfig,
+                    dnsttUrls
+                )
             }
         }
     }
 
-    private fun handleV2raySrtpSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleV2raySrtpSubmit(
+        url: String,
+        captive_portal_url: String,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         val uri = URI(url)
         var id = ""
@@ -347,12 +418,24 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray srtp delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray srtp delay")
-                handleRequest(LOCAL_URL_BASE + v2srtpPort, ENVOY_SERVICE_V2SRTP, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(
+                    url,
+                    LOCAL_URL_BASE + v2srtpPort,
+                    ENVOY_SERVICE_V2SRTP,
+                    captive_portal_url,
+                    dnsttConfig,
+                    dnsttUrls
+                )
             }
         }
     }
 
-    private fun handleV2rayWechatSubmit(url: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleV2rayWechatSubmit(
+        url: String,
+        captive_portal_url: String,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         val uri = URI(url)
         var id = ""
@@ -379,13 +462,25 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "start v2ray wechat delay")
                 delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end v2ray wechat delay")
-                handleRequest(LOCAL_URL_BASE + v2wechatPort, ENVOY_SERVICE_V2WECHAT, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleRequest(
+                    url,
+                    LOCAL_URL_BASE + v2wechatPort,
+                    ENVOY_SERVICE_V2WECHAT,
+                    captive_portal_url,
+                    dnsttConfig,
+                    dnsttUrls
+                )
             }
         }
     }
 
     // test direct connection to avoid using proxy resources when not required
-    private fun handleDirectRequest(directUrl: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleDirectRequest(
+        directUrl: String,
+        hysteriaCert: String?,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         Log.d(TAG, "create direct request to " + directUrl)
 
@@ -395,7 +490,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
-            MyUrlRequestCallback(directUrl, ENVOY_SERVICE_DIRECT, hysteriaCert, dnsttConfig, dnsttUrls),
+            MyUrlRequestCallback(
+                directUrl,
+                directUrl,
+                ENVOY_SERVICE_DIRECT,
+                hysteriaCert,
+                dnsttConfig,
+                dnsttUrls
+            ),
             executor
         )
         val request: UrlRequest = requestBuilder.build()
@@ -404,11 +506,26 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     // TODO: do we just hard code captive portal url or add the default here?
 
-    private fun handleRequest(envoyUrl: String, envoyService: String, captive_portal_url: String, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
-        handleRequest(envoyUrl, envoyService, captive_portal_url, null, dnsttConfig, dnsttUrls)
+    private fun handleRequest(
+        originalUrl: String,
+        envoyUrl: String,
+        envoyService: String,
+        captive_portal_url: String,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
+        handleRequest(originalUrl, envoyUrl, envoyService, captive_portal_url, null, dnsttConfig, dnsttUrls)
     }
 
-    private fun handleRequest(envoyUrl: String, envoyService: String, captive_portal_url: String, hysteriaCert: String?, dnsttConfig: List<String>?, dnsttUrls: Boolean) {
+    private fun handleRequest(
+        originalUrl: String,
+        envoyUrl: String,
+        envoyService: String,
+        captive_portal_url: String,
+        hysteriaCert: String?,
+        dnsttConfig: List<String>?,
+        dnsttUrls: Boolean
+    ) {
 
         if (dnsttUrls) {
             Log.d(TAG, "create request to " + captive_portal_url + " for dnstt url: " + envoyUrl)
@@ -416,36 +533,45 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "create request to " + captive_portal_url + " for url: " + envoyUrl)
         }
 
-        // increment cache counter, create folder name
-        cacheCounter = cacheCounter + 1
-        cacheMap.put(envoyUrl, "cache_" + cacheCounter)
-        Log.d(TAG, "caching: " + envoyUrl + " -> cache_" + cacheCounter)
+        if (cacheMap.keys.contains(originalUrl)) {
 
-        // set up http cache dir
-        // val cacheDir = File(applicationContext.cacheDir, envoyService + "-cache")
-        val cacheDir = File(applicationContext.cacheDir, cacheMap.get(envoyUrl))
-        if (!cacheDir.exists()) {
-            Log.d(TAG, "cache setup, create " + cacheDir.absolutePath)
-            cacheDir.mkdirs()
+            Log.d(TAG, "cache setup, found cache directory for " + originalUrl + " -> " + cacheMap.get(originalUrl))
+            val cacheDir = File(applicationContext.cacheDir, cacheMap.get(originalUrl))
+
+            try {
+                val executor: Executor = Executors.newSingleThreadExecutor()
+                val myBuilder = CronetEngine.Builder(applicationContext)
+                val cronetEngine: CronetEngine = myBuilder
+                    .setEnvoyUrl(envoyUrl)
+                    .setStoragePath(cacheDir.absolutePath)
+                    .enableHttpCache(
+                        CronetEngine.Builder.HTTP_CACHE_DISK,
+                        1 * 1024 * 1024
+                    ) // 1 megaByte
+                    .setUserAgent(DEFAULT_USER_AGENT)
+                    .build()
+                val requestBuilder = cronetEngine.newUrlRequestBuilder(
+                    captive_portal_url,
+                    MyUrlRequestCallback(
+                        originalUrl,
+                        envoyUrl,
+                        envoyService,
+                        hysteriaCert,
+                        dnsttConfig,
+                        dnsttUrls
+                    ),
+                    executor
+                )
+                val request: UrlRequest = requestBuilder.build()
+                request.start()
+                Log.d(TAG, "cache setup, cache cronet engine for url " + originalUrl)
+                cronetMap.put(originalUrl, cronetEngine)
+            } catch (ise: IllegalStateException) {
+                Log.e(TAG, "cache setup, " + cacheDir.absolutePath + " could not be used")
+            }
         } else {
-            Log.d(TAG, "cache setup, use " + cacheDir.absolutePath)
+            Log.e(TAG, "cache setup, could not find cache directory for " + originalUrl)
         }
-
-        val executor: Executor = Executors.newSingleThreadExecutor()
-        val myBuilder = CronetEngine.Builder(applicationContext)
-        val cronetEngine: CronetEngine = myBuilder
-            .setEnvoyUrl(envoyUrl)
-            .setStoragePath(cacheDir.absolutePath)
-            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1 * 1024 * 1024) // 1 megaByte
-            .setUserAgent(DEFAULT_USER_AGENT)
-            .build()
-        val requestBuilder = cronetEngine.newUrlRequestBuilder(
-            captive_portal_url,
-            MyUrlRequestCallback(envoyUrl, envoyService, hysteriaCert, dnsttConfig, dnsttUrls),
-            executor
-        )
-        val request: UrlRequest = requestBuilder.build()
-        request.start()
     }
 
     private fun handleCleanup(envoyUrl: String) {
@@ -506,41 +632,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         } else {
             Log.d(TAG, "url was not previously cached")
         }
-    }
-
-    fun cacheCleanup(envoyUrl: String) {
-
-        Log.d(TAG, "cache keys: " + cacheMap.keys.toString())
-
-        if (envoyUrl.isNullOrEmpty()) {
-            Log.e(TAG, "can't do cache cleanup for null url")
-            return
-        } else if (!cacheMap.containsKey(envoyUrl)) {
-            Log.e(TAG, "no cache directory found for url " + envoyUrl)
-            return
-        } else {
-            Log.d(TAG, "cache cleanup for url " + cacheMap.get(envoyUrl))
-        }
-        // clean up http cache dir
-        val cacheDir = File(applicationContext.cacheDir, cacheMap.get(envoyUrl))
-        if (cacheDir.exists()) {
-            cacheDir.let {
-                if (it.exists()) {
-                    val files = it.listFiles()
-                    if (files != null) {
-                        for (file in files) {
-                            if (file.deleteRecursively()) {
-                                Log.d(TAG, "cache cleanup, delete " + file.absolutePath)
-                            } else {
-                                Log.e(TAG, "cache cleanup, failed to delete " + file.absolutePath)
-                            }
-                        }
-                    }
-                }
-            }
-            cacheDir.deleteRecursively()
-        }
-        cacheMap.remove(envoyUrl)
     }
 
     fun getDnsttUrls(dnsttConfig: List<String>?, hysteriaCert: String?) {
@@ -741,7 +832,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    inner class MyUrlRequestCallback(private val envoyUrl: String,
+    inner class MyUrlRequestCallback(private val originalUrl: String,
+                                     private val envoyUrl: String,
                                      private val envoyService: String,
                                      private val hysteriaCert: String?,
                                      private val dnsttConfig: List<String>?,
@@ -815,7 +907,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.w(TAG, "onSucceeded method called but UrlResponseInfo was null")
             }
 
-            cacheCleanup(envoyUrl)
+            cacheCleanup()
         }
 
         override fun onFailed(
@@ -827,7 +919,48 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " / " + envoyService + " -> " + error?.message)
             handleInvalidUrl()
 
-            cacheCleanup(envoyUrl)
+            cacheCleanup()
+        }
+
+        private fun cacheCleanup() {
+
+            val engine = cronetMap.get(originalUrl)
+            if (engine == null) {
+                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + originalUrl)
+            } else {
+                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + originalUrl)
+                engine.shutdown()
+                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + originalUrl)
+            }
+
+            val cacheName = cacheMap.get(originalUrl)
+            if (cacheName == null) {
+                Log.w(TAG, "cache cleanup, could not find cached directory for url " + originalUrl)
+                return
+            } else {
+                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + originalUrl)
+            }
+
+            // clean up http cache dir
+            val cacheDir = File(applicationContext.cacheDir, cacheName)
+
+            // clean up old cached data
+            cacheDir.let {
+                if (it.exists()) {
+                    val files = it.listFiles()
+                    if (files != null) {
+                        for (file in files) {
+                            if (file.deleteRecursively()) {
+                                Log.d(TAG, "cache cleanup, delete " + file.absolutePath)
+                            } else {
+                                Log.e(TAG, "cache cleanup, failed to delete " + file.absolutePath)
+                            }
+                        }
+                    }
+                }
+            }
+            Log.d(TAG, "cache cleanup, delete " + cacheDir.absolutePath)
+            cacheDir.deleteRecursively()
         }
 
         fun handleInvalidUrl() {
@@ -860,6 +993,3 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 }
-
-
-
