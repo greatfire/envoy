@@ -18,7 +18,10 @@ buildscript {
 allprojects {
     repositories {
         google()
-	mavenCentral()
+	    mavenCentral()
+        flatDir {
+            dirs 'cronet' // use .aar in cronet folder as repo to avoid new gradle error
+        }
     }
 }
 
