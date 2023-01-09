@@ -766,9 +766,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
             // update batch
             Log.d(TAG, "batch cleanup, remove valid url: " + originalUrl)
-            this@NetworkIntentService.currentBatchChecked.add(originalUrl)
-            this@NetworkIntentService.currentServiceChecked.add(envoyService)
-            this@NetworkIntentService.currentBatch.remove(originalUrl)
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                Log.d(TAG, "direct url " + originalUrl + " was valid, but do not update lists")
+            } else {
+                this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+                this@NetworkIntentService.currentServiceChecked.add(envoyService)
+                this@NetworkIntentService.currentBatch.remove(originalUrl)
+            }
 
             if (info != null) {
 
@@ -828,9 +832,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         ) {
             // update batch
             Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
-            this@NetworkIntentService.currentBatchChecked.add(originalUrl)
-            this@NetworkIntentService.currentServiceChecked.add(envoyService)
-            this@NetworkIntentService.currentBatch.remove(originalUrl)
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                Log.d(TAG, "direct url " + originalUrl + " was invalid, but do not update lists")
+            } else {
+                this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+                this@NetworkIntentService.currentServiceChecked.add(envoyService)
+                this@NetworkIntentService.currentBatch.remove(originalUrl)
+            }
 
             // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
