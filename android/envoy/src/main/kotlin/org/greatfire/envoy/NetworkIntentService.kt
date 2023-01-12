@@ -766,9 +766,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
             // update batch
             Log.d(TAG, "batch cleanup, remove valid url: " + originalUrl)
-            this@NetworkIntentService.currentBatchChecked.add(originalUrl)
-            this@NetworkIntentService.currentServiceChecked.add(envoyService)
-            this@NetworkIntentService.currentBatch.remove(originalUrl)
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                Log.d(TAG, "direct url " + originalUrl + " was valid, but do not update lists")
+            } else {
+                this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+                this@NetworkIntentService.currentServiceChecked.add(envoyService)
+                this@NetworkIntentService.currentBatch.remove(originalUrl)
+            }
 
             if (info != null) {
 
@@ -799,6 +803,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     }
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
+                    // create local copies to sort
+                    val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
+                    val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
+                    Collections.sort(localBatchList)
+                    Collections.sort(localServiceList)
+
                     // check whether batch is complete
                     if (this@NetworkIntentService.currentBatch.size > 0) {
                         Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
@@ -806,8 +816,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         Log.d(TAG, "current batch is empty, but a valid url was found: " + this@NetworkIntentService.validUrls.get(0))
 
                         val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
-                            putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, ArrayList(this@NetworkIntentService.currentBatchChecked))
-                            putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, ArrayList(this@NetworkIntentService.currentServiceChecked))
+                            putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
+                            putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
                         }
                         LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                     }
@@ -828,9 +838,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         ) {
             // update batch
             Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
-            this@NetworkIntentService.currentBatchChecked.add(originalUrl)
-            this@NetworkIntentService.currentServiceChecked.add(envoyService)
-            this@NetworkIntentService.currentBatch.remove(originalUrl)
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                Log.d(TAG, "direct url " + originalUrl + " was invalid, but do not update lists")
+            } else {
+                this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+                this@NetworkIntentService.currentServiceChecked.add(envoyService)
+                this@NetworkIntentService.currentBatch.remove(originalUrl)
+            }
 
             // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
@@ -850,6 +864,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
+            // create local copies to sort and avoid possible concurrent modification exception
+            val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
+            val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
+            Collections.sort(localBatchList)
+            Collections.sort(localServiceList)
+
             if (this@NetworkIntentService.currentBatch.size > 0) {
                 // check whether current batch of urls have failed
                 Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
@@ -858,14 +878,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "current batch is empty, but a valid url was previously found")
 
                 val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
-                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, ArrayList(this@NetworkIntentService.currentBatchChecked))
-                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, ArrayList(this@NetworkIntentService.currentServiceChecked))
+                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
+                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
                 }
                 LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
             } else if (this@NetworkIntentService.shuffledUrls.size > 0) {
-                // create local copies to avoid possible concurrent modification exception
-                val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
-                val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
                 // check whether all submitted urls have failed
                 Log.d(TAG, "current batch is empty, " + this@NetworkIntentService.shuffledUrls.size + " submitted urls remaining")
 
@@ -879,8 +896,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else {
 
                 val localIntent = Intent(ENVOY_BROADCAST_BATCH_FAILED).apply {
-                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, ArrayList(this@NetworkIntentService.currentBatchChecked))
-                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, ArrayList(this@NetworkIntentService.currentServiceChecked))
+                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
+                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
                 }
                 LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
