@@ -1,0 +1,1862 @@
+ components/cronet/android/api.txt                  |   5 +-
+ .../api/src/org/chromium/net/CronetEngine.java     |  11 +
+ .../org/chromium/net/ExperimentalCronetEngine.java |   1 +
+ .../src/org/chromium/net/ICronetEngineBuilder.java |   6 +
+ .../cronet/android/cronet_url_request_adapter.cc   |   5 +
+ .../cronet/android/cronet_url_request_adapter.h    |   3 +
+ .../cronet/android/implementation_api_version.txt  |   2 +-
+ .../cronet/android/interface_api_version.txt       |   2 +-
+ .../org/chromium/net/impl/CronetUrlRequest.java    |  17 +-
+ .../chromium/net/impl/CronetUrlRequestContext.java |  24 +-
+ .../net/impl/NativeCronetEngineBuilderImpl.java    |  17 +-
+ components/cronet/cronet_url_request.cc            |  17 +
+ components/cronet/cronet_url_request.h             |  10 +
+ net/dns/context_host_resolver.cc                   |   9 +
+ net/dns/context_host_resolver.h                    |   2 +
+ net/dns/dns_query.cc                               | 501 ++++++++++++++++++++-
+ net/dns/dns_query.h                                |  37 +-
+ net/dns/dns_response.cc                            |  59 ++-
+ net/dns/dns_test_util.cc                           |   2 +
+ net/dns/dns_transaction.cc                         |  35 +-
+ net/dns/dns_transaction.h                          |   3 +
+ net/dns/host_resolver.cc                           |   8 +
+ net/dns/host_resolver.h                            |   7 +-
+ net/dns/host_resolver_manager.cc                   |  69 ++-
+ net/dns/host_resolver_manager.h                    |   7 +
+ net/url_request/url_request_context.cc             |  10 +
+ net/url_request/url_request_context.h              |   6 +
+ 27 files changed, 834 insertions(+), 41 deletions(-)
+
+diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
+index cc19e7d3317fc..d16cbcd19b341 100644
+--- a/components/cronet/android/api.txt
++++ b/components/cronet/android/api.txt
+@@ -68,6 +68,7 @@ public class org.chromium.net.CronetEngine$Builder {
+   public org.chromium.net.CronetEngine$Builder addQuicHint(java.lang.String, int, int);
+   public org.chromium.net.CronetEngine$Builder addPublicKeyPins(java.lang.String, java.util.Set<byte[]>, boolean, java.util.Date);
+   public org.chromium.net.CronetEngine$Builder enablePublicKeyPinningBypassForLocalTrustAnchors(boolean);
++  public org.chromium.net.CronetEngine$Builder SetStrategy(int);
+   public org.chromium.net.CronetEngine build();
+ }
+ public abstract class org.chromium.net.CronetEngine {
+@@ -79,6 +80,7 @@ public abstract class org.chromium.net.CronetEngine {
+   public abstract byte[] getGlobalMetricsDeltas();
+   public abstract java.net.URLConnection openConnection(java.net.URL) throws java.io.IOException;
+   public abstract java.net.URLStreamHandlerFactory createURLStreamHandlerFactory();
++  public void SetStrategy(int);
+   public abstract org.chromium.net.UrlRequest$Builder newUrlRequestBuilder(java.lang.String, org.chromium.net.UrlRequest$Callback, java.util.concurrent.Executor);
+ }
+ public abstract class org.chromium.net.CronetException extends java.io.IOException {
+@@ -222,6 +224,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+   public abstract org.chromium.net.ExperimentalCronetEngine build();
+   public org.chromium.net.ICronetEngineBuilder enableNetworkQualityEstimator(boolean);
+   public org.chromium.net.ICronetEngineBuilder setThreadPriority(int);
++  public void SetStrategy(int);
+ }
+ public final class org.chromium.net.InlineExecutionProhibitedException extends java.util.concurrent.RejectedExecutionException {
+   public org.chromium.net.InlineExecutionProhibitedException();
+@@ -403,4 +406,4 @@ public abstract class org.chromium.net.UrlResponseInfo {
+   public abstract java.lang.String getProxyServer();
+   public abstract long getReceivedByteCount();
+ }
+-Stamp: bffce221f97cb5b4511b1058a20d82e2
++Stamp: d06e46b217f98eba5bccf2a2e26495c8
+diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+index cf7a6c385349f..f2159c8575804 100644
+--- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
++++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+@@ -311,6 +311,15 @@ public abstract class CronetEngine {
+             return this;
+         }
+ 
++	/**
++	 * Set a strategy
++	 * @param packet_strategy
++	 */
++	public Builder SetStrategy(int packet_strategy) {
++	    mBuilderDelegate.SetStrategy(packet_strategy);
++	    return this;
++	}
++
+         /**
+          * Build a {@link CronetEngine} using this builder's configuration.
+          * @return constructed {@link CronetEngine}.
+@@ -534,6 +543,8 @@ public abstract class CronetEngine {
+      */
+     public abstract URLStreamHandlerFactory createURLStreamHandlerFactory();
+ 
++    public void SetStrategy(int packet_strategy) {};
++
+     /**
+      * Creates a builder for {@link UrlRequest}. All callbacks for
+      * generated {@link UrlRequest} objects will be invoked on
+diff --git a/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java b/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java
+index 4e98c3a642bae..dadb00ed33af4 100644
+--- a/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java
++++ b/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java
+@@ -413,6 +413,7 @@ public abstract class ExperimentalCronetEngine extends CronetEngine {
+         return CONNECTION_METRIC_UNKNOWN;
+     }
+ 
++
+     /**
+      * Binds the engine to the specified network. All requests created through this engine will use
+      * this network. If this network disconnects all requests will fail, the exact error will
+diff --git a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+index 9a9bcb4940e05..9222b0c744bb9 100644
+--- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
++++ b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+@@ -52,4 +52,10 @@ public abstract class ICronetEngineBuilder {
+     public ICronetEngineBuilder setThreadPriority(int priority) {
+         return this;
+     }
++
++    // [breakerspace]
++    public void SetStrategy(int packet_strategy) {
++    	// default implementation does nothing
++	assert true;
++    }
+ }
+diff --git a/components/cronet/android/cronet_url_request_adapter.cc b/components/cronet/android/cronet_url_request_adapter.cc
+index 03462e583f538..df42b005d228c 100644
+--- a/components/cronet/android/cronet_url_request_adapter.cc
++++ b/components/cronet/android/cronet_url_request_adapter.cc
+@@ -150,6 +150,11 @@ void CronetURLRequestAdapter::SetUpload(
+   request_->SetUpload(std::move(upload));
+ }
+ 
++// [breakerspace]
++void CronetURLRequestAdapter::SetStrategy(JNIEnv* env, const base::android::JavaParamRef<jobject>& jcaller, jint packet_strategy) {
++  request_->SetStrategy(packet_strategy);
++}
++
+ void CronetURLRequestAdapter::Start(JNIEnv* env,
+                                     const JavaParamRef<jobject>& jcaller) {
+   request_->Start();
+diff --git a/components/cronet/android/cronet_url_request_adapter.h b/components/cronet/android/cronet_url_request_adapter.h
+index 0c9a13df6b3e2..e97e75a2d8937 100644
+--- a/components/cronet/android/cronet_url_request_adapter.h
++++ b/components/cronet/android/cronet_url_request_adapter.h
+@@ -79,6 +79,9 @@ class CronetURLRequestAdapter : public CronetURLRequest::Callback {
+   // Adds a request body to the request before it starts.
+   void SetUpload(std::unique_ptr<net::UploadDataStream> upload);
+ 
++  //[breakerspace]
++  void SetStrategy(JNIEnv* env, const base::android::JavaParamRef<jobject>& jcaller, jint packet_strategy);
++  
+   // Starts the request.
+   void Start(JNIEnv* env, const base::android::JavaParamRef<jobject>& jcaller);
+ 
+diff --git a/components/cronet/android/implementation_api_version.txt b/components/cronet/android/implementation_api_version.txt
+index b6a7d89c68e0c..98d9bcb75a685 100644
+--- a/components/cronet/android/implementation_api_version.txt
++++ b/components/cronet/android/implementation_api_version.txt
+@@ -1 +1 @@
+-16
++17
+diff --git a/components/cronet/android/interface_api_version.txt b/components/cronet/android/interface_api_version.txt
+index b6a7d89c68e0c..98d9bcb75a685 100644
+--- a/components/cronet/android/interface_api_version.txt
++++ b/components/cronet/android/interface_api_version.txt
+@@ -1 +1 @@
+-16
++17
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java
+index 20473d157e0f2..0a77eb35252cf 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java
+@@ -117,6 +117,9 @@ public final class CronetUrlRequest extends UrlRequestBase {
+      */
+     private OnReadCompletedRunnable mOnReadCompletedTask;
+ 
++    // [breakerspace]
++    int strategy;
++    
+     @GuardedBy("mUrlRequestAdapterLock")
+     private Runnable mOnDestroyedCallbackForTesting;
+ 
+@@ -216,6 +219,10 @@ public final class CronetUrlRequest extends UrlRequestBase {
+         mUploadDataStream = new CronetUploadDataStream(uploadDataProvider, executor, this);
+     }
+ 
++    public void SetStrategy(int packet_strategy) {
++    	strategy = packet_strategy;
++    }
++
+     @Override
+     public void start() {
+         synchronized (mUrlRequestAdapterLock) {
+@@ -230,7 +237,11 @@ public final class CronetUrlRequest extends UrlRequestBase {
+                         mTrafficStatsTagSet, mTrafficStatsTag, mTrafficStatsUidSet,
+                         mTrafficStatsUid, mIdempotency, mNetworkHandle);
+                 mRequestContext.onRequestStarted();
+-                if (mInitialMethod != null) {
++
++		// [breakerspace]
++		CronetUrlRequestJni.get().SetStrategy(mUrlRequestAdapter, CronetUrlRequest.this, strategy);
++
++		if (mInitialMethod != null) {
+                     if (!CronetUrlRequestJni.get().setHttpMethod(
+                                 mUrlRequestAdapter, CronetUrlRequest.this, mInitialMethod)) {
+                         throw new IllegalArgumentException("Invalid http method " + mInitialMethod);
+@@ -866,6 +877,10 @@ public final class CronetUrlRequest extends UrlRequestBase {
+         @NativeClassQualifiedName("CronetURLRequestAdapter")
+         boolean setHttpMethod(long nativePtr, CronetUrlRequest caller, String method);
+ 
++	// [breakerspace]
++	@NativeClassQualifiedName("CronetURLRequestAdapter")
++	void SetStrategy(long nativePtr, CronetUrlRequest caller, int packet_strategy);
++
+         @NativeClassQualifiedName("CronetURLRequestAdapter")
+         boolean addRequestHeader(
+                 long nativePtr, CronetUrlRequest caller, String name, String value);
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+index 8e2f755183fe8..045a0183f3d60 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+@@ -160,6 +160,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+     /** If not null, the network to be used for requests that do not explicitly specify one. **/
+     private @Nullable Network mNetwork;
+ 
++    // [breakerspace]
++    private int strategy;
++    
+     @UsedByReflection("CronetEngine.java")
+     public CronetUrlRequestContext(final CronetEngineBuilderImpl builder) {
+         mRttListenerList.disableThreadAsserts();
+@@ -235,6 +238,11 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+         return new BidirectionalStreamBuilderImpl(url, callback, executor, this);
+     }
+ 
++    @Override
++    public void SetStrategy(int packet_strategy) {
++	strategy = packet_strategy;
++    }
++
+     @Override
+     public UrlRequestBase createRequest(String url, UrlRequest.Callback callback, Executor executor,
+             int priority, Collection<Object> requestAnnotations, boolean disableCache,
+@@ -247,11 +255,23 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+         }
+         synchronized (mLock) {
+             checkHaveAdapter();
+-            return new CronetUrlRequest(this, url, priority, callback, executor, requestAnnotations,
++
++	    CronetUrlRequest temp = new CronetUrlRequest(this, url, priority, callback, executor, requestAnnotations,
+                     disableCache, disableConnectionMigration, allowDirectExecutor,
+                     trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet, trafficStatsUid,
+                     requestFinishedListener, idempotency, network);
+-        }
++
++	    temp.SetStrategy(strategy);
++
++	    return temp;
++
++            /* [breakerspace]
++	    return new CronetUrlRequest(this, url, priority, callback, executor, requestAnnotations,
++                    disableCache, disableConnectionMigration, allowDirectExecutor,
++                    trafficStatsTagSet, trafficStatsTag, trafficStatsUidSet, trafficStatsUid,
++                    requestFinishedListener, idempotency, network);
++            */
++	}
+     }
+ 
+     @Override
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/NativeCronetEngineBuilderImpl.java b/components/cronet/android/java/src/org/chromium/net/impl/NativeCronetEngineBuilderImpl.java
+index 696d7c8455b3d..3c84f1d852c3c 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/NativeCronetEngineBuilderImpl.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/NativeCronetEngineBuilderImpl.java
+@@ -13,7 +13,9 @@ import org.chromium.net.ICronetEngineBuilder;
+  * Implementation of {@link ICronetEngineBuilder} that builds native Cronet engine.
+  */
+ public class NativeCronetEngineBuilderImpl extends CronetEngineBuilderImpl {
+-    /**
++     private int strategy; 
++       
++     /**
+      * Builder for Native Cronet Engine.
+      * Default config enables SPDY, disables QUIC and HTTP cache.
+      *
+@@ -23,13 +25,23 @@ public class NativeCronetEngineBuilderImpl extends CronetEngineBuilderImpl {
+         super(context);
+     }
+ 
++    @Override
++    public void SetStrategy(int packet_strategy) {
++        strategy = packet_strategy;
++    }
++
+     @Override
+     public ExperimentalCronetEngine build() {
+         if (getUserAgent() == null) {
+             setUserAgent(getDefaultUserAgent());
+         }
+ 
+-        ExperimentalCronetEngine builder = new CronetUrlRequestContext(this);
++        /* [breakerspace] */ //ExperimentalCronetEngine builder = new CronetUrlRequestContext(this);
++	
++	CronetUrlRequestContext builder = new CronetUrlRequestContext(this);
++
++        // [breakerspace]
++        builder.SetStrategy(strategy);
+ 
+         // Clear MOCK_CERT_VERIFIER reference if there is any, since
+         // the ownership has been transferred to the engine.
+@@ -37,4 +49,5 @@ public class NativeCronetEngineBuilderImpl extends CronetEngineBuilderImpl {
+ 
+         return builder;
+     }
++
+ }
+diff --git a/components/cronet/cronet_url_request.cc b/components/cronet/cronet_url_request.cc
+index 3a8c621149318..7a638a2fdab64 100644
+--- a/components/cronet/cronet_url_request.cc
++++ b/components/cronet/cronet_url_request.cc
+@@ -281,6 +281,19 @@ void CronetURLRequest::NetworkTasks::OnReadCompleted(net::URLRequest* request,
+   read_buffer_ = nullptr;
+ }
+ 
++// [breakerspace]
++void CronetURLRequest::SetStrategy(unsigned int packet_strategy) {
++        //if (network_tasks_ != nullptr) {
++		network_tasks_.SetStrategy(packet_strategy);
++	//}
++}
++
++
++// [breakerspace]
++void CronetURLRequest::NetworkTasks::SetStrategy(unsigned int packet_strategy) {
++	strategy = packet_strategy;
++}
++
+ void CronetURLRequest::NetworkTasks::Start(
+     CronetContext* context,
+     const std::string& method,
+@@ -291,6 +304,10 @@ void CronetURLRequest::NetworkTasks::Start(
+   VLOG(1) << "Starting chromium request: "
+           << initial_url_.possibly_invalid_spec().c_str()
+           << " priority: " << RequestPriorityToString(initial_priority_);
++  
++  // [breakerspace]
++  context->GetURLRequestContext(network_)->SetStrategy(strategy);
++
+   url_request_ = context->GetURLRequestContext(network_)->CreateRequest(
+       initial_url_, net::DEFAULT_PRIORITY, this, MISSING_TRAFFIC_ANNOTATION);
+   url_request_->SetLoadFlags(initial_load_flags_);
+diff --git a/components/cronet/cronet_url_request.h b/components/cronet/cronet_url_request.h
+index fad98e70b40ad..12da447c6c29b 100644
+--- a/components/cronet/cronet_url_request.h
++++ b/components/cronet/cronet_url_request.h
+@@ -195,6 +195,9 @@ class CronetURLRequest {
+   // used by the callback are deleted.
+   void MaybeReportMetricsAndRunCallback(base::OnceClosure callback);
+ 
++  // [breakerspace]
++  void SetStrategy(unsigned int packet_strategy);
++ 
+  private:
+   friend class TestUtil;
+ 
+@@ -224,6 +227,10 @@ class CronetURLRequest {
+     // Invoked on the network thread.
+     ~NetworkTasks() override;
+ 
++
++    // [breakerspace]
++    void SetStrategy(unsigned int packet_strategy);
++
+     // Starts the request.
+     void Start(CronetContext* context,
+                const std::string& method,
+@@ -305,6 +312,9 @@ class CronetURLRequest {
+     scoped_refptr<net::IOBuffer> read_buffer_;
+     std::unique_ptr<net::URLRequest> url_request_;
+ 
++    // [breakerspace]
++    unsigned int strategy;
++
+     THREAD_CHECKER(network_thread_checker_);
+   };
+ 
+diff --git a/net/dns/context_host_resolver.cc b/net/dns/context_host_resolver.cc
+index c29c19e8314e9..6a21601280056 100644
+--- a/net/dns/context_host_resolver.cc
++++ b/net/dns/context_host_resolver.cc
+@@ -74,6 +74,7 @@ ContextHostResolver::CreateRequest(
+     absl::optional<ResolveHostParameters> optional_parameters) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++  VLOG(1) << "[breakerspace] ContextHostResolver::CreateRequest()";
+   if (shutting_down_)
+     return HostResolver::CreateFailingRequest(ERR_CONTEXT_SHUT_DOWN);
+ 
+@@ -82,6 +83,14 @@ ContextHostResolver::CreateRequest(
+       std::move(source_net_log), std::move(optional_parameters),
+       resolve_context_.get(), resolve_context_->host_cache());
+ }
++// [breakerspace]
++void ContextHostResolver::SetStrategyInManager(unsigned int packet_strategy) {
++	if (manager_ != nullptr) {
++		manager_->SetStrategy(packet_strategy);
++	} else {
++		VLOG(1) << "[breakerspace] ContextHostResolver::SetStrategyInManager(), manager is null";
++	}
++}
+ 
+ std::unique_ptr<HostResolver::ResolveHostRequest>
+ ContextHostResolver::CreateRequest(
+diff --git a/net/dns/context_host_resolver.h b/net/dns/context_host_resolver.h
+index db881697e2241..0e56065ba29ce 100644
+--- a/net/dns/context_host_resolver.h
++++ b/net/dns/context_host_resolver.h
+@@ -82,6 +82,8 @@ class NET_EXPORT ContextHostResolver : public HostResolver {
+   void SetProcParamsForTesting(const ProcTaskParams& proc_params);
+   void SetTickClockForTesting(const base::TickClock* tick_clock);
+ 
++  //[breakerspace]
++  void SetStrategyInManager(unsigned int packet_strategy) override;
+  private:
+   const raw_ptr<HostResolverManager> manager_;
+   std::unique_ptr<HostResolverManager> owned_manager_;
+diff --git a/net/dns/dns_query.cc b/net/dns/dns_query.cc
+index 75faae360b472..ae9a86f18ffab 100644
+--- a/net/dns/dns_query.cc
++++ b/net/dns/dns_query.cc
+@@ -62,6 +62,8 @@ absl::optional<OptRecordRdata> AddPaddingIfNecessary(
+     const OptRecordRdata* opt_rdata,
+     DnsQuery::PaddingStrategy padding_strategy,
+     size_t no_opt_buffer_size) {
++
++  VLOG(1) << "[breakerspace] AddPaddingIfNecessary()";
+   // If no input OPT record rdata and no padding, no OPT record rdata needed.
+   if (!opt_rdata && padding_strategy == DnsQuery::PaddingStrategy::NONE)
+     return absl::nullopt;
+@@ -90,22 +92,353 @@ absl::optional<OptRecordRdata> AddPaddingIfNecessary(
+ 
+ }  // namespace
+ 
++
++void DnsQuery::AddPadding(absl::optional<OptRecordRdata>* merged_opt_rdata, base::BigEndianWriter* writer) {
++  if (*merged_opt_rdata) {
++
++    VLOG(1) << "[breakerspace] merged_opt_rdata";
++    DCHECK(!merged_opt_rdata->value().opts().empty());
++
++    header_->arcount = base::HostToNet16(1);
++    // Write OPT pseudo-resource record.
++    writer->WriteU8(0);                       // empty domain name (root domain)
++    writer->WriteU16(OptRecordRdata::kType);  // type
++    writer->WriteU16(kMaxUdpPayloadSize);     // class
++    // ttl (next 3 fields)
++    writer->WriteU8(0);  // rcode does not apply to requests
++    writer->WriteU8(0);  // version
++    // TODO(robpercival): Set "DNSSEC OK" flag if/when DNSSEC is supported:
++    // https://tools.ietf.org/html/rfc3225#section-3
++    writer->WriteU16(0);  // flags
++
++    // rdata
++    writer->WriteU16(merged_opt_rdata->value().buf().size());  // rdata length
++    writer->WriteBytes(merged_opt_rdata->value().buf().data(),
++                      merged_opt_rdata->value().buf().size());
++  }
++
++}
++
++//Creates an IOBuffer with the appropriate size and gives its header the default settings (RD flag set and qdcount 1)
++void DnsQuery::CreateIOBufferAndHeader(uint16_t id, const base::StringPiece& qname, uint16_t qtype, size_t size) {
++	size_t buffer_size = size;
++
++	io_buffer_ = base::MakeRefCounted<IOBufferWithSize>(buffer_size);
++
++	header_ = reinterpret_cast<dns_protocol::Header*>(io_buffer_->data());
++  	*header_ = {};
++  	header_->id = base::HostToNet16(id);
++
++	header_->flags = base::HostToNet16(dns_protocol::kFlagRD);
++
++	header_->qdcount = base::HostToNet16(1);
++}
++
++void DnsQuery::UnmodifiedStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype,
++                const OptRecordRdata* opt_rdata, PaddingStrategy padding_strategy) {
++
++	size_t buffer_size = kHeaderSize + QuestionSize(qname.size());
++
++        qname_size_ = qname.size();
++
++        absl::optional<OptRecordRdata> merged_opt_rdata = AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
++
++        if (merged_opt_rdata)
++                buffer_size += OptRecordSize(&merged_opt_rdata.value());
++
++        CreateIOBufferAndHeader(id, qname, qtype, buffer_size);
++
++        //Write a question record
++        base::BigEndianWriter writer(io_buffer_->data() + kHeaderSize,
++                               io_buffer_->size() - kHeaderSize);
++        writer.WriteBytes(qname.data(), qname.size());
++        writer.WriteU16(qtype);
++        writer.WriteU16(dns_protocol::kClassIN);
++
++        if (merged_opt_rdata) {
++           AddPadding(&merged_opt_rdata, &writer);
++        }
++}
++void DnsQuery::ElevatedCountStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype,
++		const OptRecordRdata* opt_rdata, PaddingStrategy padding_strategy) {
++	
++
++	size_t buffer_size = kHeaderSize + QuestionSize(qname.size());
++	
++	qname_size_ = qname.size();
++	
++	absl::optional<OptRecordRdata> merged_opt_rdata = AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
++  	
++	if (merged_opt_rdata)
++    		buffer_size += OptRecordSize(&merged_opt_rdata.value());
++	
++	CreateIOBufferAndHeader(id, qname, qtype, buffer_size);
++
++	//Set qdcount to 2	
++	header_->qdcount = base::HostToNet16(2);
++
++	//Write a question record
++	base::BigEndianWriter writer(io_buffer_->data() + kHeaderSize,
++                               io_buffer_->size() - kHeaderSize);
++	writer.WriteBytes(qname.data(), qname.size());
++	writer.WriteU16(qtype);
++	writer.WriteU16(dns_protocol::kClassIN);
++
++	if (merged_opt_rdata) {
++	   AddPadding(&merged_opt_rdata, &writer);
++	}
++}
++
++void DnsQuery::TruncatedReservedStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype,
++                const OptRecordRdata* opt_rdata, PaddingStrategy padding_strategy) {
++
++
++        size_t buffer_size = kHeaderSize + QuestionSize(qname.size());
++
++        qname_size_ = qname.size();
++
++        absl::optional<OptRecordRdata> merged_opt_rdata = AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
++
++        if (merged_opt_rdata)
++                buffer_size += OptRecordSize(&merged_opt_rdata.value());
++
++        CreateIOBufferAndHeader(id, qname, qtype, buffer_size);
++
++	//Setting tc and z flags
++        uint16_t new_flags = dns_protocol::kFlagRD;
++  	//0x40 = 0b1000000, setting z to 1.
++  	new_flags |= 0x40;
++  	//setting tc to 1
++  	new_flags |= dns_protocol::kFlagTC;
++  	//changing header_ flag field
++  	header_->flags = base::HostToNet16(new_flags);
++
++	//changing nscount
++	header_->nscount = base::HostToNet16(1);
++
++	//writing a question record
++        base::BigEndianWriter writer(io_buffer_->data() + kHeaderSize,
++                               io_buffer_->size() - kHeaderSize);
++        writer.WriteBytes(qname.data(), qname.size());
++        writer.WriteU16(qtype);
++        writer.WriteU16(dns_protocol::kClassIN);
++
++        if (merged_opt_rdata) {
++           AddPadding(&merged_opt_rdata, &writer);
++        }
++}
++
++void DnsQuery::MultiByteStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype,
++                const OptRecordRdata* opt_rdata, PaddingStrategy padding_strategy) {
++
++	size_t buffer_size = kHeaderSize + QuestionSize(qname.size());
++
++        qname_size_ = qname.size();
++
++	//increase buffer size by 721 2-byte characters
++        buffer_size += QuestionSize(721 * 2 + 1);
++	
++	absl::optional<OptRecordRdata> merged_opt_rdata = AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
++
++        if (merged_opt_rdata)
++                buffer_size += OptRecordSize(&merged_opt_rdata.value());
++
++        CreateIOBufferAndHeader(id, qname, qtype, buffer_size);
++
++        //write first question record
++        base::BigEndianWriter writer(io_buffer_->data() + kHeaderSize,
++                               io_buffer_->size() - kHeaderSize);
++        writer.WriteBytes(qname.data(), qname.size());
++        writer.WriteU16(qtype);
++        writer.WriteU16(dns_protocol::kClassIN);
++
++	unsigned char multibyte_data[721 * 2 + 1];
++
++	for(int i = 0; i < 721 * 2; i+=2){
++      		multibyte_data[i] = 0xc2;
++      		multibyte_data[i + 1] = 0xa4;
++  	}
++
++	multibyte_data[721 * 2] = 0;
++
++	//write multibyte characters to a new question record
++  	writer.WriteBytes(multibyte_data, 721 * 2 + 1);
++	writer.WriteU16(qtype);
++  	writer.WriteU16(dns_protocol::kClassIN);
++
++        if (merged_opt_rdata) {
++           AddPadding(&merged_opt_rdata, &writer);
++        }
++
++}
++
++void DnsQuery::MultiByteStrategyElevatedCount(uint16_t id, const base::StringPiece& qname, uint16_t qtype,
++                const OptRecordRdata* opt_rdata, PaddingStrategy padding_strategy) {
++	
++	MultiByteStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++
++	header_->arcount = base::HostToNet16(1);
++
++}
++
++void DnsQuery::CompressedStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype,
++                const OptRecordRdata* opt_rdata, PaddingStrategy padding_strategy) {
++
++	size_t buffer_size = kHeaderSize;
++
++        qname_size_ = qname.size();
++
++
++	size_t uncompressed_buffer_size = kHeaderSize + QuestionSize(qname_size_);
++	compressed = true;
++	io_buffer_uncompressed = base::MakeRefCounted<IOBufferWithSize>(uncompressed_buffer_size);
++	
++	//The qname is divided into sections, the first section's length is the 0th element of qname
++	size_t first_section_length = qname.data()[0];
++	//The first question record will have first_section_length characters + the length octet +
++	//the number indicating a pointer + the offset
++	buffer_size += QuestionSize(first_section_length + 3);
++
++	VLOG(1) << "[breakerspace] first section length: " << first_section_length;
++	size_t rest_of_length = qname_size_ - (first_section_length + 1);
++	buffer_size += QuestionSize(rest_of_length);
++
++
++        absl::optional<OptRecordRdata> merged_opt_rdata = AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
++        if (merged_opt_rdata)
++                buffer_size += OptRecordSize(&merged_opt_rdata.value());
++
++        CreateIOBufferAndHeader(id, qname, qtype, buffer_size);
++
++        
++	unsigned char* first_section = new unsigned char[first_section_length + 3];
++	first_section[0] = first_section_length;
++	if ((12 + (first_section_length + 3) + 4) > 255) {
++		first_section[first_section_length + 1] = 0xc0 | ((12 + (first_section_length + 3) + 4) >> 8);
++		first_section[first_section_length + 2] = ((12 + (first_section_length + 3) + 4)) & 0xff; 
++	} else {
++
++		first_section[first_section_length + 1] = 192;
++		first_section[first_section_length + 2] = 12 + (first_section_length + 3) + 4;
++	}
++	for (size_t i = 1; i <= first_section_length; i++) {
++		first_section[i] = qname.data()[i];
++	}
++
++
++
++	base::BigEndianWriter writer(io_buffer_->data() + kHeaderSize,
++                               io_buffer_->size() - kHeaderSize);
++
++        writer.WriteBytes(first_section, first_section_length + 3);
++  	writer.WriteU16(qtype);
++  	writer.WriteU16(dns_protocol::kClassIN);
++
++
++  	writer.WriteBytes(&(qname.data()[first_section_length + 1]), rest_of_length);
++  	writer.WriteU16(qtype);
++  	writer.WriteU16(dns_protocol::kClassIN);
++
++	header_->qdcount = base::HostToNet16(2);
++
++
++
++  	dns_protocol::Header* header_uncompressed;
++     	header_uncompressed = reinterpret_cast<dns_protocol::Header*>(io_buffer_uncompressed->data());
++     	*header_uncompressed = {};
++     	header_uncompressed->id = base::HostToNet16(id);
++     	header_->flags = base::HostToNet16(dns_protocol::kFlagRD);
++     	header_uncompressed->qdcount = base::HostToNet16(2);
++
++     	VLOG(1) << "[breakerspace] qname.data() = " << qname.data();
++     	base::BigEndianWriter uncompressed_writer(io_buffer_uncompressed->data() + kHeaderSize,
++                                                io_buffer_uncompressed->size() - kHeaderSize);
++     	uncompressed_writer.WriteBytes(qname.data(), qname.size());
++     	uncompressed_writer.WriteU16(qtype);
++     	uncompressed_writer.WriteU16(dns_protocol::kClassIN);
++
++        if (merged_opt_rdata) {
++           AddPadding(&merged_opt_rdata, &writer);
++        }
++
++}
++
+ // DNS query consists of a 12-byte header followed by a question section.
+ // For details, see RFC 1035 section 4.1.1.  This header template sets RD
+ // bit, which directs the name server to pursue query recursively, and sets
+ // the QDCOUNT to 1, meaning the question section has a single entry.
++
+ DnsQuery::DnsQuery(uint16_t id,
+                    const base::StringPiece& qname,
+                    uint16_t qtype,
+                    const OptRecordRdata* opt_rdata,
+-                   PaddingStrategy padding_strategy)
+-    : qname_size_(qname.size()) {
++                   PaddingStrategy padding_strategy,
++		   unsigned int packet_strategy)
++    : qname_size_(qname.size()), strategy(packet_strategy) {
+ #if DCHECK_IS_ON()
+   absl::optional<std::string> dotted_name = DnsDomainToString(qname);
+   DCHECK(dotted_name && !dotted_name.value().empty());
+ #endif  // DCHECK_IS_ON()
+ 
+-  size_t buffer_size = kHeaderSize + QuestionSize(qname_size_);
++  VLOG(1) << "[breakerspace] DnsQuery::DnsQuery()";
++  
++  switch (strategy) {
++	case 1:
++		ElevatedCountStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++		break;
++	case 2:
++		TruncatedReservedStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++		break;
++	case 3:
++		MultiByteStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++		break;
++	case 4:
++		MultiByteStrategyElevatedCount(id, qname, qtype, opt_rdata, padding_strategy);
++		break;
++	case 5:
++		CompressedStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++		break;
++	default:
++		UnmodifiedStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++  }
++
++  //CompressedStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++  //MultiByteStrategyElevatedCount(id, qname, qtype, opt_rdata, padding_strategy);
++  //MultiByteStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++  //TruncatedReservedStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++  //ElevatedCountStrategy(id, qname, qtype, opt_rdata, padding_strategy);
++  
++  /*
++  size_t buffer_size = 0;
++  int strategy = 1;
++
++  if (strategy == 1)   void ElevatedCountStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr,
++           PaddingStrategy padding_strategy = PaddingStrategy::NONE);{
++	
++  }
++
++  absl::optional<OptRecordRdata> merged_opt_rdata =
++      AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
++  if (merged_opt_rdata)
++    buffer_size += OptRecordSize(&merged_opt_rdata.value());
++
++  */
++  /*
++
++  // original
++  //size_t buffer_size = kHeaderSize + QuestionSize(qname_size_);
++  
++  // Compression, make the second qr say example.com and the first have www.(pointer to example.com)
++  
++  size_t buffer_size = kHeaderSize + QuestionSize(6) + QuestionSize(13);
++  size_t uncompressed_buffer_size = kHeaderSize + QuestionSize(qname_size_);
++  compressed = true;
++  
++
++  // Long Secondary Query
++  //buffer_size += QuestionSize(719 * 4 + 1);
++  
++
+   absl::optional<OptRecordRdata> merged_opt_rdata =
+       AddPaddingIfNecessary(opt_rdata, padding_strategy, buffer_size);
+   if (merged_opt_rdata)
+@@ -113,20 +446,121 @@ DnsQuery::DnsQuery(uint16_t id,
+ 
+   io_buffer_ = base::MakeRefCounted<IOBufferWithSize>(buffer_size);
+ 
++  //Compression
++  
++  if (compressed) {
++     io_buffer_uncompressed = base::MakeRefCounted<IOBufferWithSize>(uncompressed_buffer_size);
++  }
++  
+   header_ = reinterpret_cast<dns_protocol::Header*>(io_buffer_->data());
+   *header_ = {};
+   header_->id = base::HostToNet16(id);
+-  header_->flags = base::HostToNet16(dns_protocol::kFlagRD);
+-  header_->qdcount = base::HostToNet16(1);
++  
+ 
++  //Originally, RD is the only flag set, and nscount is not 1
++  header_->flags = base::HostToNet16(dns_protocol::kFlagRD);
++  
++  
++  // [breakerspace] Truncated-Reserved, set nscount, z, and tc to 1
++  // For the Truncated+Reserved strategy, this could be:
++  //	 ancount >= 1
++  //     arcount >= 1
++  //     nscount >= 1
++  //     qdcount >= 2
++  uint16_t new_flags = dns_protocol::kFlagRD;
++  // [breakerspace] 0x40 = 0b1000000, setting z to 1.
++  new_flags |= 0x40;
++  // [breakerspace] setting tc to 1
++  new_flags |= dns_protocol::kFlagTC;
++  // [breakerspace] changing header_ flag field  
++  header_->flags = base::HostToNet16(new_flags); 
++  VLOG(1) << "[breakerspace] FLAGS = " << new_flags;
++ 
++
++  //header_->nscount = base::HostToNet16(1);
++  //header_->qdcount = base::HostToNet16(2);
++  //header_->ancount = base::HostToNet16(1);
++  
++  */
++
++  /*
++
++  // Originally, the QDCount is set to 1
++  //header_->qdcount = base::HostToNet16(1);
++
++  // [breakerspace] Elevated Count, set qdcount to 2
++  header_->qdcount = base::HostToNet16(2);
++  
+   // Write question section after the header.
+   base::BigEndianWriter writer(io_buffer_->data() + kHeaderSize,
+                                io_buffer_->size() - kHeaderSize);
+-  writer.WriteBytes(qname.data(), qname.size());
++  
++  //Originally, the qname is written
++  //writer.WriteBytes(qname.data(), qname.size());
++  //writer.WriteU16(qtype);
++  //writer.WriteU16(dns_protocol::kClassIN);
++
++  VLOG(1) << "[breakerspace] qname.data(): " << qname.data();
++  VLOG(1) << "[breakerspace] qname.data()[0]: " << int(qname.data()[0]);
++  VLOG(1) << "[breakerspace] qname.data()[4]: " << int(qname.data()[4]);
++
++  
++  unsigned char example_com_arr[13] = {7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0};
++  
++  unsigned char www_arr[6] = {3, 'w', 'w', 'w', 192, 22};
++  
++  
++  writer.WriteBytes(www_arr, 6);
++  writer.WriteU16(qtype);
++  writer.WriteU16(dns_protocol::kClassIN);
++  
++  writer.WriteBytes(example_com_arr, 13);
++  writer.WriteU16(qtype);
++  writer.WriteU16(dns_protocol::kClassIN);
++  
++  
++  if (compressed) {
++     
++     dns_protocol::Header* header_uncompressed;
++     header_uncompressed = reinterpret_cast<dns_protocol::Header*>(io_buffer_uncompressed->data());
++     *header_uncompressed = {};
++     header_uncompressed->id = base::HostToNet16(id);
++     header_->flags = base::HostToNet16(dns_protocol::kFlagRD);
++     header_uncompressed->qdcount = base::HostToNet16(2);
++    
++     VLOG(1) << "[breakerspace] qname.data() = " << qname.data(); 
++     base::BigEndianWriter uncompressed_writer(io_buffer_uncompressed->data() + kHeaderSize,
++		     				io_buffer_uncompressed->size() - kHeaderSize);
++     uncompressed_writer.WriteBytes(qname.data(), qname.size());
++     uncompressed_writer.WriteU16(qtype);
++     uncompressed_writer.WriteU16(dns_protocol::kClassIN);
++
++  }
++
++  
++
++   Long Secondary Query
++   unsigned char multibyte_data[719 * 2 + 1];
++  //[breakerspace] Might not need to do length octet?
++  //multibyte_data[0] = 1334 * 2 + 2;
++  multibyte_data[719 * 2] = 0;
++
++  //for(int i = 1; i < (1334 * 2 + 2) - 1; i+=2){
++  for(int i = 0; i < 719 * 2; i+=2){
++      multibyte_data[i] = 0xc2;
++      multibyte_data[i + 1] = 0xa4;
++  }
++  writer.WriteBytes(multibyte_data, 719 * 2);
++  writer.WriteBytes(multibyte_data, 719 * 2 + 1);
++  
+   writer.WriteU16(qtype);
+   writer.WriteU16(dns_protocol::kClassIN);
++  */
+ 
++/*
+   if (merged_opt_rdata) {
++    
++    VLOG(1) << "[breakerspace] merged_opt_rdata";
+     DCHECK(!merged_opt_rdata.value().opts().empty());
+ 
+     header_->arcount = base::HostToNet16(1);
+@@ -146,6 +580,11 @@ DnsQuery::DnsQuery(uint16_t id,
+     writer.WriteBytes(merged_opt_rdata.value().buf().data(),
+                       merged_opt_rdata.value().buf().size());
+   }
++  */
++}
++
++bool DnsQuery::is_compressed() const{	
++  return compressed;
+ }
+ 
+ DnsQuery::DnsQuery(scoped_refptr<IOBufferWithSize> buffer)
+@@ -163,10 +602,12 @@ DnsQuery& DnsQuery::operator=(const DnsQuery& query) {
+ DnsQuery::~DnsQuery() = default;
+ 
+ std::unique_ptr<DnsQuery> DnsQuery::CloneWithNewId(uint16_t id) const {
++  VLOG(1) << "[breakerspace] DnsQuery::CloneWithNewId";
+   return base::WrapUnique(new DnsQuery(*this, id));
+ }
+ 
+ bool DnsQuery::Parse(size_t valid_bytes) {
++  VLOG(1) << "[breakerspace] DnsQuery::Parse()";
+   if (io_buffer_ == nullptr || io_buffer_->data() == nullptr) {
+     return false;
+   }
+@@ -184,11 +625,18 @@ bool DnsQuery::Parse(size_t valid_bytes) {
+   if (header.flags & dns_protocol::kFlagResponse) {
+     return false;
+   }
++
++  /*
++   * [breakerspace] commenting this if statement out
++   * seems unnecessary (it didn't make a difference when I
++   * uncommented it) but I'll leave it uncommented to be 
++   * safe
+   if (header.qdcount != 1) {
+     VLOG(1) << "Not supporting parsing a DNS query with multiple (or zero) "
+                "questions.";
+     return false;
+   }
++  */
+   std::string qname;
+   if (!ReadName(&reader, &qname)) {
+     return false;
+@@ -211,20 +659,37 @@ uint16_t DnsQuery::id() const {
+ }
+ 
+ base::StringPiece DnsQuery::qname() const {
+-  return base::StringPiece(io_buffer_->data() + kHeaderSize, qname_size_);
++  if (!compressed) {
++    return base::StringPiece(io_buffer_->data() + kHeaderSize, qname_size_);
++  } else {
++    return base::StringPiece(io_buffer_uncompressed->data() + kHeaderSize, qname_size_);
++  }
+ }
+ 
+ uint16_t DnsQuery::qtype() const {
+   uint16_t type;
+-  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(
++  if(!compressed) {
++
++  	base::ReadBigEndian(reinterpret_cast<const uint8_t*>(
+                           io_buffer_->data() + kHeaderSize + qname_size_),
+-                      &type);
++                     &type);
++  } else {
++	base::ReadBigEndian(reinterpret_cast<const uint8_t*>(
++			  io_buffer_uncompressed->data() + kHeaderSize + qname_size_), 
++		       &type);
++  }
+   return type;
+ }
+ 
+ base::StringPiece DnsQuery::question() const {
+-  return base::StringPiece(io_buffer_->data() + kHeaderSize,
++  if (!compressed) {
++  	return base::StringPiece(io_buffer_->data() + kHeaderSize,
+                            QuestionSize(qname_size_));
++  } else {
++	VLOG(1) << "[breakerspace] Uncompressed being returned";
++	return base::StringPiece(io_buffer_uncompressed->data() + kHeaderSize, 
++				QuestionSize(qname_size_));
++  }
+ }
+ 
+ size_t DnsQuery::question_size() const {
+@@ -232,24 +697,37 @@ size_t DnsQuery::question_size() const {
+ }
+ 
+ void DnsQuery::set_flags(uint16_t flags) {
++  VLOG(1) << "[breakerspace] DnsQuery::set_flags( " << flags << " )";
+   header_->flags = flags;
+ }
+ 
+ DnsQuery::DnsQuery(const DnsQuery& orig, uint16_t id) {
++  VLOG(1) << "[breakerspace] DNSQuery::CopyFrom(2 params)";
+   CopyFrom(orig);
+   header_->id = base::HostToNet16(id);
+ }
+ 
+ void DnsQuery::CopyFrom(const DnsQuery& orig) {
++  VLOG(1) << "[breakerspace] DNSQuery::CopyFrom(1 param)";
+   qname_size_ = orig.qname_size_;
+   io_buffer_ = base::MakeRefCounted<IOBufferWithSize>(orig.io_buffer()->size());
+   memcpy(io_buffer_.get()->data(), orig.io_buffer()->data(),
+          io_buffer_.get()->size());
+   header_ = reinterpret_cast<dns_protocol::Header*>(io_buffer_->data());
++
++  compressed = orig.compressed;
++  
++  if (compressed) {
++    io_buffer_uncompressed = base::MakeRefCounted<IOBufferWithSize>(orig.io_buffer_uncompressed.get()->size());
++    memcpy(io_buffer_uncompressed.get()->data(), orig.io_buffer_uncompressed.get()->data(), io_buffer_uncompressed.get()->size());
++  }
++
++  strategy = orig.strategy;
+ }
+ 
+ bool DnsQuery::ReadHeader(base::BigEndianReader* reader,
+                           dns_protocol::Header* header) {
++  VLOG(1) << "[breakerspace] DNSQuery::ReadHeader()";
+   return (
+       reader->ReadU16(&header->id) && reader->ReadU16(&header->flags) &&
+       reader->ReadU16(&header->qdcount) && reader->ReadU16(&header->ancount) &&
+@@ -258,6 +736,7 @@ bool DnsQuery::ReadHeader(base::BigEndianReader* reader,
+ 
+ bool DnsQuery::ReadName(base::BigEndianReader* reader, std::string* out) {
+   DCHECK(out != nullptr);
++  VLOG(1) << "[breakerspace] DNSQuery::ReadName()";
+   out->clear();
+   out->reserve(dns_protocol::kMaxNameLength + 1);
+   uint8_t label_length;
+@@ -285,4 +764,4 @@ bool DnsQuery::ReadName(base::BigEndianReader* reader, std::string* out) {
+   return true;
+ }
+ 
+-}  // namespace net
++} // namespace net
+diff --git a/net/dns/dns_query.h b/net/dns/dns_query.h
+index 6a9db0971bad1..1c2bb0c4bb508 100644
+--- a/net/dns/dns_query.h
++++ b/net/dns/dns_query.h
+@@ -14,6 +14,8 @@
+ #include "base/memory/ref_counted.h"
+ #include "base/strings/string_piece.h"
+ #include "net/base/net_export.h"
++#include "base/big_endian.h"
++#include "third_party/abseil-cpp/absl/types/optional.h"
+ 
+ namespace base {
+ class BigEndianReader;
+@@ -51,7 +53,8 @@ class NET_EXPORT_PRIVATE DnsQuery {
+            const base::StringPiece& qname,
+            uint16_t qtype,
+            const OptRecordRdata* opt_rdata = nullptr,
+-           PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++           PaddingStrategy padding_strategy = PaddingStrategy::NONE,
++	   unsigned int packet_strategy = 0);
+ 
+   // Constructs an empty query from a raw packet in |buffer|. If the raw packet
+   // represents a valid DNS query in the wire format (RFC 1035), Parse() will
+@@ -96,10 +99,32 @@ class NET_EXPORT_PRIVATE DnsQuery {
+ 
+   void set_flags(uint16_t flags);
+ 
++  //[breakerspace]
++  bool is_compressed() const;
++
+  private:
+   DnsQuery(const DnsQuery& orig, uint16_t id);
+   void CopyFrom(const DnsQuery& orig);
+ 
++  // [breakerspace]
++  
++  void UnmodifiedStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr, 		PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++
++  void ElevatedCountStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr,
++           PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++
++  void TruncatedReservedStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr, PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++
++  void MultiByteStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr, PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++  
++    void MultiByteStrategyElevatedCount(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr, PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++  
++   void CompressedStrategy(uint16_t id, const base::StringPiece& qname, uint16_t qtype, const OptRecordRdata* opt_rdata = nullptr, PaddingStrategy padding_strategy = PaddingStrategy::NONE);
++
++  void CreateIOBufferAndHeader(uint16_t id, const base::StringPiece& qname, uint16_t qtype, size_t size);
++
++  void AddPadding(absl::optional<OptRecordRdata>* merged_opt_rdata, base::BigEndianWriter* writer); 
++
+   bool ReadHeader(base::BigEndianReader* reader, dns_protocol::Header* out);
+   // After read, |out| is in the DNS format, e.g.
+   // "\x03""www""\x08""chromium""\x03""com""\x00". Use DNSDomainToString to
+@@ -115,6 +140,16 @@ class NET_EXPORT_PRIVATE DnsQuery {
+ 
+   // Pointer to the dns header section.
+   dns_protocol::Header* header_ = nullptr;
++
++  // [breakerspace] IOBuffer to contain uncompressed query
++  scoped_refptr<IOBufferWithSize> io_buffer_uncompressed;
++
++  // [breakerspace]
++  bool compressed = false;
++
++  // [breakerspace], don't really need this member variable rn but might be helpful later
++  int strategy = 0;
++
+ };
+ 
+ }  // namespace net
+diff --git a/net/dns/dns_response.cc b/net/dns/dns_response.cc
+index 762521d0691b8..488e1d73f6946 100644
+--- a/net/dns/dns_response.cc
++++ b/net/dns/dns_response.cc
+@@ -277,6 +277,7 @@ DnsResponse::DnsResponse(
+     uint8_t rcode,
+     bool validate_records) {
+   bool has_query = query.has_value();
++  VLOG(1) << "[breakerspace] DnsResponse::DnsResponse(lots of params)";
+   dns_protocol::Header header;
+   header.id = id;
+   bool success = true;
+@@ -353,14 +354,14 @@ DnsResponse::DnsResponse(
+ 
+ DnsResponse::DnsResponse()
+     : io_buffer_(base::MakeRefCounted<IOBuffer>(dns_protocol::kMaxUDPSize + 1)),
+-      io_buffer_size_(dns_protocol::kMaxUDPSize + 1) {}
++      io_buffer_size_(dns_protocol::kMaxUDPSize + 1) {VLOG(1) << "[breakerspace] DnsResponse::DnsResponse()";}
+ 
+ DnsResponse::DnsResponse(scoped_refptr<IOBuffer> buffer, size_t size)
+-    : io_buffer_(std::move(buffer)), io_buffer_size_(size) {}
++    : io_buffer_(std::move(buffer)), io_buffer_size_(size) {VLOG(1) << "[breakerspace] DnsResponse::DnsResponse(buffer, size)";}
+ 
+ DnsResponse::DnsResponse(size_t length)
+     : io_buffer_(base::MakeRefCounted<IOBuffer>(length)),
+-      io_buffer_size_(length) {}
++      io_buffer_size_(length) {VLOG(1) << "[breakerspace] DnsResponse::DnsResponse(size)";}
+ 
+ DnsResponse::DnsResponse(const void* data, size_t length, size_t answer_offset)
+     : io_buffer_(base::MakeRefCounted<IOBufferWithSize>(length)),
+@@ -369,6 +370,7 @@ DnsResponse::DnsResponse(const void* data, size_t length, size_t answer_offset)
+               length,
+               answer_offset,
+               std::numeric_limits<size_t>::max()) {
++  VLOG(1) << "[breakerspace] DnsResponse::DnsResponse(data, length, offset)";
+   DCHECK(data);
+   memcpy(io_buffer_->data(), data, length);
+ }
+@@ -391,10 +393,11 @@ DnsResponse::~DnsResponse() = default;
+ 
+ bool DnsResponse::InitParse(size_t nbytes, const DnsQuery& query) {
+   const base::StringPiece question = query.question();
+-
++  VLOG(1) << "[breakerspace] DnsResponse::InitParse(), question = " << question;
+   // Response includes question, it should be at least that size.
+   if (nbytes < kHeaderSize + question.size() || nbytes > io_buffer_size_) {
+-    return false;
++     VLOG(1) << "[breakerspace] DnsResponse::InitParse() response not at least question size";
++     return false;
+   }
+ 
+   // At this point, it has been validated that the response is at least large
+@@ -411,18 +414,61 @@ bool DnsResponse::InitParse(size_t nbytes, const DnsQuery& query) {
+     return false;
+ 
+   // Match question count.
++  /* disabled by [breakerspace]
+   if (base::NetToHost16(header()->qdcount) != 1)
+     return false;
++  */
++
++ VLOG(1) << "[breakerspace] qdcount " << base::NetToHost16(header()->qdcount);
++ //[breakerspace]
++ if (query.is_compressed() && base::NetToHost16(header()->qdcount) == 2) {
++	 VLOG(1) << "[breakerspace] substitution runs";
++ 	
++	scoped_refptr<IOBuffer> io_buffer_substitute;
++ 	// [breakerspace] The second question record contains a pointer to the first + an index number + 4 octets for
++	// the qtype and qclass. We get rid of that, and reduce the size by 6.
++ 	io_buffer_substitute =  base::MakeRefCounted<IOBufferWithSize>(io_buffer_size() - 6);
++ 	VLOG(1) << "[breakerspace] DnsResponse::InitParse(), question.size() = " << question.size();
++ 
++ 	base::BigEndianWriter substitute_writer(io_buffer_substitute->data(),
++                               io_buffer_size());
++	
++	//first question record always starts at index 12
++ 	substitute_writer.WriteBytes(io_buffer_->data(), 12);
++ 	substitute_writer.WriteBytes(&(io_buffer_->data()[12]), question.size());
++ 	substitute_writer.WriteBytes(&(io_buffer_->data()[12 + question.size() + 6]), io_buffer_size() - (12 + question.size() + 6) + 1);
++ 	dns_protocol::Header* header_;
++ 	header_ = reinterpret_cast<dns_protocol::Header*>(io_buffer_substitute->data());
++ 	header_->qdcount = base::HostToNet16(1);
++
++	
++	io_buffer_ = io_buffer_substitute;
++	
++ }
++
+ 
+   // Match the question section.
+   if (question !=
+       base::StringPiece(io_buffer_->data() + kHeaderSize, question.size())) {
++    VLOG(1) << "[breakerspace] DnsResponse::InitParse(), Question section not matched";
+     return false;
+   }
+-
++  
++  VLOG(1) << "[breakerspace] DnsResponse::InitParse(), query.qname() " << query.qname();
++  VLOG(1) << "[breakerspace] DnsResponse::InitParse(), query.qname()[0]" << (int)(query.qname()[0]);
++  VLOG(1) << "[breakerspace] DnsResponse::InitParse(), query.qname()[4]" << (int)(query.qname()[4]);
+   absl::optional<std::string> dotted_qname = DnsDomainToString(query.qname());
++
++
++
++  if (!dotted_qname.has_value())
++    VLOG(1) << "[breakerspace] DnsResponse::InitParse() dotted qname no value"; 
+   if (!dotted_qname.has_value())
+     return false;
++
++  VLOG(1) << "[breakerspace] DnsResponse::InitParse() dotted qname has value";
++
++
+   dotted_qnames_.push_back(std::move(dotted_qname).value());
+   qtypes_.push_back(query.qtype());
+ 
+@@ -495,6 +541,7 @@ uint8_t DnsResponse::rcode() const {
+ 
+ unsigned DnsResponse::question_count() const {
+   DCHECK(parser_.IsValid());
++  
+   return base::NetToHost16(header()->qdcount);
+ }
+ 
+diff --git a/net/dns/dns_test_util.cc b/net/dns/dns_test_util.cc
+index 0f07bb3dd8437..9fc7c9e327eb5 100644
+--- a/net/dns/dns_test_util.cc
++++ b/net/dns/dns_test_util.cc
+@@ -494,6 +494,8 @@ class MockDnsTransactionFactory::MockTransaction
+ 
+   uint16_t GetType() const override { return qtype_; }
+ 
++  void SetStrategy(unsigned int packet_strategy){}
++
+   void Start(ResponseCallback callback) override {
+     CHECK(!callback.is_null());
+     CHECK(callback_.is_null());
+diff --git a/net/dns/dns_transaction.cc b/net/dns/dns_transaction.cc
+index 0a07cccaf4dab..2087a0b0debe8 100644
+--- a/net/dns/dns_transaction.cc
++++ b/net/dns/dns_transaction.cc
+@@ -220,6 +220,7 @@ class DnsUDPAttempt : public DnsAttempt {
+     start_time_ = base::TimeTicks::Now();
+     next_state_ = STATE_SEND_QUERY;
+ 
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::Start()";
+     int rv = socket_->Connect(server_);
+     if (rv != OK) {
+       DVLOG(1) << "Failed to connect socket: " << rv;
+@@ -234,7 +235,7 @@ class DnsUDPAttempt : public DnsAttempt {
+     return DoLoop(OK);
+   }
+ 
+-  const DnsQuery* GetQuery() const override { return query_.get(); }
++  const DnsQuery* GetQuery() const override { VLOG(1) << "[breakerspace] DnsUDPAttempt::GetQuery()"; return query_.get(); }
+ 
+   const DnsResponse* GetResponse() const override {
+     const DnsResponse* resp = response_.get();
+@@ -297,6 +298,7 @@ class DnsUDPAttempt : public DnsAttempt {
+ 
+   int DoSendQuery() {
+     next_state_ = STATE_SEND_QUERY_COMPLETE;
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::DoSendQuery()";
+     return socket_->Write(
+         query_->io_buffer(), query_->io_buffer()->size(),
+         base::BindOnce(&DnsUDPAttempt::OnIOComplete, base::Unretained(this)),
+@@ -305,6 +307,7 @@ class DnsUDPAttempt : public DnsAttempt {
+ 
+   int DoSendQueryComplete(int rv) {
+     DCHECK_NE(ERR_IO_PENDING, rv);
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::DoSendQueryComplete()";
+     if (rv < 0)
+       return rv;
+ 
+@@ -317,6 +320,7 @@ class DnsUDPAttempt : public DnsAttempt {
+   }
+ 
+   int DoReadResponse() {
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::DoReadResponse()";
+     next_state_ = STATE_READ_RESPONSE_COMPLETE;
+     response_ = std::make_unique<DnsResponse>();
+     return socket_->Read(
+@@ -325,7 +329,9 @@ class DnsUDPAttempt : public DnsAttempt {
+   }
+ 
+   int DoReadResponseComplete(int rv) {
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::DoReadResponseComplete() before DCHECK_NE, rv = " << rv << ", ERR_IO_PENDING = " << ERR_IO_PENDING;
+     DCHECK_NE(ERR_IO_PENDING, rv);
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::DoReadResponseComplete(), rv = " << rv;
+     if (rv < 0)
+       return rv;
+ 
+@@ -347,6 +353,7 @@ class DnsUDPAttempt : public DnsAttempt {
+   }
+ 
+   void OnIOComplete(int rv) {
++    VLOG(1) << "[breakerspace] DnsUDPAttempt::OnIOComplete()";
+     rv = DoLoop(rv);
+     if (rv != ERR_IO_PENDING)
+       std::move(callback_).Run(rv);
+@@ -1127,7 +1134,7 @@ class DnsTransactionImpl : public DnsTransaction,
+         attempts_count_(0),
+         had_tcp_retry_(false),
+         resolve_context_(resolve_context->AsSafeRef()),
+-        request_priority_(DEFAULT_PRIORITY) {
++        request_priority_(DEFAULT_PRIORITY){
+     DCHECK(session_.get());
+     DCHECK(!hostname_.empty());
+     DCHECK(!IsIPLiteral(hostname_));
+@@ -1159,6 +1166,8 @@ class DnsTransactionImpl : public DnsTransaction,
+     DCHECK(callback_.is_null());
+     DCHECK(attempts_.empty());
+ 
++    VLOG(1) << "[breakerspace] DnsTransactionImpl::Start()";
++
+     callback_ = std::move(callback);
+ 
+     net_log_.BeginEvent(NetLogEventType::DNS_TRANSACTION,
+@@ -1185,6 +1194,10 @@ class DnsTransactionImpl : public DnsTransaction,
+     request_priority_ = priority;
+   }
+ 
++  void SetStrategy(unsigned int packet_strategy) override {
++  	strategy = packet_strategy;
++  }
++
+  private:
+   // Wrapper for the result of a DnsUDPAttempt.
+   struct AttemptResult {
+@@ -1209,6 +1222,7 @@ class DnsTransactionImpl : public DnsTransaction,
+   int PrepareSearch() {
+     const DnsConfig& config = session_->config();
+ 
++    VLOG(1) << "[breakerspace] DnsTransactionImpl::PrepareSearch()";
+     std::string labeled_hostname;
+     if (!DNSDomainFromDot(hostname_, &labeled_hostname))
+       return ERR_INVALID_ARGUMENT;
+@@ -1303,8 +1317,10 @@ class DnsTransactionImpl : public DnsTransaction,
+     uint16_t id = session_->NextQueryId();
+     std::unique_ptr<DnsQuery> query;
+     if (attempts_.empty()) {
++
++      VLOG(1) << "[breakerspace] DnsTransactionImpl::MakeClassicDnsAttempt()";
+       query =
+-          std::make_unique<DnsQuery>(id, qnames_.front(), qtype_, opt_rdata_);
++          std::make_unique<DnsQuery>(id, qnames_.front(), qtype_, opt_rdata_, DnsQuery::PaddingStrategy::NONE, strategy);
+     } else {
+       query = attempts_[0]->GetQuery()->CloneWithNewId(id);
+     }
+@@ -1339,10 +1355,13 @@ class DnsTransactionImpl : public DnsTransaction,
+     DCHECK(!secure_);
+     DCHECK(!session_->udp_tracker()->low_entropy());
+ 
++    VLOG(1) << "[breakerspace] DnsTransactionImpl::MakeUdpAttempt(): Makes another attempt using the next nameserver. Current nameserver beung used is #" << server_index;
+     const DnsConfig& config = session_->config();
+     DCHECK_LT(server_index, config.nameservers.size());
+     size_t attempt_number = attempts_.size();
+ 
++    VLOG(1) << "[breakerspace] (in DnsTransactionImpl::MakeUdpAttempt()), io_buffer = " << query->io_buffer();
++    
+     std::unique_ptr<DatagramClientSocket> socket =
+         resolve_context_->url_request_context()
+             ->GetNetworkSessionContext()
+@@ -1709,6 +1728,9 @@ class DnsTransactionImpl : public DnsTransaction,
+   RequestPriority request_priority_;
+ 
+   THREAD_CHECKER(thread_checker_);
++
++  // [breakerspace]
++  unsigned int strategy;
+ };
+ 
+ // ----------------------------------------------------------------------------
+@@ -1719,6 +1741,7 @@ class DnsTransactionFactoryImpl : public DnsTransactionFactory {
+  public:
+   explicit DnsTransactionFactoryImpl(DnsSession* session) {
+     session_ = session;
++    VLOG(1) << "[breakerspace] DnsTransactionFactoryImpl::DnsTransactionFactoryImpl()";
+   }
+ 
+   std::unique_ptr<DnsTransaction> CreateTransaction(
+@@ -1729,7 +1752,9 @@ class DnsTransactionFactoryImpl : public DnsTransactionFactory {
+       SecureDnsMode secure_dns_mode,
+       ResolveContext* resolve_context,
+       bool fast_timeout) override {
+-    return std::make_unique<DnsTransactionImpl>(
++   
++   VLOG(1) << "[breakerspace] DnsTransactionFactoryImpl::CreateTransaction()"; 
++   return std::make_unique<DnsTransactionImpl>(
+         session_.get(), std::move(hostname), qtype, net_log, opt_rdata_.get(),
+         secure, secure_dns_mode, resolve_context, fast_timeout);
+   }
+@@ -1764,6 +1789,8 @@ DnsTransactionFactory::~DnsTransactionFactory() = default;
+ // static
+ std::unique_ptr<DnsTransactionFactory> DnsTransactionFactory::CreateFactory(
+     DnsSession* session) {
++
++  VLOG(1) << "[breakerspace] (static) DnsTransactionFactory::CreateFactory()";
+   return std::unique_ptr<DnsTransactionFactory>(
+       new DnsTransactionFactoryImpl(session));
+ }
+diff --git a/net/dns/dns_transaction.h b/net/dns/dns_transaction.h
+index a8d199bf74f35..26965a7047106 100644
+--- a/net/dns/dns_transaction.h
++++ b/net/dns/dns_transaction.h
+@@ -59,6 +59,9 @@ class NET_EXPORT_PRIVATE DnsTransaction {
+   virtual void Start(ResponseCallback callback) = 0;
+ 
+   virtual void SetRequestPriority(RequestPriority priority) = 0;
++  
++  // [breakerspace]
++  virtual void SetStrategy(unsigned int packet_strategy) = 0;
+ };
+ 
+ // Startable/Cancellable object to represent a DNS probe sequence.
+diff --git a/net/dns/host_resolver.cc b/net/dns/host_resolver.cc
+index b148c4c6af2da..1da73f981ac07 100644
+--- a/net/dns/host_resolver.cc
++++ b/net/dns/host_resolver.cc
+@@ -108,6 +108,8 @@ std::unique_ptr<HostResolver> HostResolver::Factory::CreateResolver(
+     HostResolverManager* manager,
+     base::StringPiece host_mapping_rules,
+     bool enable_caching) {
++
++
+   return HostResolver::CreateResolver(manager, host_mapping_rules,
+                                       enable_caching);
+ }
+@@ -128,6 +130,10 @@ HostResolver::ResolveHostParameters::ResolveHostParameters(
+ 
+ HostResolver::~HostResolver() = default;
+ 
++void HostResolver::SetStrategyInManager(unsigned int packet_strategy) {
++        VLOG(1) << "[breakerspace] HostResolver::SetStrategyInManager() not defined in this HostResolver child class";
++}
++
+ std::unique_ptr<HostResolver::ProbeRequest>
+ HostResolver::CreateDohProbeRequest() {
+   // Should be overridden in any HostResolver implementation where this method
+@@ -178,6 +184,8 @@ std::unique_ptr<HostResolver> HostResolver::CreateResolver(
+     HostResolverManager* manager,
+     base::StringPiece host_mapping_rules,
+     bool enable_caching) {
++  
++  
+   DCHECK(manager);
+ 
+   auto resolve_context = std::make_unique<ResolveContext>(
+diff --git a/net/dns/host_resolver.h b/net/dns/host_resolver.h
+index dbaec0764826d..796bce3d76ce7 100644
+--- a/net/dns/host_resolver.h
++++ b/net/dns/host_resolver.h
+@@ -192,7 +192,9 @@ class NET_EXPORT HostResolver {
+     // Initial setting for whether the insecure portion of the built-in
+     // asynchronous DnsClient is enabled or disabled. See HostResolverManager::
+     // SetInsecureDnsClientEnabled() for details.
+-    bool insecure_dns_client_enabled = false;
++    // [breakerspace] THIS MIGHT BE WHERE WE WANT TO CHANGE DEFAULTS -- CHECK THE README
++    //bool insecure_dns_client_enabled = false;
++    bool insecure_dns_client_enabled = true;
+ 
+     // Initial setting for whether additional DNS types (e.g. HTTPS) may be
+     // queried when using the built-in resolver for insecure DNS.
+@@ -459,6 +461,9 @@ class NET_EXPORT HostResolver {
+       const std::vector<HostResolverEndpointResult>& endpoints,
+       const std::set<std::string>& aliases);
+ 
++ // [breakerspace]
++ virtual void SetStrategyInManager(unsigned int packet_strategy);
++ 
+  protected:
+   HostResolver();
+ 
+diff --git a/net/dns/host_resolver_manager.cc b/net/dns/host_resolver_manager.cc
+index 207b769273fcc..4922b3a09b511 100644
+--- a/net/dns/host_resolver_manager.cc
++++ b/net/dns/host_resolver_manager.cc
+@@ -644,6 +644,8 @@ class HostResolverManager::RequestImpl
+     // Parent HostResolver must still be alive to call Start().
+     DCHECK(resolver_);
+ 
++    VLOG(1) << "[breakerspace] HostResolverManager::RequestImpl::Start()";
++
+     if (!resolve_context_) {
+       complete_ = true;
+       resolver_.reset();
+@@ -1054,6 +1056,7 @@ class HostResolverManager::ProcTask {
+   }
+ 
+   void Start() {
++    VLOG(1) << "[breakerspace] Starting resolution using ProcTask";
+     DCHECK(network_task_runner_->BelongsToCurrentThread());
+     DCHECK(!was_completed());
+     net_log_.BeginEvent(NetLogEventType::HOST_RESOLVER_MANAGER_PROC_TASK);
+@@ -1261,7 +1264,8 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+           Delegate* delegate,
+           const NetLogWithSource& job_net_log,
+           const base::TickClock* tick_clock,
+-          bool fallback_available)
++          bool fallback_available,
++	  unsigned int packet_strategy = 0)
+       : client_(client),
+         host_(std::move(host)),
+         resolve_context_(resolve_context->AsSafeRef()),
+@@ -1271,10 +1275,12 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+         net_log_(job_net_log),
+         tick_clock_(tick_clock),
+         task_start_time_(tick_clock_->NowTicks()),
+-        fallback_available_(fallback_available) {
++        fallback_available_(fallback_available),
++       	strategy(packet_strategy)	{
+     DCHECK(client_);
+     DCHECK(delegate_);
+ 
++    VLOG(1) << "[breakerspace] DnsTask::DnsTask()";
+     if (secure_)
+       DCHECK(client_->CanUseSecureDnsTransactions());
+     else
+@@ -1298,7 +1304,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+ 
+   void StartNextTransaction() {
+     DCHECK_GE(num_additional_transactions_needed(), 1);
+-
++    VLOG(1) << "[breakerspace] DnsTask::StartNextTransaction() called, any_transaction_started_ " << any_transaction_started_;
+     if (!any_transaction_started_) {
+       net_log_.BeginEvent(NetLogEventType::HOST_RESOLVER_MANAGER_DNS_TASK,
+                           [&] { return NetLogDnsTaskCreationParams(); });
+@@ -1437,6 +1443,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+   void PushTransactionsNeeded(DnsQueryTypeSet query_types) {
+     DCHECK(transactions_needed_.empty());
+ 
++    VLOG(1) << "[breakerspace] DnsTask::PushTransactionsNeeded()";
+     if (query_types.Has(DnsQueryType::HTTPS) &&
+         features::kUseDnsHttpsSvcbEnforceSecureResponse.Get() && secure_) {
+       query_types.Remove(DnsQueryType::HTTPS);
+@@ -1473,6 +1480,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+     DCHECK_NE(DnsQueryType::UNSPECIFIED, transaction_info.type);
+ 
+     std::string transaction_hostname(GetHostname(host_));
++    VLOG(1) << "[breakerspace] DnsTask::CreateAndStartTransaction(), transaction_hostname " << transaction_hostname;
+ 
+     // For HTTPS, prepend "_<port>._https." for any non-default port.
+     uint16_t request_port = 0;
+@@ -1489,6 +1497,9 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+             DnsQueryTypeToQtype(transaction_info.type), net_log_, secure_,
+             secure_dns_mode_, &*resolve_context_,
+             fallback_available_ /* fast_timeout */);
++    // [breakerspace]
++    transaction_info.transaction->SetStrategy(strategy);
++
+     transaction_info.transaction->SetRequestPriority(delegate_->priority());
+ 
+     auto transaction_info_it =
+@@ -2110,6 +2121,9 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+   // task completes unsuccessfully. Used as a signal that underlying
+   // transactions should timeout more quickly.
+   bool fallback_available_;
++
++  // [breakerspace]
++  unsigned int strategy;
+ };
+ 
+ //-----------------------------------------------------------------------------
+@@ -2182,7 +2196,8 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+       RequestPriority priority,
+       scoped_refptr<base::TaskRunner> proc_task_runner,
+       const NetLogWithSource& source_net_log,
+-      const base::TickClock* tick_clock)
++      const base::TickClock* tick_clock,
++      /* [breakerspace] */ unsigned int packet_strategy = 0)
+       : resolver_(resolver),
+         key_(std::move(key)),
+         cache_usage_(cache_usage),
+@@ -2193,9 +2208,10 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+         tick_clock_(tick_clock),
+         net_log_(
+             NetLogWithSource::Make(source_net_log.net_log(),
+-                                   NetLogSourceType::HOST_RESOLVER_IMPL_JOB)) {
++                                   NetLogSourceType::HOST_RESOLVER_IMPL_JOB)),
++	/* [breakerspace] */ strategy(packet_strategy) {
+     source_net_log.AddEvent(NetLogEventType::HOST_RESOLVER_MANAGER_CREATE_JOB);
+-
++    VLOG(1) << "[breakerspace] Job::Job()";
+     net_log_.BeginEvent(NetLogEventType::HOST_RESOLVER_MANAGER_JOB, [&] {
+       return NetLogJobCreationParams(source_net_log.source());
+     });
+@@ -2226,6 +2242,11 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+     }
+   }
+ 
++  // [breakerspace]
++  void ChangeStrategyTo(unsigned int packet_strategy) {
++	strategy = packet_strategy;
++  }
++
+   // Add this job to the dispatcher.  If "at_head" is true, adds at the front
+   // of the queue.
+   void Schedule(bool at_head) {
+@@ -2407,9 +2428,12 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+   }
+ 
+   void RunNextTask() {
++
++    VLOG(1) << "[breakerspace] Job::RunNextTask()";
+     // If there are no tasks left to try, cache any stored results and complete
+     // the request with the last stored result. All stored results should be
+     // errors.
++
+     if (tasks_.empty()) {
+       // If there are no stored results, complete with an error.
+       if (completion_results_.size() == 0) {
+@@ -2675,10 +2699,11 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+     DCHECK(!resolver_->ShouldForceSystemResolverDueToTestOverride());
+     // Need to create the task even if we're going to post a failure instead of
+     // running it, as a "started" job needs a task to be properly cleaned up.
++    VLOG(1) << "[breakerspace] Job::StartDnsTask()";
+     dns_task_ = std::make_unique<DnsTask>(
+         resolver_->dns_client_.get(), key_.host, key_.query_types,
+         &*key_.resolve_context, secure, key_.secure_dns_mode, this, net_log_,
+-        tick_clock_, !tasks_.empty() /* fallback_available */);
++        tick_clock_, !tasks_.empty() /* fallback_available */, /* [breakerspace] */ strategy);
+     dns_task_->StartNextTransaction();
+     // Schedule a second transaction, if needed. DoH queries can bypass the
+     // dispatcher and start all of their transactions immediately.
+@@ -3096,12 +3121,18 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+   // A handle used for |dispatcher_|.
+   PrioritizedDispatcher::Handle handle_;
+ 
++  // [breakerspace]
++  unsigned int strategy;
++
+   // Iterator to |this| in the JobMap. |nullopt| if not owned by the JobMap.
+   absl::optional<JobMap::iterator> self_iterator_;
+ 
+   base::TimeDelta total_transaction_time_queued_;
+ 
+   base::WeakPtrFactory<Job> weak_ptr_factory_{this};
++
++ 
++  
+ };
+ 
+ //-----------------------------------------------------------------------------
+@@ -3227,6 +3258,8 @@ HostResolverManager::CreateRequest(
+ 
+   DCHECK_EQ(resolve_context->GetTargetNetwork(), target_network_);
+ 
++  VLOG(1) << "[breakerspace] HostResolverManager::CreateRequest()";
++
+   // If required, ResolveContexts must register (via RegisterResolveContext())
+   // before use to ensure cached data is invalidated on network and
+   // configuration changes.
+@@ -3239,6 +3272,10 @@ HostResolverManager::CreateRequest(
+       weak_ptr_factory_.GetWeakPtr(), tick_clock_);
+ }
+ 
++void HostResolverManager::SetStrategy(unsigned int packet_strategy) {
++	strategy = packet_strategy;
++}
++
+ std::unique_ptr<HostResolver::ProbeRequest>
+ HostResolverManager::CreateDohProbeRequest(ResolveContext* context) {
+   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+@@ -3434,6 +3471,7 @@ bool HostResolverManager::IsLocalTask(TaskType task) {
+ }
+ 
+ int HostResolverManager::Resolve(RequestImpl* request) {
++  VLOG(1) << "[breakerspace] HostResolverManager::Resolve()";
+   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+   // Request should not yet have a scheduled Job.
+   DCHECK(!request->HasJob());
+@@ -3496,7 +3534,7 @@ HostCache::Entry HostResolverManager::ResolveLocally(
+     absl::optional<HostCache::EntryStaleness>* out_stale_info) {
+   DCHECK(out_stale_info);
+   *out_stale_info = absl::nullopt;
+-
++  VLOG(1) << "[breakerspace] HostResolverManager::ResolveLocally()";
+   CreateTaskSequence(job_key, cache_usage, secure_dns_policy, out_tasks);
+ 
+   if (!ip_address.IsValid()) {
+@@ -3596,17 +3634,19 @@ void HostResolverManager::CreateAndStartJob(JobKey key,
+                                             std::deque<TaskType> tasks,
+                                             RequestImpl* request) {
+   DCHECK(!tasks.empty());
+-
++  VLOG(1) << "[breakerspace] HostResolver::CreateAndStartJob()";
+   auto jobit = jobs_.find(key);
+   Job* job;
+   if (jobit == jobs_.end()) {
+     job = AddJobWithoutRequest(key, request->parameters().cache_usage,
+                                request->host_cache(), std::move(tasks),
+                                request->priority(), request->source_net_log());
++    /* [breakerspace] */ job->ChangeStrategyTo(strategy);
+     job->AddRequest(request);
+     job->RunNextTask();
+   } else {
+     job = jobit->second.get();
++    /* [breakerspace] */ job->ChangeStrategyTo(strategy);
+     job->AddRequest(request);
+   }
+ }
+@@ -3887,6 +3927,7 @@ void HostResolverManager::PushDnsTasks(bool proc_task_allowed,
+   // Upgrade the insecure DnsTask depending on the secure dns mode.
+   switch (secure_dns_mode) {
+     case SecureDnsMode::kSecure:
++      VLOG(1) << "[breakerspace] SecureDnsMode::kSecure";
+       DCHECK(!allow_cache ||
+              out_tasks->front() == TaskType::SECURE_CACHE_LOOKUP);
+       DCHECK(dns_client_->CanUseSecureDnsTransactions());
+@@ -3894,6 +3935,7 @@ void HostResolverManager::PushDnsTasks(bool proc_task_allowed,
+         out_tasks->push_back(TaskType::SECURE_DNS);
+       break;
+     case SecureDnsMode::kAutomatic:
++      VLOG(1) << "[breakerspace] SecureDnsMode::kAutomatic";
+       DCHECK(!allow_cache || out_tasks->front() == TaskType::CACHE_LOOKUP);
+       if (dns_client_->FallbackFromSecureTransactionPreferred(
+               resolve_context)) {
+@@ -3925,6 +3967,7 @@ void HostResolverManager::PushDnsTasks(bool proc_task_allowed,
+       }
+       break;
+     case SecureDnsMode::kOff:
++      VLOG(1) << "[breakerspace] HostResolverManager::PushDnsTasks(), SecureDnsMode::kOff";
+       DCHECK(!allow_cache || IsLocalTask(out_tasks->front()));
+       if (dns_tasks_allowed && insecure_tasks_allowed)
+         out_tasks->push_back(TaskType::DNS);
+@@ -3951,10 +3994,13 @@ void HostResolverManager::CreateTaskSequence(
+     std::deque<TaskType>* out_tasks) {
+   DCHECK(out_tasks->empty());
+ 
++  VLOG(1) << "[breakerspace] HostResolverManager::CreateTaskSequence()";
++
+   // A cache lookup should generally be performed first. For jobs involving a
+   // DnsTask, this task may be replaced.
+   bool allow_cache =
+       cache_usage != ResolveHostParameters::CacheUsage::DISALLOWED;
++  
+   if (secure_dns_policy == SecureDnsPolicy::kBootstrap) {
+     DCHECK_EQ(SecureDnsMode::kOff, job_key.secure_dns_mode);
+     if (allow_cache)
+@@ -3991,16 +4037,19 @@ void HostResolverManager::CreateTaskSequence(
+       } else if (!ResemblesMulticastDNSName(GetHostname(job_key.host))) {
+         bool proc_task_allowed = has_address_type && job_key.secure_dns_mode !=
+                                                          SecureDnsMode::kSecure;
+-        if (dns_client_ && dns_client_->GetEffectiveConfig()) {
++ 
++	if (dns_client_ && dns_client_->GetEffectiveConfig()) {
+           bool insecure_allowed =
+               dns_client_->CanUseInsecureDnsTransactions() &&
+               !dns_client_->FallbackFromInsecureTransactionPreferred() &&
+               (has_address_type ||
+                dns_client_->CanQueryAdditionalTypesViaInsecureDns());
++	  VLOG(1) << "[breakerspace] CreateTaskSequence(), PushDnsTasks about to run";
+           PushDnsTasks(proc_task_allowed, job_key.secure_dns_mode,
+                        insecure_allowed, allow_cache, prioritize_local_lookups,
+                        &*job_key.resolve_context, out_tasks);
+         } else if (proc_task_allowed) {
++	  VLOG(1) << "[breakerspace] proc_task_allowed path";
+           out_tasks->push_back(TaskType::PROC);
+         }
+       } else if (has_address_type) {
+diff --git a/net/dns/host_resolver_manager.h b/net/dns/host_resolver_manager.h
+index 9d6afe9428d73..6964720eb98d5 100644
+--- a/net/dns/host_resolver_manager.h
++++ b/net/dns/host_resolver_manager.h
+@@ -153,6 +153,10 @@ class NET_EXPORT HostResolverManager
+       absl::optional<ResolveHostParameters> optional_parameters,
+       ResolveContext* resolve_context,
+       HostCache* host_cache);
++
++  // [breakerspace]
++  void SetStrategy(unsigned int packet_strategy);
++  
+   // |resolve_context| is the context to use for the probes, and it is expected
+   // to be the context of the calling ContextHostResolver.
+   std::unique_ptr<HostResolver::ProbeRequest> CreateDohProbeRequest(
+@@ -544,6 +548,9 @@ class NET_EXPORT HostResolverManager
+       registered_contexts_;
+   bool invalidation_in_progress_;
+ 
++  // [breakerspace]
++  unsigned int strategy = 0;
++ 
+   // Helper for metrics associated with `features::kDnsHttpssvc`.
+   HttpssvcExperimentDomainCache httpssvc_domain_cache_;
+ 
+diff --git a/net/url_request/url_request_context.cc b/net/url_request/url_request_context.cc
+index 49a42847aa25e..ced2844f5cdfa 100644
+--- a/net/url_request/url_request_context.cc
++++ b/net/url_request/url_request_context.cc
+@@ -101,6 +101,11 @@ std::unique_ptr<URLRequest> URLRequestContext::CreateRequest(
+ }
+ #endif
+ 
++// [breakerspace]
++void URLRequestContext::SetStrategy(unsigned int packet_strategy) {
++	strategy = packet_strategy;
++}
++
+ std::unique_ptr<URLRequest> URLRequestContext::CreateRequest(
+     const GURL& url,
+     RequestPriority priority,
+@@ -108,6 +113,11 @@ std::unique_ptr<URLRequest> URLRequestContext::CreateRequest(
+     NetworkTrafficAnnotationTag traffic_annotation,
+     bool is_for_websockets,
+     const absl::optional<net::NetLogSource> net_log_source) const {
++  VLOG(1) << "[breakerspace] URLRequestContext::CreateRequest()";
++  
++  // [breakerspace]	
++  host_resolver()->SetStrategyInManager(strategy);
++ 
+   return base::WrapUnique(new URLRequest(url, priority, delegate, this,
+                                          traffic_annotation, is_for_websockets,
+                                          net_log_source));
+diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
+index 719e9f2c17a69..85886680a03fc 100644
+--- a/net/url_request/url_request_context.h
++++ b/net/url_request/url_request_context.h
+@@ -102,6 +102,9 @@ class NET_EXPORT URLRequestContext {
+       URLRequest::Delegate* delegate) const;
+ #endif
+ 
++  // [breakerspace]
++  void SetStrategy(unsigned int packet_strategy);
++  
+   // `traffic_annotation` is metadata about the network traffic send via this
+   // URLRequest, see net::DefineNetworkTrafficAnnotation. Note that:
+   // - net provides the API for tagging requests with an opaque identifier.
+@@ -365,6 +368,9 @@ class NET_EXPORT URLRequestContext {
+   bool require_network_isolation_key_;
+   std::string envoy_url_;
+ 
++  // [breakerspace]
++  unsigned int strategy = 0;
++
+   NetworkChangeNotifier::NetworkHandle bound_network_;
+ 
+   THREAD_CHECKER(thread_checker_);
