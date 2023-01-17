@@ -1,7 +1,7 @@
 
 ## Download
 
-Download cronet-debug.aar and cronet-release.aar [here](https://github.com/stevenmcdonald/envoy/releases/tag/102.0.5005.41-4). Download the latest version of IEnvoyProxy.aar [here](https://github.com/stevenmcdonald/IEnvoyProxy/releases) or use the existing maven dependency.
+Cronet and IEnvoyProxy dependencies are now provided by Maven and no additional .aar files need to be downloaded.
 
 ## Server setup
 
@@ -9,7 +9,7 @@ Some documentation and example Ansible playbooks are available [here](https://gi
 
 ## Build
 
-Copy `cronet-$BUILD.aar`(debug and release) to `cronet/`, then run `./build-envoy.sh debug` or `./build-envoy.sh release` to build the project.
+Run `./build-envoy.sh debug` or `./build-envoy.sh release` to build an envoy .aar file that can be indluded in other projects.
 
 ## Get Started
 
@@ -67,26 +67,41 @@ The optional hysteriaCert parameter must be included if you submit any Hysteria 
 
 If the optional dnsttConfig parameter is included, Envoy will attempt to fetch additional proxy URLs using DNSTT if all of the provided URLs fail.
 
+## Envoy broadcasts
+
+Envoy provides feedback with a variety of broadcasts. Create a BroadcastReceiver and add actions to an IntentFilter as needed. The following are some of the more significant actions and their parameters:
+
+ - ENVOY_BROADCAST_VALIDATION_SUCCEEDED, includes ENVOY_DATA_URL_SUCCEEDED and ENVOY_DATA_SERVICE_SUCCEEDED
+ 
+Received when a URL is validated successfully. This can include any direct URLs that were submitted. The parameters include the URL that was validated and the corresponding service. Use this URL to initialize Cronet (initializing Cronet with a direct URL will cause a redirection exception).
+ 
+ - ENVOY_BROADCAST_VALIDATION_FAILED, includes includes ENVOY_DATA_URL_FAILED and ENVOY_DATA_SERVICE_FAILED
+ 
+Received when a URL fails validation. This can include any direct URLs that were submitted. The parameters include the URL that failed validation and the corresponding service.
+ 
+ - ENVOY_BROADCAST_VALIDATION_CONTINUED, includes ENVOY_DATA_URLS_CONTINUED
+ 
+Received if all URL fail validation and additional URLs are fetched with DNSTT. The parameters include the list of additional URLs. This should not include any URLs that were already submitted.
+
 ## Basic envoy integration
 
 ```kotlin
     private val envoyBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent != null && context != null) {
-                if (intent.action == org.greatfire.envoy.BROADCAST_URL_VALIDATION_SUCCEEDED) {
-                    val validUrls = intent.getStringArrayListExtra(org.greatfire.envoy.EXTENDED_DATA_VALID_URLS)
-                    if (validUrls != null && !validUrls.isEmpty()) {
-                        val envoyUrl = validUrls[0]
-                        CronetNetworking.initializeCronetEngine(context, envoyUrl)
+                if (intent.action == org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_SUCCEEDED) {
+                    val validUrl = intent.getStringExtra(org.greatfire.envoy.ENVOY_DATA_URL_SUCCEEDED)                    
+                    if (validUrl != null) {
+                        CronetNetworking.initializeCronetEngine(context, validUrl)
                     } else {
-                        // received empty list
+                        // received null url
                     }
-                } else if (intent.action == org.greatfire.envoy.BROADCAST_URL_VALIDATION_FAILED) {
-                    val invalidUrls = intent.getStringArrayListExtra(org.greatfire.envoy.EXTENDED_DATA_INVALID_URLS)
-                    if (invalidUrls != null && !invalidUrls.isEmpty()) {
+                } else if (intent.action == org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_FAILED) {
+                    val invalidUrl = intent.getStringExtra(org.greatfire.envoy.ENVOY_DATA_URL_FAILED)
+                    if (invalidUrl != null) {
                         // handle error state
                     } else {
-                        // received empty list
+                        // received null url
                     }
                 } else {
                     // received unexpected intent
@@ -101,13 +116,15 @@ If the optional dnsttConfig parameter is included, Envoy will attempt to fetch a
         super.onCreate(savedInstanceState)
 
         LocalBroadcastManager.getInstance(this).registerReceiver(envoyBroadcastReceiver, IntentFilter().apply {
-            addAction(org.greatfire.envoy.BROADCAST_URL_VALIDATION_SUCCEEDED)
-            addAction(org.greatfire.envoy.BROADCAST_URL_VALIDATION_FAILED)
+            addAction(org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_SUCCEEDED)
+            addAction(org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_FAILED)
         })
     
         val listOfUrls = mutableListOf<String>()
         listOfUrls.add(urlOne)
         listOfUrls.add(urlTwo)
+        val directUrls = mutableListOf<String>()
+        directUrls.add(directUrl)
         /* expected format:
            0. dnstt domain
            1. dnstt key
@@ -116,12 +133,12 @@ If the optional dnsttConfig parameter is included, Envoy will attempt to fetch a
            4. dot address
            (either 4 or 5 should be an empty string) */
         val dnsttConfig = mutableListOf<String>()
-        listOfUrls.add(dnsttDomain)
-        listOfUrls.add(dnsttKey)
-        listOfUrls.add(dnsttPath)
-        listOfUrls.add(dohUrl)
-        listOfUrls.add("")
-        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls, dnsttConfig)
+        dnsttConfig.add(dnsttDomain)
+        dnsttConfig.add(dnsttKey)
+        dnsttConfig.add(dnsttPath)
+        dnsttConfig.add(dohUrl)
+        dnsttConfig.add("")
+        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls, directUrls, hysteriaCert, dnsttConfig)
     }
 ```
 
