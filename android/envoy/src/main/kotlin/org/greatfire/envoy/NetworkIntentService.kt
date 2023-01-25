@@ -46,6 +46,7 @@ private const val EXTRA_PARAM_DNSTT = "org.greatfire.envoy.extra.PARAM_DNSTT"
 const val ENVOY_BROADCAST_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
 const val ENVOY_BROADCAST_VALIDATION_CONTINUED = "org.greatfire.envoy.VALIDATION_CONTINUED"
 const val ENVOY_BROADCAST_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
+const val ENVOY_BROADCAST_VALIDATION_BLOCKED = "org.greatfire.envoy.VALIDATION_BLOCKED"
 const val ENVOY_BROADCAST_BATCH_SUCCEEDED = "org.greatfire.envoy.BATCH_SUCCEEDED"
 const val ENVOY_BROADCAST_BATCH_FAILED = "org.greatfire.envoy.BATCH_FAILED"
 
@@ -186,18 +187,49 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
         }
 
-        if (urls.isNullOrEmpty()) {
+        val urlsToSubmit = mutableListOf<String>()
+        if (!urls.isNullOrEmpty()) {
+            urls.forEach { url ->
+                if (shouldSubmitUrl(url)) {
+                    urlsToSubmit.add(url)
+                }
+            }
+        }
+
+        if (urlsToSubmit.isNullOrEmpty()) {
             if (dnsttUrls) {
                 Log.w(TAG, "no additional dnstt urls submitted, cannot continue")
             } else {
-                Log.w(TAG, "no urls submitted, fetch additional urls from dnstt")
+                // send broadcast if all included urls have previously been blocked
+                if (!urls.isNullOrEmpty()) {
+                    Log.w(TAG, "all urls previously blocked, fetch additional urls from dnstt")
+                    val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_BLOCKED)
+                    LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                } else {
+                    Log.w(TAG, "no urls submitted, fetch additional urls from dnstt")
+                }
                 getDnsttUrls(dnsttConfig, hysteriaCert)
             }
         } else {
-            Log.d(TAG, "shuffle " + urls.size + " submitted urls")
-            shuffledUrls.addAll(urls)
+            Log.d(TAG, "shuffle " + urlsToSubmit.size + " submitted urls")
+            shuffledUrls.addAll(urlsToSubmit)
             Collections.shuffle(shuffledUrls)
             handleBatch(hysteriaCert, dnsttConfig, dnsttUrls)
+        }
+    }
+
+    private fun shouldSubmitUrl(url: String): Boolean {
+
+        val currentTime = System.currentTimeMillis()
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+        val timeOfFailure = preferences.getLong(url, 0)
+
+        if (currentTime - timeOfFailure > ONE_WEEK_MS) {
+            Log.d(TAG, "time limit expired for url(" + timeOfFailure + "), submit again: " + url)
+            return true
+        } else {
+            Log.d(TAG, "time limit has not expired for url(" + timeOfFailure + "), do not submit: " + url)
+            return false
         }
     }
 
@@ -815,6 +847,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     companion object {
         private const val TAG = "NetworkIntentService"
 
+        private const val ONE_WEEK_MS = 604800000
+
         val ioScope = CoroutineScope(Dispatchers.IO)
         var dnsttFlag = false
 
@@ -1055,6 +1089,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         fun handleInvalidUrl() {
             handleCleanup(envoyUrl)
+
+            // store failed urls so they are not attempted again
+            val currentTime = System.currentTimeMillis()
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this@NetworkIntentService)
+            val editor: SharedPreferences.Editor = sharedPreferences.edit()
+            editor.putLong(originalUrl, currentTime)
+            editor.apply()
 
             // broadcast intent with invalid urls so application can handle errors
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
