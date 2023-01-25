@@ -247,13 +247,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             if (envoyUrl.startsWith("v2ws://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
-                handleV2rayWsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleV2rayWsSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("v2srtp://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
-                handleV2raySrtpSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleV2raySrtpSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("v2wechat://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
-                handleV2rayWechatSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleV2rayWechatSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
             } else if (envoyUrl.startsWith("hysteria://")) {
                 Log.d(TAG, "found hysteria url: " + envoyUrl)
                 handleHysteriaSubmit(
@@ -265,10 +265,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 )
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
-                handleShadowsocksSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
             } else {
                 Log.d(TAG, "found (https?) url: " + envoyUrl)
-                handleHttpsSubmit(envoyUrl, captive_portal_url, dnsttConfig, dnsttUrls)
+                handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
             }
         }
 
@@ -279,6 +279,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private fun handleHttpsSubmit(
         url: String,
         captive_portal_url: String,
+        hysteriaCert: String?,
         dnsttConfig: List<String>?,
         dnsttUrls: Boolean
     ) {
@@ -293,13 +294,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start https delay")
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
-            handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls)
+            handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
         }
     }
 
     private fun handleShadowsocksSubmit(
         url: String,
         captive_portal_url: String,
+        hysteriaCert: String?,
         dnsttConfig: List<String>?,
         dnsttUrls: Boolean
     ) {
@@ -325,6 +327,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 LOCAL_URL_BASE + 1080,
                 ENVOY_SERVICE_SS,
                 captive_portal_url,
+                hysteriaCert,
                 dnsttConfig,
                 dnsttUrls
             )
@@ -376,6 +379,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LOCAL_URL_BASE + hysteriaPort,
                     ENVOY_SERVICE_HYSTERIA,
                     captive_portal_url,
+                    hysteriaCert,
                     dnsttConfig,
                     dnsttUrls
                 )
@@ -386,6 +390,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private fun handleV2rayWsSubmit(
         url: String,
         captive_portal_url: String,
+        hysteriaCert: String?,
         dnsttConfig: List<String>?,
         dnsttUrls: Boolean
     ) {
@@ -424,6 +429,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LOCAL_URL_BASE + v2wsPort,
                     ENVOY_SERVICE_V2WS,
                     captive_portal_url,
+                    hysteriaCert,
                     dnsttConfig,
                     dnsttUrls
                 )
@@ -434,6 +440,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private fun handleV2raySrtpSubmit(
         url: String,
         captive_portal_url: String,
+        hysteriaCert: String?,
         dnsttConfig: List<String>?,
         dnsttUrls: Boolean
     ) {
@@ -469,6 +476,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LOCAL_URL_BASE + v2srtpPort,
                     ENVOY_SERVICE_V2SRTP,
                     captive_portal_url,
+                    hysteriaCert,
                     dnsttConfig,
                     dnsttUrls
                 )
@@ -479,6 +487,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private fun handleV2rayWechatSubmit(
         url: String,
         captive_portal_url: String,
+        hysteriaCert: String?,
         dnsttConfig: List<String>?,
         dnsttUrls: Boolean
     ) {
@@ -513,6 +522,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LOCAL_URL_BASE + v2wechatPort,
                     ENVOY_SERVICE_V2WECHAT,
                     captive_portal_url,
+                    hysteriaCert,
                     dnsttConfig,
                     dnsttUrls
                 )
@@ -551,17 +561,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     // TODO: do we just hard code captive portal url or add the default here?
-
-    private fun handleRequest(
-        originalUrl: String,
-        envoyUrl: String,
-        envoyService: String,
-        captive_portal_url: String,
-        dnsttConfig: List<String>?,
-        dnsttUrls: Boolean
-    ) {
-        handleRequest(originalUrl, envoyUrl, envoyService, captive_portal_url, null, dnsttConfig, dnsttUrls)
-    }
 
     private fun handleRequest(
         originalUrl: String,
@@ -892,9 +891,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                      private val dnsttUrls: Boolean) : UrlRequest.Callback() {
 
         override fun onRedirectReceived(
-                request: UrlRequest?,
-                info: UrlResponseInfo?,
-                newLocationUrl: String?
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            newLocationUrl: String?
         ) {
             Log.i(TAG, "onRedirectReceived method called.")
             // You should call the request.followRedirect() method to continue
@@ -911,9 +910,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         override fun onReadCompleted(
-                request: UrlRequest?,
-                info: UrlResponseInfo?,
-                byteBuffer: ByteBuffer?
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            byteBuffer: ByteBuffer?
         ) {
             Log.i(TAG, "onReadCompleted method called.")
             // You should keep reading the request until there's no more data.
@@ -992,9 +991,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         override fun onFailed(
-                request: UrlRequest?,
-                info: UrlResponseInfo?,
-                error: CronetException?
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            error: CronetException?
         ) {
             // update batch
             Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
