@@ -321,18 +321,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
 
-            // test http(s) urls with geneva strategies
-            var strategies = Collections.synchronizedList(mutableListOf<Int>())
-            strategies.addAll(0..5)
-            Collections.shuffle(strategies)
-            strategies.forEach { strategy ->
-
-                if (strategy > 0) {
-                    Log.d(TAG, "handle request for " + url + " with strategy " + strategy)
-                }
-
-                handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls, strategy)
-            }
+            handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, dnsttConfig, dnsttUrls, 0)
         }
     }
 
@@ -639,7 +628,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             try {
 
-                if (strategy > 0) {
+                if (strategy >= 0) {
                     Log.d(TAG, "start engine for url " + envoyUrl + " with strategy " + strategy)
                 }
 
@@ -1056,7 +1045,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         }
                     }
                 } else {
-                    if (strategy > 0) {
+                    if (strategy >= 0) {
                         // TEMP - need to figure out how to handle strategies + batches
                         Log.d(TAG, "non-200 failure for url " + originalUrl + " with strategy " + strategy)
 
