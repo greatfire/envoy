@@ -222,14 +222,17 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         val currentTime = System.currentTimeMillis()
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        val timeOfFailure = preferences.getLong(url, 0)
+        val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
+        val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
 
-        if (currentTime - timeOfFailure > ONE_WEEK_MS) {
-            Log.d(TAG, "time limit expired for url(" + timeOfFailure + "), submit again: " + url)
-            return true
-        } else {
-            Log.d(TAG, "time limit has not expired for url(" + timeOfFailure + "), do not submit: " + url)
+        if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
+            || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
+            || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
+            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + url)
             return false
+        } else {
+            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + url)
+            return true
         }
     }
 
@@ -847,7 +850,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     companion object {
         private const val TAG = "NetworkIntentService"
 
+        private const val ONE_HOUR_MS = 3600000
+        private const val ONE_DAY_MS = 86400000
         private const val ONE_WEEK_MS = 604800000
+        private const val TIME_SUFFIX = "_time"
+        private const val COUNT_SUFFIX = "_count"
 
         val ioScope = CoroutineScope(Dispatchers.IO)
         var dnsttFlag = false
@@ -984,6 +991,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     val editor: SharedPreferences.Editor = sharedPreferences.edit()
                     val json = JSONArray(this@NetworkIntentService.validUrls)
                     editor.putString(PREF_VALID_URLS, json.toString())
+                    editor.putInt(originalUrl + COUNT_SUFFIX, 0)
                     editor.apply()
 
                     val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
@@ -1093,8 +1101,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             // store failed urls so they are not attempted again
             val currentTime = System.currentTimeMillis()
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this@NetworkIntentService)
+            val failureCount = sharedPreferences.getInt(originalUrl + COUNT_SUFFIX, 0)
             val editor: SharedPreferences.Editor = sharedPreferences.edit()
-            editor.putLong(originalUrl, currentTime)
+            editor.putLong(originalUrl + TIME_SUFFIX, currentTime)
+            editor.putInt(originalUrl + COUNT_SUFFIX, failureCount + 1)
             editor.apply()
 
             // broadcast intent with invalid urls so application can handle errors
