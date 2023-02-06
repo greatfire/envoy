@@ -569,7 +569,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         captive_portal_url: String,
         hysteriaCert: String?,
         dnsttConfig: List<String>?,
-        dnsttUrls: Boolean
+        dnsttUrls: Boolean,
+        strategy: Int = 0
     ) {
 
         if (dnsttUrls) {
@@ -591,6 +592,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     .enableHttp2(true)
                     .enableQuic(true)
                     .setEnvoyUrl(envoyUrl)
+                    .SetStrategy(strategy)
                     .setStoragePath(cacheDir.absolutePath)
                     .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1 * 1024 * 1024) // 1 megabyte
                     .setUserAgent(DEFAULT_USER_AGENT)

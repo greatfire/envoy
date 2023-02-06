@@ -56,6 +56,8 @@ dependencies {
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     implementation 'org.greatfire.envoy:cronet:102.0.5005.41'
     implementation 'org.greatfire:IEnvoyProxy:1.2.1'
+
+    // api(name: 'cronet-debug', ext: 'aar')
 }
 
 def stdout = new ByteArrayOutputStream()
