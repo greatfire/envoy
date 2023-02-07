@@ -249,6 +249,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
         }
 
+        Collections.shuffle(currentBatch)
         currentBatch.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
 
