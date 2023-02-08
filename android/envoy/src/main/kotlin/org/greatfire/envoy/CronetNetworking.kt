@@ -47,10 +47,8 @@ object CronetNetworking {
             return
         }
         if (mCustomCronetBuilder != null) {
-            Log.d(TAG, "build cronet engine with existing builder")
             mCronetEngine = mCustomCronetBuilder!!.build(context)
         } else {
-            Log.d(TAG, "build cronet engine with strategy " + strategy)
             val cacheDir = File(context.cacheDir, "cronet-cache")
             cacheDir.mkdirs()
             mCronetEngine = CronetEngine.Builder(context)
