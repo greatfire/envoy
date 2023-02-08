@@ -29,6 +29,10 @@ Visit native/README.md and android/README.md for more technical details.
 ## What is Cronet
 Cronet is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in the Chrome browser by over a billion people. It offers an easy-to-use, high performance, standards-compliant, and secure way to perform HTTP requests.. On Android, Cronet offers its own Java asynchronous API as well as support for the java.net.HttpURLConnection API. Cronet takes advantage of multiple technologies that reduce the latency and increase the throughput of the network requests that your app needs to work.
 
+### Cronet release schedule
+
+The cronet builds are based on the Chromium "Extended Support" releases.  They generally stick with one major version, e.g. 102.0.5005.x, until the end of the support period.  The Chromium LTS end of life date can be found under "ChromeOS LTS Last Refresh" on https://chromiumdash.appspot.com/schedule
+
 ## All About Envoy
 Envoy is built on top of cronet which offers support for OkHttp, Volley, WebView, Cronet basic and java.net.HttpURLConnection.
 
