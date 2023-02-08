@@ -42,15 +42,6 @@ private const val EXTRA_PARAM_CERT = "org.greatfire.envoy.extra.PARAM_CERT"
 private const val EXTRA_PARAM_CONFIG = "org.greatfire.envoy.extra.PARAM_CONFIG"
 private const val EXTRA_PARAM_DNSTT = "org.greatfire.envoy.extra.PARAM_DNSTT"
 
-// geneva strategies
-const val EXTRA_PARAM_STRATEGY = "org.greatfire.envoy.extra.PARAM_STRATEGY"
-const val UNMODIFIED_STRATEGY = 0
-const val ELEVATED_COUNT_STRATEGY = 1
-const val TRUNCATED_RESERVED_STRATEGY = 2
-const val MULTI_BYTE_STRATEGY = 3
-const val MULTI_BYTE_ELEVATED_COUNT_STRATEGY = 4
-const val COMPRESSED_STRATEGY = 5
-
 // Defines a custom Intent action
 const val ENVOY_BROADCAST_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
 const val ENVOY_BROADCAST_VALIDATION_CONTINUED = "org.greatfire.envoy.VALIDATION_CONTINUED"
@@ -64,8 +55,6 @@ const val ENVOY_DATA_URLS_CONTINUED = "org.greatfire.envoy.URLS_CONTINUED"
 const val ENVOY_DATA_URLS_FAILED = "org.greatfire.envoy.URLS_FAILED"
 const val ENVOY_DATA_URL_SUCCEEDED = "org.greatfire.envoy.URL_SUCCEEDED"
 const val ENVOY_DATA_URL_FAILED = "org.greatfire.envoy.URL_FAILED"
-const val ENVOY_DATA_STRATEGY_SUCCEEDED = "org.greatfire.envoy.STRATEGY_SUCCEEDED"
-const val ENVOY_DATA_STRATEGY_FAILED = "org.greatfire.envoy.STRATEGY_FAILED"
 const val ENVOY_DATA_SERVICE_SUCCEEDED = "org.greatfire.envoy.SERVICE_SUCCEEDED"
 const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
 const val ENVOY_DATA_BATCH_LIST = "org.greatfire.envoy.BATCH_LIST"
@@ -272,23 +261,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "cache setup, check directory: " + cacheDir.absolutePath)
                 cacheCounter = cacheCounter + 1
             } while (cacheDir.exists())
-            cacheMap.put(envoyUrl + "." + UNMODIFIED_STRATEGY, cacheDir.name)
-            Log.d(TAG, "cache setup, create directory: " + cacheDir.absolutePath + " for url " + envoyUrl + "." + UNMODIFIED_STRATEGY)
+            cacheMap.put(envoyUrl, cacheDir.name)
+            Log.d(TAG, "cache setup, create directory: " + cacheDir.absolutePath)
             cacheDir.mkdirs()
-
-            // create additional caches for http(s) strategies
-            if (envoyUrl.startsWith("http")) {
-                for (i in ELEVATED_COUNT_STRATEGY..COMPRESSED_STRATEGY) {
-                    do {
-                        cacheDir = File(applicationContext.cacheDir, "cache_" + cacheCounter)
-                        Log.d(TAG, "cache setup, check directory: " + cacheDir.absolutePath)
-                        cacheCounter = cacheCounter + 1
-                    } while (cacheDir.exists())
-                    cacheMap.put(envoyUrl + "." + i, cacheDir.name)
-                    Log.d(TAG, "cache setup, create directory: " + cacheDir.absolutePath + " for url " + envoyUrl + "." + i)
-                    cacheDir.mkdirs()
-                }
-            }
 
             if (envoyUrl.startsWith("v2ws://")) {
                 Log.d(TAG, "found v2ray url: " + envoyUrl)
@@ -597,8 +572,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 ENVOY_SERVICE_DIRECT,
                 hysteriaCert,
                 dnsttConfig,
-                dnsttUrls,
-                UNMODIFIED_STRATEGY
+                dnsttUrls
             ),
             executor
         )
@@ -625,17 +599,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "create request to " + captive_portal_url + " for url: " + envoyUrl)
         }
 
-        if (cacheMap.keys.contains(originalUrl + "." + strategy)) {
+        if (cacheMap.keys.contains(originalUrl)) {
 
-            Log.d(TAG, "cache setup, found cache directory for " + originalUrl + "." + strategy + " -> " + cacheMap.get(originalUrl + "." + strategy))
-            val cacheDir = File(applicationContext.cacheDir, cacheMap.get(originalUrl + "." + strategy))
+            Log.d(TAG, "cache setup, found cache directory for " + originalUrl + " -> " + cacheMap.get(originalUrl))
+            val cacheDir = File(applicationContext.cacheDir, cacheMap.get(originalUrl))
 
             try {
-
-                if (strategy > 0) {
-                    Log.d(TAG, "start engine for url " + envoyUrl + " with strategy " + strategy)
-                }
-
                 val executor: Executor = Executors.newSingleThreadExecutor()
                 val myBuilder = CronetEngine.Builder(applicationContext)
                 val cronetEngine: CronetEngine = myBuilder
@@ -656,15 +625,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         envoyService,
                         hysteriaCert,
                         dnsttConfig,
-                        dnsttUrls,
-                        strategy
+                        dnsttUrls
                     ),
                     executor
                 )
                 val request: UrlRequest = requestBuilder.build()
                 request.start()
-                Log.d(TAG, "cache setup, cache cronet engine for url " + originalUrl + "." + strategy)
-                cronetMap.put(originalUrl + "." + strategy, cronetEngine)
+                Log.d(TAG, "cache setup, cache cronet engine for url " + originalUrl)
+                cronetMap.put(originalUrl, cronetEngine)
             } catch (ise: IllegalStateException) {
                 Log.e(TAG, "cache setup, " + cacheDir.absolutePath + " could not be used")
             }
@@ -942,8 +910,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                      private val envoyService: String,
                                      private val hysteriaCert: String?,
                                      private val dnsttConfig: List<String>?,
-                                     private val dnsttUrls: Boolean,
-                                     private val strategy: Int) : UrlRequest.Callback() {
+                                     private val dnsttUrls: Boolean) : UrlRequest.Callback() {
 
         override fun onRedirectReceived(
             request: UrlRequest?,
@@ -995,78 +962,48 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                 // only a 200 status code is valid, otherwise return invalid url as in onFailed
                 if (info.httpStatusCode in 200..299) {
-                    if (strategy > 0) {
-                        // TEMP - need to figure out how to handle strategies + batches
-                        Log.d(TAG, "success for url " + originalUrl + " with strategy " + strategy)
+                    // logs captive portal url used to validate envoy url
+                    Log.d(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is valid")
+                    this@NetworkIntentService.validUrls.add(envoyUrl)
 
-                        // TEMP - send separate broadcast with successful non-0 strategy
-                        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
-                            // puts the validation status into the intent
-                            putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(this@NetworkIntentService.validUrls))
-                            putExtra(ENVOY_DATA_URL_SUCCEEDED, envoyUrl)
-                            putExtra(ENVOY_DATA_SERVICE_SUCCEEDED, envoyService)
-                            putExtra(ENVOY_DATA_STRATEGY_SUCCEEDED, strategy)
+                    // store valid urls in preferences
+                    val sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(this@NetworkIntentService)
+                    val editor: SharedPreferences.Editor = sharedPreferences.edit()
+                    val json = JSONArray(this@NetworkIntentService.validUrls)
+                    editor.putString(PREF_VALID_URLS, json.toString())
+                    editor.apply()
+
+                    val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
+                        // puts the validation status into the intent
+                        putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(this@NetworkIntentService.validUrls))
+                        putExtra(ENVOY_DATA_URL_SUCCEEDED, envoyUrl)
+                        putExtra(ENVOY_DATA_SERVICE_SUCCEEDED, envoyService)
+                    }
+                    LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+
+                    // create local copies to sort
+                    val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
+                    val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
+                    Collections.sort(localBatchList)
+                    Collections.sort(localServiceList)
+
+                    // check whether batch is complete
+                    if (this@NetworkIntentService.currentBatch.size > 0) {
+                        Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
+                    } else  {
+                        Log.d(TAG, "current batch is empty, but a valid url was found: " + this@NetworkIntentService.validUrls.get(0))
+
+                        val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
+                            putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
+                            putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
                         }
                         LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-                    } else {
-                        // logs captive portal url used to validate envoy url
-                        Log.d(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is valid")
-                        this@NetworkIntentService.validUrls.add(envoyUrl)
-
-                        // store valid urls in preferences
-                        val sharedPreferences =
-                            PreferenceManager.getDefaultSharedPreferences(this@NetworkIntentService)
-                        val editor: SharedPreferences.Editor = sharedPreferences.edit()
-                        val json = JSONArray(this@NetworkIntentService.validUrls)
-                        editor.putString(PREF_VALID_URLS, json.toString())
-                        editor.apply()
-
-                        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
-                            // puts the validation status into the intent
-                            putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(this@NetworkIntentService.validUrls))
-                            putExtra(ENVOY_DATA_URL_SUCCEEDED, envoyUrl)
-                            putExtra(ENVOY_DATA_SERVICE_SUCCEEDED, envoyService)
-                        }
-                        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-
-                        // create local copies to sort
-                        val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
-                        val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
-                        Collections.sort(localBatchList)
-                        Collections.sort(localServiceList)
-
-                        // check whether batch is complete
-                        if (this@NetworkIntentService.currentBatch.size > 0) {
-                            Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
-                        } else {
-                            Log.d(TAG, "current batch is empty, but a valid url was found: " + this@NetworkIntentService.validUrls.get(0))
-
-                            val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
-                                putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
-                                putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
-                            }
-                            LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-                        }
                     }
                 } else {
-                    if (strategy > 0) {
-                        // TEMP - need to figure out how to handle strategies + batches
-                        Log.d(TAG, "non-200 failure for url " + originalUrl + " with strategy " + strategy)
-
-                        // TEMP - send separate broadcast with failed non-0 strategy
-                        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_FAILED).apply {
-                            // puts the validation status into the intent
-                            putStringArrayListExtra(ENVOY_DATA_URLS_FAILED, ArrayList(this@NetworkIntentService.invalidUrls))
-                            putExtra(ENVOY_DATA_URL_FAILED, envoyUrl)
-                            putExtra(ENVOY_DATA_SERVICE_FAILED, envoyService)
-                            putExtra(ENVOY_DATA_STRATEGY_FAILED, strategy)
-                        }
-                        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-                    } else {
-                        // logs captive portal url used to validate envoy url
-                        Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
-                        handleInvalidUrl()
-                    }
+                    // logs captive portal url used to validate envoy url
+                    Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
+                    handleInvalidUrl()
                 }
             } else {
                 Log.w(TAG, "onSucceeded method called but UrlResponseInfo was null")
@@ -1080,55 +1017,40 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             info: UrlResponseInfo?,
             error: CronetException?
         ) {
-            if (strategy > 0) {
-                // TEMP - need to figure out how to handle strategies + batches
-                Log.d(TAG, "failure for url " + originalUrl + " with strategy " + strategy)
-
-                // TEMP - send separate broadcast with failed non-0 strategy
-                val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_FAILED).apply {
-                    // puts the validation status into the intent
-                    putStringArrayListExtra(ENVOY_DATA_URLS_FAILED, ArrayList(this@NetworkIntentService.invalidUrls))
-                    putExtra(ENVOY_DATA_URL_FAILED, envoyUrl)
-                    putExtra(ENVOY_DATA_SERVICE_FAILED, envoyService)
-                    putExtra(ENVOY_DATA_STRATEGY_FAILED, strategy)
-                }
-                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+            // update batch
+            Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                Log.d(TAG, "direct url " + originalUrl + " was invalid, but do not update lists")
             } else {
-                // update batch
-                Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
-                if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
-                    Log.d(TAG, "direct url " + originalUrl + " was invalid, but do not update lists")
-                } else {
-                    this@NetworkIntentService.currentBatchChecked.add(originalUrl)
-                    this@NetworkIntentService.currentServiceChecked.add(envoyService)
-                    this@NetworkIntentService.currentBatch.remove(originalUrl)
-                }
-
-                // logs captive portal url used to validate envoy url
-                Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
-                handleInvalidUrl()
-
-                cacheCleanup()
+                this@NetworkIntentService.currentBatchChecked.add(originalUrl)
+                this@NetworkIntentService.currentServiceChecked.add(envoyService)
+                this@NetworkIntentService.currentBatch.remove(originalUrl)
             }
+
+            // logs captive portal url used to validate envoy url
+            Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
+            handleInvalidUrl()
+
+            cacheCleanup()
         }
 
         private fun cacheCleanup() {
 
-            val engine = cronetMap.get(originalUrl + "." + strategy)
+            val engine = cronetMap.get(originalUrl)
             if (engine == null) {
-                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + originalUrl + "." + strategy)
+                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + originalUrl)
             } else {
-                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + originalUrl + "." + strategy)
+                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + originalUrl)
                 engine.shutdown()
-                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + originalUrl + "." + strategy)
+                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + originalUrl)
             }
 
-            val cacheName = cacheMap.get(originalUrl + "." + strategy)
+            val cacheName = cacheMap.get(originalUrl)
             if (cacheName == null) {
-                Log.w(TAG, "cache cleanup, could not find cached directory for url " + originalUrl + "." + strategy)
+                Log.w(TAG, "cache cleanup, could not find cached directory for url " + originalUrl)
                 return
             } else {
-                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + originalUrl + "." + strategy)
+                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + originalUrl)
             }
 
             // clean up http cache dir
