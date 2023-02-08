@@ -50,5 +50,5 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
 
-    api(name: 'cronet-debug', ext: 'aar')
+    // api(name: 'cronet-debug', ext: 'aar')
 }
