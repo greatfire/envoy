@@ -16,7 +16,7 @@ export CMAKE_VERSION="3.10.2.4988404"
 export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$PWD/android-sdk-linux}
 export CMAKE_HOME=$ANDROID_SDK_ROOT/cmake/${CMAKE_VERSION}/bin
 export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$CMAKE_HOME
-export sdkmanager=$ANDROID_SDK_ROOT/tools/bin/sdkmanager
+export sdkmanager=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
 
 set -euo pipefail
 if [ ! -e $sdkmanager ]; then
@@ -42,5 +42,8 @@ cp "../native/cronet-$BUILD.aar" ./demo/cronet/
 if [[ $BUILD == "debug" ]]; then
     ./gradlew assembleDebug $BUILD_ARGS
 else
+    # lint checks debug dependencies for release builds
+    cp "../native/cronet-debug.aar" ./envoy/cronet/
+    cp "../native/cronet-debug.aar" ./demo/cronet/
     ./gradlew assembleRelease $BUILD_ARGS
 fi

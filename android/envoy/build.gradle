@@ -57,7 +57,8 @@ dependencies {
     implementation 'org.greatfire.envoy:cronet:102.0.5005.195'
     implementation 'org.greatfire:IEnvoyProxy:1.2.1'
 
-    // api(name: 'cronet-debug', ext: 'aar')
+    // debugApi(name: 'cronet-debug', ext: 'aar')
+    // releaseApi(name: 'cronet-release', ext: 'aar')
 }
 
 def stdout = new ByteArrayOutputStream()
