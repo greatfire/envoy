@@ -24,6 +24,9 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --for
 
 # build cronet with jni and java api
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003-Add-jni-and-android-interface.patch"
+# Geneva DNS evasions https://geneva.cs.umd.edu/
+# updates to api.txt are also in this patch, since both it and the 0003 patch change the cronet API
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003.1-geneva-dns-and-api-txt.patch"
 # with dns resolve
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-Add-host-map-rules-for-envoy-scheme.patch"
 # disabled cipher suites

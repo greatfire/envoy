@@ -37,7 +37,8 @@ yes | $sdkmanager --licenses
 set -o pipefail
 
 BUILD=${1:-release}
-cp "../native/cronet-$BUILD.aar" ./cronet/
+cp "../native/cronet-$BUILD.aar" ./envoy/cronet/
+cp "../native/cronet-$BUILD.aar" ./demo/cronet/
 if [[ $BUILD == "debug" ]]; then
     ./gradlew assembleDebug $BUILD_ARGS
 else
