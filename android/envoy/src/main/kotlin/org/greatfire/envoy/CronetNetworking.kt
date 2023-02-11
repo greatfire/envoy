@@ -40,7 +40,7 @@ object CronetNetworking {
     @JvmStatic
     @Synchronized
     @JvmOverloads
-    fun initializeCronetEngine(context: Context, envoyUrl: String?, reInitializeIfNeeded: Boolean = false) {
+    fun initializeCronetEngine(context: Context, envoyUrl: String?, reInitializeIfNeeded: Boolean = false, strategy: Int = 0) {
         Log.d(TAG, "try to initialize cronet engine with url $envoyUrl")
         if (this.mCronetEngine != null && !reInitializeIfNeeded) {
             Log.d(TAG, "cronet engine is initialized already, and reInitializeIfNeeded is $reInitializeIfNeeded")
@@ -56,6 +56,7 @@ object CronetNetworking {
                     .enableHttp2(true)
                     .enableQuic(true)
                     .setEnvoyUrl(envoyUrl)
+                    .SetStrategy(strategy)
                     .setStoragePath(cacheDir.absolutePath)
                     .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 10 * 1024 * 1024) // 10 MegaBytes
                     .build()

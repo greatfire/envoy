@@ -95,6 +95,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private var submittedUrls = Collections.synchronizedList(mutableListOf<String>())
     private var shuffledUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var shuffledHttps = Collections.synchronizedList(mutableListOf<String>())
     private var currentBatch = Collections.synchronizedList(mutableListOf<String>())
     private var currentBatchChecked = Collections.synchronizedList(mutableListOf<String>())
     private var currentServiceChecked = Collections.synchronizedList(mutableListOf<String>())
@@ -211,8 +212,17 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 getDnsttUrls(dnsttConfig, hysteriaCert)
             }
         } else {
-            Log.d(TAG, "shuffle " + urlsToSubmit.size + " submitted urls")
-            shuffledUrls.addAll(urlsToSubmit)
+            urlsToSubmit.forEach() { url ->
+                if (url.contains("test")) {
+                    // no-op
+                } else if (url.startsWith("http")) {
+                    shuffledHttps.add(url)
+                } else {
+                    shuffledUrls.add(url)
+                }
+            }
+            Log.d(TAG, "shuffle " + (shuffledHttps.size + shuffledUrls.size) + " submitted urls")
+            Collections.shuffle(shuffledHttps)
             Collections.shuffle(shuffledUrls)
             handleBatch(hysteriaCert, dnsttConfig, dnsttUrls)
         }
@@ -250,7 +260,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start new batch")
         }
 
-        var max = shuffledUrls.size
+        var max = shuffledUrls.size + shuffledHttps.size
         if (max > 3) {
             max = 3
         }
@@ -259,12 +269,22 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         currentBatchChecked.clear()
         currentServiceChecked.clear()
 
+        var alternativeIncluded = false
+
         repeat(max) { index ->
-            Log.d(TAG, "add " + (index + 1) + " url out of " + max + " to batch: " + shuffledUrls[0])
-            currentBatch.add(shuffledUrls[0])
-            shuffledUrls.removeAt(0)
+            if (shuffledUrls.isNullOrEmpty() || (alternativeIncluded && !shuffledHttps.isNullOrEmpty())) {
+                Log.d(TAG, "add " + (index + 1) + " http url out of " + max + " to batch: " + shuffledHttps[0])
+                currentBatch.add(shuffledHttps[0])
+                shuffledHttps.removeAt(0)
+            } else {
+                Log.d(TAG, "add " + (index + 1) + " non-http url out of " + max + " to batch: " + shuffledUrls[0])
+                currentBatch.add(shuffledUrls[0])
+                shuffledUrls.removeAt(0)
+                alternativeIncluded = true
+            }
         }
 
+        Collections.shuffle(currentBatch)
         currentBatch.forEach { envoyUrl ->
             submittedUrls.add(envoyUrl)
 
@@ -604,7 +624,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         captive_portal_url: String,
         hysteriaCert: String?,
         dnsttConfig: List<String>?,
-        dnsttUrls: Boolean
+        dnsttUrls: Boolean,
+        strategy: Int = 0
     ) {
 
         if (dnsttUrls) {
@@ -626,6 +647,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     .enableHttp2(true)
                     .enableQuic(true)
                     .setEnvoyUrl(envoyUrl)
+                    .SetStrategy(strategy)
                     .setStoragePath(cacheDir.absolutePath)
                     .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1 * 1024 * 1024) // 1 megabyte
                     .setUserAgent(DEFAULT_USER_AGENT)
@@ -1135,9 +1157,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
                 }
                 LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-            } else if (this@NetworkIntentService.shuffledUrls.size > 0) {
+            } else if ((this@NetworkIntentService.shuffledUrls.size + this@NetworkIntentService.shuffledHttps.size) > 0) {
                 // check whether all submitted urls have failed
-                Log.d(TAG, "current batch is empty, " + this@NetworkIntentService.shuffledUrls.size + " submitted urls remaining")
+                Log.d(TAG, "current batch is empty, " + (this@NetworkIntentService.shuffledUrls.size + this@NetworkIntentService.shuffledHttps.size) + " submitted urls remaining")
 
                 val localIntent = Intent(ENVOY_BROADCAST_BATCH_FAILED).apply {
                     putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
