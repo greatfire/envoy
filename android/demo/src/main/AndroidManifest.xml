@@ -26,10 +26,6 @@
         </activity>
 
         <service
-            android:name="org.greatfire.envoy.ShadowsocksService"
-            android:exported="false"
-            android:isolatedProcess="false" /> <!-- android:permission="set exported to true when this is defined" -->
-        <service
             android:name="org.greatfire.envoy.NetworkIntentService"
             android:exported="false" />
 

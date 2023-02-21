@@ -66,7 +66,6 @@ const val ENVOY_SERVICE_V2WS = "v2ws"
 const val ENVOY_SERVICE_V2SRTP = "v2srtp"
 const val ENVOY_SERVICE_V2WECHAT = "v2wechat"
 const val ENVOY_SERVICE_HYSTERIA = "hysteria"
-const val ENVOY_SERVICE_SS = "ss"
 const val ENVOY_SERVICE_HTTPS = "https"
 
 const val PREF_VALID_URLS = "validUrls"
@@ -106,7 +105,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var v2raySrtpUrls = Collections.synchronizedList(mutableListOf<String>())
     private var v2rayWechatUrls = Collections.synchronizedList(mutableListOf<String>())
     private var hysteriaUrls = Collections.synchronizedList(mutableListOf<String>())
-    private var shadowsocksUrls = Collections.synchronizedList(mutableListOf<String>())
     private var httpsUrls = Collections.synchronizedList(mutableListOf<String>())
 
     // the valid url at index 0 should be the one that was selected to use for setting up cronet
@@ -120,6 +118,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var cacheCounter = 1
     private val cacheMap = Collections.synchronizedMap(mutableMapOf<String, String>())
     private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
+
+    private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http"))
+    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria"))
 
     inner class NetworkBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
@@ -213,12 +214,16 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
         } else {
             urlsToSubmit.forEach() { url ->
+                val parts = url.split(":")
+                val prefix = parts[0]
                 if (url.contains("test")) {
                     // no-op
-                } else if (url.startsWith("http")) {
+                } else if (httpPrefixes.contains(prefix)) {
                     shuffledHttps.add(url)
-                } else {
+                } else if (supportedPrefixes.contains(prefix)) {
                     shuffledUrls.add(url)
+                } else {
+                    Log.w(TAG, "found url with unsupported prefix: " + prefix)
                 }
             }
             Log.d(TAG, "shuffle " + (shuffledHttps.size + shuffledUrls.size) + " submitted urls")
@@ -318,12 +323,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     dnsttConfig,
                     dnsttUrls
                 )
-            } else if (envoyUrl.startsWith("ss://")) {
-                Log.d(TAG, "found ss url: " + envoyUrl)
-                handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
-            } else {
-                Log.d(TAG, "found (https?) url: " + envoyUrl)
+            } else if (envoyUrl.startsWith("http")) {
+                Log.d(TAG, "found http(s) url: " + envoyUrl)
                 handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
+            } else {
+                Log.w(TAG, "found unsupported url: " + envoyUrl)
+                // prefix check should handle this but if not, batch count may not add up
             }
         }
 
@@ -350,42 +355,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
             handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
-        }
-    }
-
-    private fun handleShadowsocksSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?,
-        dnsttConfig: List<String>?,
-        dnsttUrls: Boolean
-    ) {
-
-        // nothing to parse at this time, leave url in string format
-
-        // start shadowsocks service
-        val shadowsocksIntent = Intent(this, ShadowsocksService::class.java)
-        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", url)
-        ContextCompat.startForegroundService(applicationContext, shadowsocksIntent)
-        Log.d(TAG, "shadowsocks service started at " + LOCAL_URL_BASE + 1080)
-
-        shadowsocksUrls.add(LOCAL_URL_BASE + 1080)
-
-        // attempt to use fixed delay rather than broadcast receiver
-        Log.d(TAG, "submit url after a short delay for starting shadowsocks")
-        ioScope.launch() {
-            Log.d(TAG, "start shadowsocks delay")
-            delay(10000L) // wait 10 seconds
-            Log.d(TAG, "end shadowsocks delay")
-            handleRequest(
-                url,
-                LOCAL_URL_BASE + 1080,
-                ENVOY_SERVICE_SS,
-                captive_portal_url,
-                hysteriaCert,
-                dnsttConfig,
-                dnsttUrls
-            )
         }
     }
 
@@ -713,15 +682,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 IEnvoyProxy.stopHysteria()
             } else {
                 Log.d(TAG, "" + hysteriaUrls.size + " hysteria urls remaining, service in use")
-            }
-
-        } else if (shadowsocksUrls.contains(envoyUrl)) {
-            shadowsocksUrls.remove(envoyUrl)
-            if (shadowsocksUrls.isEmpty()) {
-                Log.d(TAG, "no shadowsocks urls remaining, stop service")
-                // how to stop shadowsocks service?
-            } else {
-                Log.d(TAG, "" + shadowsocksUrls.size + " shadowsocks urls remaining, service in use")
             }
 
         } else if (httpsUrls.contains(envoyUrl)) {

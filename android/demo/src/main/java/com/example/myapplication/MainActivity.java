@@ -32,7 +32,6 @@ import com.google.android.material.tabs.TabLayoutMediator;
 import org.chromium.net.CronetEngine;
 import org.greatfire.envoy.CronetNetworking;
 import org.greatfire.envoy.NetworkIntentService;
-import org.greatfire.envoy.ShadowsocksService;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
@@ -65,18 +64,6 @@ public class MainActivity extends FragmentActivity {
 
         // register to receive test results
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(ENVOY_BROADCAST_VALIDATION_SUCCEEDED));
-
-        String ssUri = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@127.0.0.1:1234";
-        Intent shadowsocksIntent = new Intent(this, ShadowsocksService.class);
-        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", ssUri);
-        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_ADDRESS", "127.0.0.1");
-        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1080);
-        ContextCompat.startForegroundService(getApplicationContext(), shadowsocksIntent);
-
-        // https://developer.android.com/guide/components/bound-services#java
-        //Intent intent = new Intent(this, ShadowsocksService.class);
-        //private ServiceConnection connection = new ServiceConnection() { }
-        //bindService(intent, connection, Context.BIND_AUTO_CREATE);
 
         viewPager = findViewById(R.id.pager);
         // viewPager.setPageTransformer();

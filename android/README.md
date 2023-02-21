@@ -158,10 +158,6 @@ Add uses-permission and services to AndroidManifest.xml
 ...
 
 <service
-    android:name="org.greatfire.envoy.ShadowsocksService"
-    android:exported="false"
-    android:isolatedProcess="false" />
-<service
     android:name="org.greatfire.envoy.NetworkIntentService"
     android:exported="false" />
 ```
