@@ -19,19 +19,12 @@ CHROME_VERSION=$MAJOR.$MINOR.$BUILD.$PATCH
 git clean -ffd
 git checkout .
 
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0001-Add-envoy_url-and-jni.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0001-Envoy.patch"
 # Geneva DNS evasions https://geneva.cs.umd.edu/
 # updates to api.txt are also in this patch, since both it and the 0003 patch change the cronet API
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003.1-geneva-dns-and-api-txt.patch"
-# with dns resolve
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-Add-host-map-rules-for-envoy-scheme.patch"
-# disabled cipher suites
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0005-Add-disabled-cipher-suites-parameter.patch"
-
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0008-Set-host-header-for-http2.patch"
 
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0010-Disable-external-intent.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0011-Add-salt-parameter.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0012-Add-socks5-proxy-for-cronet.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0013-Add-jni-for-cronet-socks5-proxy.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0014-Add-ss-service.patch"
