@@ -22,12 +22,10 @@ git checkout .
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0001-Envoy.patch"
 # Geneva DNS evasions https://geneva.cs.umd.edu/
 # updates to api.txt are also in this patch, since both it and the 0003 patch change the cronet API
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003.1-geneva-dns-and-api-txt.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0002-geneva-dns-and-api-txt.patch"
 
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0010-Disable-external-intent.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0012-Add-socks5-proxy-for-cronet.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0013-Add-jni-for-cronet-socks5-proxy.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0014-Add-ss-service.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003-Add-socks5-proxy-and-jni.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-Add-ss-service.patch"
 
 # autoninja -C out/Default chrome_public_apk
 gn gen out/Cronet-Desktop
