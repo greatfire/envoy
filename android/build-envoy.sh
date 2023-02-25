@@ -42,8 +42,5 @@ cp "../native/cronet-$BUILD.aar" ./demo/cronet/
 if [[ $BUILD == "debug" ]]; then
     ./gradlew assembleDebug $BUILD_ARGS
 else
-    # lint checks debug dependencies for release builds
-    cp "../native/cronet-debug.aar" ./envoy/cronet/
-    cp "../native/cronet-debug.aar" ./demo/cronet/
     ./gradlew assembleRelease $BUILD_ARGS
 fi

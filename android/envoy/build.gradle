@@ -3,6 +3,11 @@ apply plugin: 'kotlin-android'
 
 android {
 
+    // exclude lint task from demo project that causes release builds to fail
+    if (gradle.startParameter.taskNames.contains("assembleRelease")) {
+        gradle.startParameter.excludedTaskNames += ":demo:lintVitalRelease"
+    }
+
     compileSdkVersion 29
     buildToolsVersion '30.0.2'
     //ndkVersion '20.0.5594570'
