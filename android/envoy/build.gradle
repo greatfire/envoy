@@ -3,6 +3,11 @@ apply plugin: 'kotlin-android'
 
 android {
 
+    // exclude lint task from demo project that causes release builds to fail
+    if (gradle.startParameter.taskNames.contains("assembleRelease")) {
+        gradle.startParameter.excludedTaskNames += ":demo:lintVitalRelease"
+    }
+
     compileSdkVersion 29
     buildToolsVersion '30.0.2'
     //ndkVersion '20.0.5594570'
@@ -57,7 +62,8 @@ dependencies {
     implementation 'org.greatfire.envoy:cronet:102.0.5005.195'
     implementation 'org.greatfire:IEnvoyProxy:1.2.1'
 
-    // api(name: 'cronet-debug', ext: 'aar')
+    // debugApi(name: 'cronet-debug', ext: 'aar')
+    // releaseApi(name: 'cronet-release', ext: 'aar')
 }
 
 def stdout = new ByteArrayOutputStream()
