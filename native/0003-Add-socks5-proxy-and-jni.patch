@@ -1,5 +1,9 @@
  components/cronet/BUILD.gn                          | 21 +++++++++++++++++++++
+ components/cronet/android/cronet_context_adapter.cc | 10 ++++++++++
+ components/cronet/android/cronet_context_adapter.h  |  8 ++++++++
  components/cronet/android/cronet_library_loader.cc  | 11 +++++++++++
+ .../chromium/net/impl/CronetUrlRequestContext.java  |  8 ++++++++
+ .../cronet_sample_apk/CronetSampleActivity.java     |  3 ++-
  components/cronet/cronet_context.cc                 | 13 +++++++++++++
  components/cronet/cronet_context.h                  |  2 ++
  components/cronet/cronet_global_state.h             |  4 ++++
@@ -7,9 +11,10 @@
  components/cronet/ios/cronet_global_state_ios.mm    |  5 +++++
  components/cronet/native/engine.cc                  |  7 +++++++
  components/cronet/native/sample/main.cc             |  1 +
+ .../external_intents/ExternalNavigationHandler.java |  3 +++
  .../configured_proxy_resolution_service.cc          | 14 ++++++++++++++
  .../configured_proxy_resolution_service.h           |  3 +++
- 11 files changed, 88 insertions(+)
+ 16 files changed, 119 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/BUILD.gn b/components/cronet/BUILD.gn
 index 5be0ce232c13b..f4f539355fc09 100644
@@ -43,6 +48,53 @@ index 5be0ce232c13b..f4f539355fc09 100644
  } else if (is_ios) {
    group("cronet_package") {
      deps = [ "//components/cronet/ios:cronet_package_ios" ]
+diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
+index bef24dc7872ac..361494be19579 100644
+--- a/components/cronet/android/cronet_context_adapter.cc
++++ b/components/cronet/android/cronet_context_adapter.cc
+@@ -103,6 +103,16 @@ void CronetContextAdapter::InitRequestContextOnInitThread(
+   context_->InitRequestContextOnInitThread();
+ }
+ 
++void CronetContextAdapter::InitRequestContextOnInitThreadWithUri(
++    JNIEnv* env,
++    const JavaParamRef<jobject>& jcaller,
++    const JavaParamRef<jstring>& juri) {
++  jcronet_url_request_context_.Reset(env, jcaller);
++  std::string uri(
++      base::android::ConvertJavaStringToUTF8(env, juri));
++  context_->InitRequestContextOnInitThreadWithUri(uri);
++}
++
+ void CronetContextAdapter::ConfigureNetworkQualityEstimatorForTesting(
+     JNIEnv* env,
+     const JavaParamRef<jobject>& jcaller,
+diff --git a/components/cronet/android/cronet_context_adapter.h b/components/cronet/android/cronet_context_adapter.h
+index 271256f79ab5c..3985562592698 100644
+--- a/components/cronet/android/cronet_context_adapter.h
++++ b/components/cronet/android/cronet_context_adapter.h
+@@ -51,6 +51,11 @@ class CronetContextAdapter : public CronetContext::Callback {
+       JNIEnv* env,
+       const base::android::JavaParamRef<jobject>& jcaller);
+ 
++  void InitRequestContextOnInitThreadWithUri(
++      JNIEnv* env,
++      const base::android::JavaParamRef<jobject>& jcaller,
++      const base::android::JavaParamRef<jstring>& juri);
++
+   // Releases all resources for the request context and deletes the object.
+   // Blocks until network thread is destroyed after running all pending tasks.
+   void Destroy(JNIEnv* env,
+@@ -95,6 +100,9 @@ class CronetContextAdapter : public CronetContext::Callback {
+   // Called on init Java thread to initialize URLRequestContext.
+   void InitRequestContextOnInitThread();
+ 
++  // Called on init Java thread to initialize URLRequestContext.
++  void InitRequestContextOnInitThreadWithUri(const base::android::JavaParamRef<jstring>& juri);
++
+   // Configures the network quality estimator to observe requests to localhost,
+   // to use smaller responses when estimating throughput, and to disable the
+   // device offline checks when computing the effective connection type or when
 diff --git a/components/cronet/android/cronet_library_loader.cc b/components/cronet/android/cronet_library_loader.cc
 index cec35b8af6506..600fc26c3b883 100644
 --- a/components/cronet/android/cronet_library_loader.cc
@@ -65,6 +117,48 @@ index cec35b8af6506..600fc26c3b883 100644
  // Creates a proxy resolution service appropriate for this platform.
  std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
      std::unique_ptr<net::ProxyConfigService> proxy_config_service,
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+index 045a0183f3d60..cc2c1c2f2fc9f 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+@@ -200,8 +200,13 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+                     // mUrlRequestContextAdapter is guaranteed to exist until
+                     // initialization on init and network threads completes and
+                     // initNetworkThread is called back on network thread.
++		    if (builder.getEnvoyUrl() != null && builder.getEnvoyUrl().startsWith("socks5://")) {
++			    CronetUrlRequestContextJni.get().initRequestContextOnInitThreadWithUri(
++				    mUrlRequestContextAdapter, CronetUrlRequestContext.this, builder.getEnvoyUrl());
++		    } else {
+                     CronetUrlRequestContextJni.get().initRequestContextOnInitThread(
+                             mUrlRequestContextAdapter, CronetUrlRequestContext.this);
++		    }
+                 }
+             }
+         });
+@@ -785,6 +790,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+         @NativeClassQualifiedName("CronetContextAdapter")
+         void initRequestContextOnInitThread(long nativePtr, CronetUrlRequestContext caller);
+ 
++        @NativeClassQualifiedName("CronetContextAdapter")
++        void initRequestContextOnInitThreadWithUri(long nativePtr, CronetUrlRequestContext caller, String uri);
++
+         @NativeClassQualifiedName("CronetContextAdapter")
+         void configureNetworkQualityEstimatorForTesting(long nativePtr,
+                 CronetUrlRequestContext caller, boolean useLocalHostRequests,
+diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
+index 1ff0b8f2433ec..fce8343c460d4 100644
+--- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
++++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
+@@ -125,7 +125,8 @@ public class CronetSampleActivity extends Activity {
+         CronetEngine.Builder myBuilder = new CronetEngine.Builder(this);
+         myBuilder.enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
+                 .enableHttp2(true)
+-                .setEnvoyUrl("https://example.com/enovy_path/")
++                //.setEnvoyUrl("https://example.com/enovy_path/")
++                .setEnvoyUrl("socks5://127.0.0.1:1080")
+                 .enableQuic(true);
+ 
+         mCronetEngine = myBuilder.build();
 diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
 index 926500f7ae1be..fcff4a4b75052 100644
 --- a/components/cronet/cronet_context.cc
@@ -198,6 +292,27 @@ index 7b21245fdb8aa..1081a640cf726 100644
  
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
+diff --git a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
+index 7c354a6efbca4..b7c321451ee96 100644
+--- a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
++++ b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
+@@ -835,6 +835,8 @@ public class ExternalNavigationHandler {
+     }
+ 
+     private boolean externalIntentRequestsDisabledForUrl(ExternalNavigationParams params) {
++        return true;
++        /*
+         // TODO(changwan): check if we need to handle URL even when external intent is off.
+         if (CommandLine.getInstance().hasSwitch(
+                     ExternalIntentsSwitches.DISABLE_EXTERNAL_INTENT_REQUESTS)) {
+@@ -847,6 +849,7 @@ public class ExternalNavigationHandler {
+             return true;
+         }
+         return false;
++        */
+     }
+ 
+     /**
 diff --git a/net/proxy_resolution/configured_proxy_resolution_service.cc b/net/proxy_resolution/configured_proxy_resolution_service.cc
 index 2c02537409255..ee3192aeb633d 100644
 --- a/net/proxy_resolution/configured_proxy_resolution_service.cc
