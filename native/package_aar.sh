@@ -47,9 +47,11 @@ echo '<?xml version="1.0" encoding="utf-8"?>
 </manifest>' >AndroidManifest.xml
 cd - || exit 2
 jar cvMf "cronet-$BUILD_VARIANT.aar" -C $build_tmp_dir/ .
-#zip -r "cronet-$BUILD_VARIANT.aar" -C $build_tmp_dir/ .
 
-wget --continue https://github.com/shadowsocks/shadowsocks-android/releases/download/v5.1.7/shadowsocks--universal-5.1.7.apk
-unzip -o shadowsocks--universal-5.1.7.apk lib/*/libsslocal.so
+# updated Shadowsocks based on research:
+# https://www.opentech.fund/news/exposing-the-great-firewalls-dynamic-blocking-of-fully-encrypted-traffic/
+wget --continue https://github.com/gfw-report/shadowsocks-rust/releases/download/v0.0.1-beta/mobile-universal-release-signed.apk
+unzip -o mobile-universal-release-signed.apk lib/*/libsslocal.so
 rsync -avzp lib/ jni/
 jar uvMf "cronet-$BUILD_VARIANT.aar" jni
+
