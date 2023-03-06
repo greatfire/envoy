@@ -25,8 +25,8 @@
  net/url_request/url_request_context.h              |  4 ++
  net/url_request/url_request_context_builder.cc     | 56 ++++++++++++++++++++--
  net/url_request/url_request_context_builder.h      |  2 +
- net/url_request/url_request_http_job.cc            | 42 ++++++++++++++++
- 28 files changed, 291 insertions(+), 15 deletions(-)
+ net/url_request/url_request_http_job.cc            | 43 +++++++++++++++++
+ 28 files changed, 292 insertions(+), 15 deletions(-)
 
 diff --git a/chrome/browser/ssl/ssl_config_service_manager.cc b/chrome/browser/ssl/ssl_config_service_manager.cc
 index 08fe7667d9ae9..ad013cae172cf 100644
@@ -754,7 +754,7 @@ index 7bdf93aeb7aa1..0ad42c07c1301 100644
  
    bool http_cache_enabled_ = true;
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index 2db8e1bc9e5bb..f658e2c06f83e 100644
+index 2db8e1bc9e5bb..6d538ec24b3f2 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -18,6 +18,7 @@
@@ -773,12 +773,13 @@ index 2db8e1bc9e5bb..f658e2c06f83e 100644
  #include "net/base/features.h"
  #include "net/base/host_port_pair.h"
  #include "net/base/http_user_agent_settings.h"
-@@ -558,6 +560,46 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -558,6 +560,47 @@ void URLRequestHttpJob::StartTransactionInternal() {
  
        if (!throttling_entry_.get() ||
            !throttling_entry_->ShouldRejectRequest(*request_)) {
 +        if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
-+            request_->context()->envoy_url().rfind("https://", 0) == 0) {
++            request_->context()->envoy_url().rfind("https://", 0) == 0 ||
++            request_->context()->envoy_url().rfind("envoy://", 0) == 0) {
 +          // https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID
 +          // default to random value, no cache at all
 +          auto salt = base::RandBytesAsString(16);
