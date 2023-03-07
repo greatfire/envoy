@@ -34,11 +34,15 @@ autoninja -C out/Cronet-Desktop cronet # cronet_sample
 for arch in arm arm64 x86 x64; do
     # arm_use_neon = false
     out_dir="$CHROMIUM_SRC_ROOT/out/Cronet-$arch-$BUILD_VARIANT"
+    rm -r "${out_dir}/cronet"
     gn_args="--out_dir=$out_dir"
     if [[ $BUILD_VARIANT == release ]]; then
         gn_args="$gn_args --release"
     fi
-    if [[ $arch == "x86" || $arch == "x64" ]]; then
+    # this adds target_cpu="x86" even for x64 builds
+    # it seems like the only other thing this does is exclude "arm_use_neon=false" which just generates
+    # a warning on non-ARM platforms, and add target_cpu, which we do, correctly, below
+    if [[ $arch == "x86" ]]; then
         gn_args="$gn_args --x86"
     fi
     # shellcheck disable=SC2086
