@@ -34,7 +34,9 @@ autoninja -C out/Cronet-Desktop cronet # cronet_sample
 for arch in arm arm64 x86 x64; do
     # arm_use_neon = false
     out_dir="$CHROMIUM_SRC_ROOT/out/Cronet-$arch-$BUILD_VARIANT"
-    rm -r "${out_dir}/cronet"
+    if [[ -d "${out_dir}/cronet" ]]; then
+        rm -r "${out_dir}/cronet"
+    fi
     gn_args="--out_dir=$out_dir"
     if [[ $BUILD_VARIANT == release ]]; then
         gn_args="$gn_args --release"
