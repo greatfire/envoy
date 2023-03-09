@@ -49,6 +49,7 @@ const val ENVOY_BROADCAST_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FA
 const val ENVOY_BROADCAST_VALIDATION_BLOCKED = "org.greatfire.envoy.VALIDATION_BLOCKED"
 const val ENVOY_BROADCAST_BATCH_SUCCEEDED = "org.greatfire.envoy.BATCH_SUCCEEDED"
 const val ENVOY_BROADCAST_BATCH_FAILED = "org.greatfire.envoy.BATCH_FAILED"
+const val ENVOY_BROADCAST_VALIDATION_TIME = "org.greatfire.envoy.VALIDATION_TIME"
 
 // Defines the key for the status "extra" in an Intent
 const val ENVOY_DATA_URLS_SUCCEEDED = "org.greatfire.envoy.URLS_SUCCEEDED"
@@ -60,6 +61,7 @@ const val ENVOY_DATA_SERVICE_SUCCEEDED = "org.greatfire.envoy.SERVICE_SUCCEEDED"
 const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
 const val ENVOY_DATA_BATCH_LIST = "org.greatfire.envoy.BATCH_LIST"
 const val ENVOY_DATA_SERVICE_LIST = "org.greatfire.envoy.SERVICE_LIST"
+const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
 
 const val ENVOY_SERVICE_DIRECT = "direct"
 const val ENVOY_SERVICE_V2WS = "v2ws"
@@ -100,6 +102,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var currentBatchChecked = Collections.synchronizedList(mutableListOf<String>())
     private var currentServiceChecked = Collections.synchronizedList(mutableListOf<String>())
     private var batchInProgress = false
+    private var validationStart = 0L
 
     // currently only a single url is supported for each service but we may support more in the future
     private var v2rayWsUrls = Collections.synchronizedList(mutableListOf<String>())
@@ -176,6 +179,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         dnsttConfig: List<String>?,
         dnsttUrls: Boolean
     ) {
+
+        if (!dnsttUrls) {
+            validationStart = System.currentTimeMillis()
+            Log.d(TAG, "validation started at " + validationStart)
+        } else {
+            // only track validation time of original submission for now
+        }
 
         Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
         submittedUrls.clear()
@@ -999,6 +1009,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 if (this@NetworkIntentService.validUrls.size > 0) {
                     Log.d(TAG, "got redundant url: " + envoyUrl)
                     handleCleanup(envoyUrl)
+                } else {
+                    if (!dnsttUrls) {
+                        // for the first submitted url that succeeds, broadcast validation time
+                        handleValidationTime()
+                    } else {
+                        // only track validation time of original submission for now
+                    }
                 }
 
                 // only a 200 status code is valid, otherwise return invalid url as in onFailed
@@ -1178,13 +1195,27 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                 if (dnsttUrls) {
                     Log.w(TAG, "all additional dnstt urls submitted have failed, cannot continue")
-                } else if (dnsttConfig.isNullOrEmpty()) {
-                    Log.w(TAG, "no dnstt config was found, cannot continue")
                 } else {
-                    Log.w(TAG, "all urls submitted have failed, fetch additional urls from dnstt")
-                    getDnsttUrls(dnsttConfig, hysteriaCert)
+                    // all urls in original submission have failed, broadcast validation time
+                    handleValidationTime()
+
+                    if (dnsttConfig.isNullOrEmpty()) {
+                        Log.w(TAG, "no dnstt config was found, cannot continue")
+                    } else {
+                        Log.w(TAG, "all urls submitted have failed, fetch additional urls from dnstt")
+                        getDnsttUrls(dnsttConfig, hysteriaCert)
+                    }
                 }
             }
+        }
+
+        fun handleValidationTime() {
+            val validationStop = System.currentTimeMillis()
+            Log.d(TAG, "validation ended at " + validationStop + ", duration: " + (validationStop - this@NetworkIntentService.validationStart))
+            val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_TIME).apply {
+                putExtra(ENVOY_DATA_VALIDATION_MS, validationStop - this@NetworkIntentService.validationStart)
+            }
+            LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
         }
     }
 }
