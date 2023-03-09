@@ -125,7 +125,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
 
     private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http", "envoy"))
-    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria"))
+    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
 
     inner class NetworkBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
