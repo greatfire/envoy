@@ -124,6 +124,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val cacheMap = Collections.synchronizedMap(mutableMapOf<String, String>())
     private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
 
+    private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http", "envoy"))
+    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
+
     inner class NetworkBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
         fun getService(): NetworkIntentService = this@NetworkIntentService
@@ -223,12 +226,16 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
         } else {
             urlsToSubmit.forEach() { url ->
+                val parts = url.split(":")
+                val prefix = parts[0]
                 if (url.contains("test")) {
                     // no-op
-                } else if (url.startsWith("http")) {
+                } else if (httpPrefixes.contains(prefix)) {
                     shuffledHttps.add(url)
-                } else {
+                } else if (supportedPrefixes.contains(prefix)) {
                     shuffledUrls.add(url)
+                } else {
+                    Log.w(TAG, "found url with unsupported prefix: " + prefix)
                 }
             }
             Log.d(TAG, "shuffle " + (shuffledHttps.size + shuffledUrls.size) + " submitted urls")
@@ -331,9 +338,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
-            } else {
-                Log.d(TAG, "found (https?) url: " + envoyUrl)
+            } else if (envoyUrl.startsWith("http") || envoyUrl.startsWith("envoy")) {
+                Log.d(TAG, "found http/envoy url: " + envoyUrl)
                 handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert, dnsttConfig, dnsttUrls)
+            } else {
+                // prefix check should handle this but if not, batch count may not add up
+                Log.w(TAG, "found unsupported url: " + envoyUrl)
             }
         }
 
