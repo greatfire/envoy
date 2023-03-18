@@ -40,6 +40,9 @@ private const val EXTRA_PARAM_SUBMIT = "org.greatfire.envoy.extra.PARAM_SUBMIT"
 private const val EXTRA_PARAM_DIRECT = "org.greatfire.envoy.extra.PARAM_DIRECT"
 private const val EXTRA_PARAM_CERT = "org.greatfire.envoy.extra.PARAM_CERT"
 private const val EXTRA_PARAM_SOURCES = "org.greatfire.envoy.extra.PARAM_SOURCES"
+private const val EXTRA_PARAM_INTERVAL = "org.greatfire.envoy.extra.PARAM_INTERVAL"
+private const val EXTRA_PARAM_START = "org.greatfire.envoy.extra.PARAM_START"
+private const val EXTRA_PARAM_END = "org.greatfire.envoy.extra.PARAM_END"
 private const val EXTRA_PARAM_FIRST = "org.greatfire.envoy.extra.PARAM_FIRST"
 
 // Defines a custom Intent action
@@ -50,10 +53,11 @@ const val ENVOY_BROADCAST_VALIDATION_BLOCKED = "org.greatfire.envoy.VALIDATION_B
 const val ENVOY_BROADCAST_BATCH_SUCCEEDED = "org.greatfire.envoy.BATCH_SUCCEEDED"
 const val ENVOY_BROADCAST_BATCH_FAILED = "org.greatfire.envoy.BATCH_FAILED"
 const val ENVOY_BROADCAST_VALIDATION_TIME = "org.greatfire.envoy.VALIDATION_TIME"
+const val ENVOY_BROADCAST_UPDATE_SUCCEEDED = "org.greatfire.envoy.UPDATE_SUCCEEDED"
+const val ENVOY_BROADCAST_UPDATE_FAILED = "org.greatfire.envoy.UPDATE_FAILED"
 
 // Defines the key for the status "extra" in an Intent
 const val ENVOY_DATA_URLS_SUCCEEDED = "org.greatfire.envoy.URLS_SUCCEEDED"
-const val ENVOY_DATA_URLS_CONTINUED = "org.greatfire.envoy.URLS_CONTINUED"
 const val ENVOY_DATA_URLS_FAILED = "org.greatfire.envoy.URLS_FAILED"
 const val ENVOY_DATA_URL_SUCCEEDED = "org.greatfire.envoy.URL_SUCCEEDED"
 const val ENVOY_DATA_URL_FAILED = "org.greatfire.envoy.URL_FAILED"
@@ -62,6 +66,8 @@ const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
 const val ENVOY_DATA_BATCH_LIST = "org.greatfire.envoy.BATCH_LIST"
 const val ENVOY_DATA_SERVICE_LIST = "org.greatfire.envoy.SERVICE_LIST"
 const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
+const val ENVOY_DATA_UPDATE_URL = "org.greatfire.envoy.UPDATE_URL"
+const val ENVOY_DATA_UPDATE_LIST = "org.greatfire.envoy.UPDATE_LIST"
 
 const val ENVOY_SERVICE_DIRECT = "direct"
 const val ENVOY_SERVICE_V2WS = "v2ws"
@@ -112,6 +118,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var hysteriaUrls = Collections.synchronizedList(mutableListOf<String>())
     private var shadowsocksUrls = Collections.synchronizedList(mutableListOf<String>())
     private var httpsUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var additionalUrls = Collections.synchronizedList(mutableListOf<String>())
 
     // the valid url at index 0 should be the one that was selected to use for setting up cronet
     private var validUrls = Collections.synchronizedList(mutableListOf<String>())
@@ -149,8 +156,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 val directUrls = intent.getStringArrayListExtra(EXTRA_PARAM_DIRECT)
                 val hysteriaCert = intent.getStringExtra(EXTRA_PARAM_CERT)
                 val urlSources = intent.getStringArrayListExtra(EXTRA_PARAM_SOURCES)
+                val urlInterval = intent.getIntExtra(EXTRA_PARAM_INTERVAL, 1)
+                val urlStart = intent.getIntExtra(EXTRA_PARAM_START, -1)
+                val urlEnd = intent.getIntExtra(EXTRA_PARAM_END, -1)
                 val firstAttempt = intent.getBooleanExtra(EXTRA_PARAM_FIRST, false)
-                handleActionSubmit(urls, directUrls, hysteriaCert, urlSources, firstAttempt)
+                handleActionSubmit(urls, directUrls, hysteriaCert, urlSources, urlInterval, urlStart, urlEnd, firstAttempt)
             }
             ACTION_QUERY -> {
                 handleActionQuery()
@@ -190,6 +200,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         directUrls: List<String>?,
         hysteriaCert: String?,
         urlSources: List<String>?,
+        urlInterval: Int,
+        urlStart: Int,
+        urlEnd: Int,
         firstAttempt: Boolean
     ) {
 
@@ -205,6 +218,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.d(TAG, "found url source: " + urlSource)
                     additionalUrlSources.add(urlSource)
                 }
+
+                Log.d(TAG, "clear " + additionalUrls.size + " previously submitted urls")
+                additionalUrls.clear()
+
+                // fetch additional urls at startup to collect analytics
+                getAdditionalUrls(urlInterval, urlStart, urlEnd)
             }
         }
 
@@ -229,19 +248,19 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         if (urlsToSubmit.isNullOrEmpty()) {
-            if (additionalUrlSources.isNullOrEmpty()) {
-                Log.w(TAG, "no additional urls submitted, cannot continue")
+            if (additionalUrls.isNullOrEmpty()) {
+                Log.w(TAG, "no additional urls found, cannot continue")
                 handleValidationTime()
             } else {
                 // send broadcast if all included urls have previously been blocked
                 if (!urls.isNullOrEmpty()) {
-                    Log.w(TAG, "all urls previously blocked, fetch additional urls")
+                    Log.w(TAG, "all urls previously blocked, submit additional urls")
                     val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_BLOCKED)
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
                 } else {
-                    Log.w(TAG, "no urls submitted, fetch additional urls")
+                    Log.w(TAG, "no urls submitted, submit additional urls")
                 }
-                getAdditionalUrls(hysteriaCert)
+                submitAdditionalUrls(hysteriaCert)
             }
         } else {
             urlsToSubmit.forEach() { url ->
@@ -734,78 +753,111 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    fun getAdditionalUrls(hysteriaCert: String?) {
-        try {
+    fun getAdditionalUrls(urlInterval: Int, urlStart: Int, urlEnd: Int) {
+        while (additionalUrlSources.isNotEmpty()) {
 
-            Log.d(TAG, "get list of additional urls")
+            Log.d(TAG, "get a list of additional urls")
             val url = URL(additionalUrlSources.removeAt(0))
 
-            Log.d(TAG, "open connection: " + url)
-            val connection = url.openConnection() as HttpURLConnection
             try {
-                Log.d(TAG, "set timeout")
-                connection.connectTimeout = 5000
-                Log.d(TAG, "connect")
-                connection.connect()
-            } catch (e: SocketTimeoutException) {
-                Log.e(TAG, "connection timeout when connecting: " + e.localizedMessage)
-            } catch (e: ConnectException) {
+                Log.d(TAG, "open connection: " + url)
+                val connection = url.openConnection() as HttpURLConnection
+                try {
+                    Log.d(TAG, "set timeout")
+                    connection.connectTimeout = 5000
+                    Log.d(TAG, "connect")
+                    connection.connect()
+                } catch (e: SocketTimeoutException) {
+                    Log.e(TAG, "connection timeout when connecting: " + e.localizedMessage)
+                } catch (e: ConnectException) {
+                    Log.e(TAG, "connection error: " + e.localizedMessage)
+                } catch (e: Exception) {
+                    Log.e(TAG, "unexpected error when connecting: " + e.localizedMessage)
+                }
+
+                try {
+                    Log.d(TAG, "open input stream")
+                    val input = connection.inputStream
+                    if (input != null) {
+                        Log.d(TAG, "parse json and extract possible urls")
+                        val json = input.bufferedReader().use(BufferedReader::readText)
+
+                        Log.w(TAG, "received json: \n" + json)
+
+                        val newUrls = Collections.synchronizedList(mutableListOf<String>())
+
+                        val envoyObject = JSONObject(json)
+                        val envoyUrlArray = envoyObject.getJSONArray("envoyUrls")
+
+                        for (i in 0 until envoyUrlArray.length()) {
+                            if (((urlInterval > 1) && ((i % urlInterval) > 0))
+                                || ((urlStart >= 0) && (i >= urlStart))
+                                || ((urlEnd >= 0) && (i <= urlEnd))
+                            ) {
+                                Log.d(TAG, "skip url at index " + i)
+                                continue
+                            }
+                            if (submittedUrls.contains(envoyUrlArray.getString(i))) {
+                                Log.d(TAG, "additional url " + envoyUrlArray.getString(i) + " has already been submitted")
+                            } else if (additionalUrls.contains(envoyUrlArray.getString(i))) {
+                                Log.d(TAG,"additional url " + envoyUrlArray.getString(i) + " was already found")
+                            } else {
+                                Log.d(TAG, "additional url " + envoyUrlArray.getString(i) + " has not been submitted yet")
+                                newUrls.add(envoyUrlArray.getString(i))
+                            }
+                        }
+
+                        logUpdateSucceeded(url.toString(), newUrls)
+                        additionalUrls.addAll(newUrls)
+                        continue
+                    } else {
+                        Log.e(TAG, "response contained no json to parse")
+                    }
+                } catch (e: SocketTimeoutException) {
+                    Log.e(TAG, "connection timeout when getting input: " + e.localizedMessage)
+                } catch (e: FileNotFoundException) {
+                    Log.e(TAG, "config file error: " + e.localizedMessage)
+                } catch (e: Exception) {
+                    Log.e(TAG, "unexpected error when reading file: " + e.localizedMessage)
+                }
+            } catch (e: Error) {
                 Log.e(TAG, "connection error: " + e.localizedMessage)
             } catch (e: Exception) {
-                Log.e(TAG, "unexpected error when connecting: " + e.localizedMessage)
+                Log.e(TAG, "unexpected error when opening connection: " + e.localizedMessage)
             }
 
-            try {
-                Log.d(TAG, "open input stream")
-                val input = connection.inputStream
-                if (input != null) {
-                    Log.d(TAG, "parse json and extract possible urls")
-                    val json = input.bufferedReader().use(BufferedReader::readText)
-
-                    Log.w(TAG, "received json: \n" + json)
-
-                    val envoyObject = JSONObject(json)
-                    val envoyUrlArray = envoyObject.getJSONArray("envoyUrls")
-
-                    var urlList = mutableListOf<String>()
-
-                    for (i in 0 until envoyUrlArray.length()) {
-                        if ((i % 7) > 0) {
-                            Log.d(TAG, "skip url at index " + i)
-                            continue
-                        }
-                        if (submittedUrls.contains(envoyUrlArray.getString(i))) {
-                            Log.d(TAG, "additional url " + envoyUrlArray.getString(i) + " has already been submitted")
-                        } else {
-                            Log.d(TAG, "additional url " + envoyUrlArray.getString(i) + " has not been submitted yet")
-                            urlList.add(envoyUrlArray.getString(i))
-                        }
-                    }
-
-                    // submit even if there are no urls, logic elsewhere will continue if possible
-                    Log.d(TAG, "submit " + urlList.size + " additional urls")
-
-                    val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_CONTINUED).apply {
-                        putStringArrayListExtra(ENVOY_DATA_URLS_CONTINUED, ArrayList(urlList))
-                    }
-                    LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-
-                    submitAdditional(this@NetworkIntentService, urlList, hysteriaCert)
-                } else {
-                    Log.e(TAG, "response contained no json to parse")
-                }
-            } catch (e: SocketTimeoutException) {
-                Log.e(TAG, "connection timeout when getting input: " + e.localizedMessage)
-            } catch (e: FileNotFoundException) {
-                Log.e(TAG, "config file error: " + e.localizedMessage)
-            } catch (e: Exception) {
-                Log.e(TAG, "unexpected error when reading file: " + e.localizedMessage)
-            }
-        } catch (e: Error) {
-            Log.e(TAG, "connection error: " + e.localizedMessage)
-        } catch (e: Exception) {
-            Log.e(TAG, "unexpected error when opening connection: " + e.localizedMessage)
+            logUpdateFailed(url.toString())
         }
+    }
+
+    fun submitAdditionalUrls(hysteriaCert: String?) {
+        if (additionalUrls.isNullOrEmpty()) {
+            Log.w(TAG, "no additional urls to submit")
+        } else {
+            Log.d(TAG, "submit " + additionalUrls.size + " additional urls")
+
+            val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_CONTINUED)
+            LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+
+            submitAdditional(this@NetworkIntentService, additionalUrls, hysteriaCert)
+        }
+    }
+
+    fun logUpdateSucceeded(url: String, list: List<String>) {
+        Log.d(TAG, "broadcast success for url: " + url)
+        val localIntent = Intent(ENVOY_BROADCAST_UPDATE_SUCCEEDED).apply {
+            putExtra(ENVOY_DATA_UPDATE_URL, url)
+            putStringArrayListExtra(ENVOY_DATA_UPDATE_LIST, ArrayList(list))
+        }
+        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+    }
+
+    fun logUpdateFailed(url: String) {
+        Log.e(TAG, "broadcast failure for url: " + url)
+        val localIntent = Intent(ENVOY_BROADCAST_UPDATE_FAILED).apply {
+            putExtra(ENVOY_DATA_UPDATE_URL, url)
+        }
+        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
     }
 
     /**
@@ -840,25 +892,44 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
          * @see IntentService
          */
         @JvmStatic
-        fun submit(context: Context, urls: List<String>, directUrls: List<String>?, hysteriaCert: String?, urlSources: List<String>?) {
+        fun submit(
+            context: Context,
+            urls: List<String>,
+            directUrls: List<String>?,
+            hysteriaCert: String?,
+            urlSources: List<String>?,
+            urlInterval: Int,
+            urlStart: Int,
+            urlEnd: Int
+        ) {
             Log.d(TAG, "jvm submit")
-            processSubmit(context, urls, directUrls, hysteriaCert, urlSources, true)
+            processSubmit(context, urls, directUrls, hysteriaCert, urlSources, urlInterval, urlStart, urlEnd, true)
         }
 
         @JvmStatic
         fun submit(context: Context, urls: List<String>) {
             Log.d(TAG, "backwards compatible submit")
-            processSubmit(context, urls, null, null, null, true)
+            processSubmit(context, urls, null, null, null, 1, -1, -1, true)
         }
 
         // no jvm annotation, not for external use
         fun submitAdditional(context: Context, urls: List<String>, hysteriaCert: String?) {
             Log.d(TAG, "dnstt submit")
-            processSubmit(context, urls, null, hysteriaCert, null, false)
+            processSubmit(context, urls, null, hysteriaCert, null, 1, -1, -1, false)
         }
 
         // no jvm annotation, not for external use
-        fun processSubmit(context: Context, urls: List<String>, directUrls: List<String>?, hysteriaCert: String?, urlSources: List<String>?, firstAttempt: Boolean) {
+        fun processSubmit(
+            context: Context,
+            urls: List<String>,
+            directUrls: List<String>?,
+            hysteriaCert: String?,
+            urlSources: List<String>?,
+            urlInterval: Int,
+            urlStart: Int,
+            urlEnd: Int,
+            firstAttempt: Boolean
+        ) {
             Log.d(TAG, "process submit")
             val intent = Intent(context, NetworkIntentService::class.java).apply {
                 action = ACTION_SUBMIT
@@ -877,6 +948,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         EXTRA_PARAM_SOURCES,
                         urlSources as java.util.ArrayList<String>?
                     )
+                }
+                if (urlInterval > 1) {
+                    putExtra(EXTRA_PARAM_INTERVAL, urlInterval)
+                }
+                if (urlStart >= 0) {
+                    putExtra(EXTRA_PARAM_START, urlStart)
+                }
+                if (urlEnd >= 0) {
+                    putExtra(EXTRA_PARAM_END, urlEnd)
                 }
                 putExtra(EXTRA_PARAM_FIRST, firstAttempt)
             }
@@ -1129,14 +1209,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 }
                 LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
-                if (this@NetworkIntentService.additionalUrlSources.isNullOrEmpty()) {
+                if (this@NetworkIntentService.additionalUrls.isNullOrEmpty()) {
                     // all available urls have failed, broadcast validation time
                     Log.w(TAG, "all available urls have failed, cannot continue")
                     handleValidationTime()
                 } else {
                     // all urls in original submission have failed, attempt to get additional urls
                     Log.w(TAG, "all urls submitted have failed, fetch additional urls")
-                    getAdditionalUrls(hysteriaCert)
+                    submitAdditionalUrls(hysteriaCert)
                 }
             }
         }
