@@ -1,4 +1,4 @@
-C and Java Library derived from chromium [cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/).
+C and Java Library derived from chromium [cronet](https://chromium.googlesource.com/chromium/src/+/master/components/cronet/). Envoy can be easily added to existing Android apps using OkHttp, Volley, WebView, Cronet basic or java.net.HttpURLConnection to add censorship evasion features.
 
 We are looking for developers to improve envoy together, please contact support@greatfire.org.
 
@@ -11,6 +11,20 @@ Technical details are explained [here](native/README.md).
 
 Please note that this project is unrelated to the [Envoy Proxy project](https://www.envoyproxy.io/).
 
+# Getting Started
+
+## Example Applications
+
+* Wiki Unblocked: a fork of the official Wikipedia app with Envoy support [Play Store](https://play.google.com/store/apps/details?id=org.greatfire.wikiunblocked) [F-Droid](https://f-droid.org/en/packages/org.greatfire.wikiunblocked.fdroid/) [Source](https://github.com/greatfire/apps-android-wikipedia-envoy)
+
+## Getting Envoy
+
+Envoy and our patched Cronet are released though Maven Central
+
+## Server Setup Examples
+
+See [this repo](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/) for working examples of services that can be used by Envoy
+
 # ENVOY Developer Guide
 
 Welcome to the envoy developer guide.
@@ -19,12 +33,12 @@ APIs in the Android framework and other libraries.
 
 ## Protocols which Envoy supports
 
-- HTTPS: proxy all traffic through regular web servers (or use Content Delivery Network(s) as middleboxes).
-- Shadowsocks: use the socks5 proxy provided by shadowsocks client/server.
+- HTTPS: proxy all traffic through regular web servers and Content Delivery Networks with support for hardcoding DNS and adding additional headers
+- [Shadowsocks](https://github.com/gfw-report/shadowsocks-rust): use the socks5 proxy provided by shadowsocks client/server.
+- Hysteria: QUIC based protocol that masquerades as other protocols
+- V2Ray: QUIC based protocols that masquesade as other protocols
 
-All you need is to call `Cronet_EngineParams_envoy_url_set(engine_params, "ENVOY_URL")` where ENVOY_URL is your HTTPS URL or shadowsocks' socks5 proxy address.
-
-Visit native/README.md and android/README.md for more technical details.
+Visit [native/README.md](./native/README.md) and [android/README.md](./android/README.md) for more technical details.
 
 ## What is Cronet
 Cronet is the networking stack of Chromium put into a library for use on mobile. This is the same networking stack that is used in the Chrome browser by over a billion people. It offers an easy-to-use, high performance, standards-compliant, and secure way to perform HTTP requests.. On Android, Cronet offers its own Java asynchronous API as well as support for the java.net.HttpURLConnection API. Cronet takes advantage of multiple technologies that reduce the latency and increase the throughput of the network requests that your app needs to work.
