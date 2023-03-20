@@ -3,7 +3,7 @@
 1. follow these instructions [here](https://www.chromium.org/developers/how-tos/get-the-code) to get the code.
 2. export CHROMIUM_SRC_ROOT and DEPOT_TOOLS_ROOT to their separate directories,
    such as `export CHROMIUM_SRC_ROOT=/root/chromium/src DEPOT_TOOLS_ROOT=/root/depot_tools`
-3. run `checkout-to-tag.sh` to checkout specified tag, for example, `81.0.4020.0`.
+3. run `checkout-to-tag.sh` to checkout specified tag, for example, `102.0.5005.195`.
 4. run `build_cronet.sh [debug|release]` to build native and java bindings, then package into `cronet-$BUILD.aar`(BUILD: debug or release).
 
 ### How to use
@@ -36,7 +36,7 @@ All keys except url are optional, for example, only `resolve` without `url` will
 
 ### Examples
 
-1. the simples form, a simple HTTP/HTTPS URL: `https://allowed.example.com/app1/`
+1. the simplest form, a simple HTTP/HTTPS URL: `https://allowed.example.com/app1/`
 1. or via socks5 provided by any proxy server or builtin shadowsocks service(go to android/README.md for shadowsocks integration): `socks5://127.0.0.1:1080`.
 1. set host:`envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com`
 1. only MAP url-host to address: `envoy://?url=https%3A%2F%2Fexample.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4`
@@ -52,7 +52,7 @@ The equivalent curl command(see below for nginx conf):
       --header 'Url-Orig: https://forbidden.example.com' --header 'Host-Orig: forbidden.example.com' \
       https://allowed.example.com/app1/ # --ciphers ECDHE-RSA-AES128-GCM-SHA256 `
 
-Note: _hash=HASH` will be appended to url in all cases for cache ~~invalidation~~.
+Note: `_hash=HASH` will be appended to url in all cases for cache ~~invalidation~~.
 
 ## Setup
 ### Backend
