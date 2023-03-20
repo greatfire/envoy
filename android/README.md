@@ -22,35 +22,61 @@ CronetNetworking.initializeCronetEngine(getApplicationContext(), "YOUR-ENVOY-URL
 ```
 ## Envoy url format
 
-Http/Https:
- - http://domain:port (no trailing slash)
- - https://domain:port (no trailing slash)
+### HTTP/HTTPS
 
-Shadowsocks:
- - ss://encrypted login@ip:port/
+Envoy uses a nonstandard HTTP/HTTPS proxy where the origial request is passed in a header. Unencrypted HTTP is supported, but not recommeded. Cronet currently does not support proxying over QUIC / HTTP/3, so HTTP 1.1 or 2 is required. Server side setup is documented [here](./native/README.md) and a working example can be found [here](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/-/tree/main/http_proxy).
 
-Hysteria:
- - hysteria://ip:port?obfs=...
+The URL can be specified simplly with the `http://` or `https://` protocol, e.g. `https://wiki.example.com/path/`, or the `envoy://` protocol can be used for more advanced features. The envoy protocol supports these paramters:
 
-V2Ray Websocket:
- - v2ws://domain:port?path=...&id=...
+* url: proxy URL, for example, https://allowed.example.com/path/
+* header_xxx: HTTP header, header_Host=my-host` will send Host header with value my-host
+* address: IP address for domain in proxy URL, to replace IP from DNS resolving
+* resolve: resolve map, same as `--host-resolver-rules` command line for chromium, [Chromium docs](https://www.chromium.org/developers/design-documents/network-stack/socks-proxy)
+* disabled_cipher_suites: cipher suites to be disabled, same as `--cipher-suite-blacklist` command line for chromium
+* salt: a 16 characters long random string, unique to each combination of app-signing key, user, and device, such [ANDROID_ID](https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID)
 
-V2Ray SRTP:
- - v2srtp://ip:port?id=...
+All keys except url are optional, for example, only `resolve` without `url` will just override the DNS setting. Note that values should be URL encoded.
 
-V2Ray WeChar:
- - v2wechat://ip:port?id=...
+For example, Cloudflare issues wildcard certs for hosted domains, so we can send a fake host name with hardcoded DNS, and provide an allowed host header to bypass DNS blacklisting and connection blocking based on host name. If our server is blocked.example.com and has an IP address of 10.10.10.10, we can use:
 
-## DNSTT config format
+`envoy://?url=https%3A%2F%2Ffake.example.com%2Fpath%2F&address=10.10.10.10&header_Host=blocked.example.com`
 
-Additional parameters are required for the optional DNSTT service:
-- the domain name used for DNSTT
-- the authentication key for DNSTT
-- the path to the file on the DNSTT HTTP server that contains additional urls
-- the URL or address of a reachable DNS over HTTP provider
-- the URL or address of a reachable DNS over TCP provider
+An example disabling some cypher suites:
 
-Only a DNS over HTTP or DNS over TCP provider is required, an empty string should be provided for the other
+`envoy://?url=https%3A%2F%2Fallowed.example.com%2Fapp1%2F%3Fk1%3Dv1&header_Host=forbidden.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f`
+
+### [Shadowsocks](https://shadowsocks.org/)
+
+Shadowsocks is configured using `ss://` URLs (full documentation [here](https://shadowsocks.org/guide/configs.html))
+
+The "username" portion of the url is the method and password, spearated by a colon, base64 encoded. So if your server uses `chacha20-ietf-poly1305` and a password of `password`, the "username" would be "chacha20-ietf-poly1305:password" base64 encoded, or `Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA==`. If the server is running on 192.168.64.19 port 8388, your Envoy Shadowsocks URL would be: `ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA==@192.168.64.19:8388`
+
+Note, Envoy uses [this fork](https://github.com/gfw-report/shadowsocks-rust) of Shadowsocks, updated based on research.
+
+
+### [Hysteria](https://hysteria.network/)
+
+> Hysteria is a feature-packed proxy & relay tool optimized for lossy, unstable connections (e.g. satellite networks, congested public Wi-Fi, connecting to foreign servers from China) powered by a customized protocol based on QUIC.
+
+Server setup is documented [here](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/-/tree/main/hysteria)
+
+Envoy uses Hysteria's "wechat-video" protocol, where the QUIC stream is encoded to masquerade as a WeChat video call.
+
+For a server on 192.168.64.19 on port 32323 with a password of "password", the URL would be `hysteria://192.168.64.19:32323?obfs=password`
+
+
+### [V2Ray](https://github.com/v2fly/v2ray-core)
+
+> Project V is a set of network tools that helps you to build your own computer network. It secures your network connections and thus protects your privacy.
+
+Envoy currently uses a V2Ray fork maintained by a group called [V2Fly](https://www.v2fly.org/en_US/)
+
+Envoy supports two protocols from V2Ray, both based on QUIC. One also masquerades as a WeChat video call, the other masquerades as an SRTP call. V2Ray uses shared knowledge of an UUID for authentication. For this example, we'll use "9e16552c-5de9-4369-95da-db712d7281ee"
+
+If we have a server on 192.168.64.19 with V2Ray 16285, the URLs would be:
+
+* Wechat: `v2wechat://192.168.64.19:16285?id=9e16552c-5de9-4369-95da-db712d7281ee`
+* SRTP: `v2srtp://192.168.64.19:16285?id=9e16552c-5de9-4369-95da-db712d7281ee`
     
 ## Submit envoy urls
     
