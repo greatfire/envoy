@@ -24,7 +24,7 @@ CronetNetworking.initializeCronetEngine(getApplicationContext(), "YOUR-ENVOY-URL
 
 ### HTTP/HTTPS
 
-Envoy uses a nonstandard HTTP/HTTPS proxy where the origial request is passed in a header. Unencrypted HTTP is supported, but not recommeded. Cronet currently does not support proxying over QUIC / HTTP/3, so HTTP 1.1 or 2 is required. Server side setup is documented [here](./native/README.md) and a working example can be found [here](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/-/tree/main/http_proxy).
+Envoy uses a nonstandard HTTP/HTTPS proxy where the origial request is passed in a header. Unencrypted HTTP is supported, but not recommeded. Cronet currently does not support proxying over QUIC / HTTP/3, so HTTP 1.1 or 2 is required. Server side setup is documented [here](../native/README.md) and a working example can be found [here](https://gitlab.com/stevenmcdonald/envoy-proxy-examples/-/tree/main/http_proxy).
 
 The URL can be specified simplly with the `http://` or `https://` protocol, e.g. `https://wiki.example.com/path/`, or the `envoy://` protocol can be used for more advanced features. The envoy protocol supports these paramters:
 
@@ -73,7 +73,7 @@ Envoy currently uses a V2Ray fork maintained by a group called [V2Fly](https://w
 
 Envoy supports two protocols from V2Ray, both based on QUIC. One also masquerades as a WeChat video call, the other masquerades as an SRTP call. V2Ray uses shared knowledge of an UUID for authentication. For this example, we'll use "9e16552c-5de9-4369-95da-db712d7281ee"
 
-If we have a server on 192.168.64.19 with V2Ray 16285, the URLs would be:
+If we have a server on 192.168.64.19 with V2Ray on port 16285, the URLs would be:
 
 * Wechat: `v2wechat://192.168.64.19:16285?id=9e16552c-5de9-4369-95da-db712d7281ee`
 * SRTP: `v2srtp://192.168.64.19:16285?id=9e16552c-5de9-4369-95da-db712d7281ee`
