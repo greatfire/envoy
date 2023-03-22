@@ -97,22 +97,22 @@ task writeNewPom {
     pom {
         project {
             name 'Envoy'
-	    packaging 'aar'
+            packaging 'aar'
             artifactId 'envoy'
             inceptionYear '2018'
             url 'https://github.com/greatfire/envoy'
-	    description 'C and Java Library derived from Chromium cronet'
+            description 'C and Java Library derived from Chromium cronet'
             licenses {
                 license {
                     name 'The Apache Software License, Version 2.0'
                     url 'https://github.com/greatfire/envoy/blob/master/LICENSE'
                     distribution 'repo'
                 }
-		license {
-		    name 'BSD-3-clause'
-		    url 'https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE'
-		    distribution 'repo'
-		}
+                license {
+                    name 'BSD-3-clause'
+                    url 'https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE'
+                    distribution 'repo'
+                }
             }
             developers {
                 developer {
@@ -128,11 +128,23 @@ task writeNewPom {
             }
             issueManagement {
                 url = "https://github.com/greatfire/envoy/issues"
-		system = "GitHub"
+                system = "GitHub"
             }
             scm {
                 connection = 'scm:git:https://github.com/greatfire/envoy.git'
                 url = 'https://github.com/greatfire/envoy'
+            }
+            dependencies {
+                dependency {
+                    groupId = 'org.greatfire.envoy'
+                    artifactId = 'cronet'
+                    version = '102.0.5005.195-4'
+                }
+                dependency {
+                    groupId = 'org.greatfire'
+                    artifactId = 'IEnvoyProxy'
+                    version = '1.3.1'
+                }
             }
         }
     }.writeTo(project.getBuildDir().toString() + "/outputs/aar/" + "envoy" + "-" + project.version + ".pom")
