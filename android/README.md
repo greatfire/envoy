@@ -97,17 +97,41 @@ If the optional dnsttConfig parameter is included, Envoy will attempt to fetch a
 
 Envoy provides feedback with a variety of broadcasts. Create a BroadcastReceiver and add actions to an IntentFilter as needed. The following are some of the more significant actions and their parameters:
 
- - ENVOY_BROADCAST_VALIDATION_SUCCEEDED, includes ENVOY_DATA_URL_SUCCEEDED and ENVOY_DATA_SERVICE_SUCCEEDED
+ - ENVOY_BROADCAST_VALIDATION_SUCCEEDED, includes ENVOY_DATA_URLS_SUCCEEDED, ENVOY_DATA_URL_SUCCEEDED, and ENVOY_DATA_SERVICE_SUCCEEDED
  
-Received when a URL is validated successfully. This can include any direct URLs that were submitted. The parameters include the URL that was validated and the corresponding service. Use this URL to initialize Cronet (initializing Cronet with a direct URL will cause a redirection exception).
+Received when a URL is validated successfully. This can include any direct URLs that were submitted. The parameters include the URL that was validated and the corresponding service, as well as a list of all URLs that have been validated. Use this URL to initialize Cronet (initializing Cronet with a direct URL will cause a redirection exception).
  
- - ENVOY_BROADCAST_VALIDATION_FAILED, includes includes ENVOY_DATA_URL_FAILED and ENVOY_DATA_SERVICE_FAILED
+ - ENVOY_BROADCAST_VALIDATION_FAILED, includes includes ENVOY_DATA_URLS_FAILED, ENVOY_DATA_URL_FAILED and ENVOY_DATA_SERVICE_FAILED
  
-Received when a URL fails validation. This can include any direct URLs that were submitted. The parameters include the URL that failed validation and the corresponding service.
+Received when a URL fails validation. This can include any direct URLs that were submitted. The parameters include the URL that failed validation and the corresponding service, as well as a list of all URLs that have failed validation.
  
- - ENVOY_BROADCAST_VALIDATION_CONTINUED, includes ENVOY_DATA_URLS_CONTINUED
+ - ENVOY_BROADCAST_VALIDATION_CONTINUED
  
-Received if all URL fail validation and additional URLs are fetched with DNSTT. The parameters include the list of additional URLs. This should not include any URLs that were already submitted.
+Received if all originally submitted URLs fail validation but additional URLs are available for validation.
+
+ - ENVOY_BROADCAST_BATCH_SUCCEEDED, includes ENVOY_DATA_BATCH_LIST and ENVOY_DATA_SERVICE_LIST
+
+Received if a batch of URLs is validated successfully. The parameters include the set of URLs that were validated and the corresponding set of services.
+
+ - ENVOY_BROADCAST_BATCH_FAILED, includes ENVOY_DATA_BATCH_LIST and ENVOY_DATA_SERVICE_LIST
+
+Received if a batch of URLs fails validation. The parameters include the set of URLs that failed validation and the corresponding set of services.
+
+ - ENVOY_BROADCAST_VALIDATION_BLOCKED
+
+Received if all submitted URLs have previously failed validation.
+
+ - ENVOY_BROADCAST_VALIDATION_TIME, includes ENVOY_DATA_VALIDATION_MS
+
+Received after validation has succeeded or failed. The parameters include the number of milliseconds elapsed since validation began.
+
+ - ENVOY_BROADCAST_UPDATE_SUCCEEDED, includes ENVOY_DATA_UPDATE_URL and ENVOY_DATA_UPDATE_LIST
+
+Received if additional URLs have been fetched from a remote source. The parameters include the URL of the remote source and the list of additional URLs.
+
+ - ENVOY_BROADCAST_UPDATE_FAILED, includes ENVOY_DATA_UPDATE_URL
+
+Received if additional URLs could not be fetched from a remote source. The parameters include the URL of the remote source.
 
 ## Basic envoy integration
 
