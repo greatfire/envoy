@@ -34,7 +34,6 @@ import kotlin.collections.ArrayList
 
 // IntentService can perform, e.g. ACTION_FETCH_NEW_ITEMS
 private const val ACTION_SUBMIT = "org.greatfire.envoy.action.SUBMIT"
-private const val ACTION_QUERY = "org.greatfire.envoy.action.QUERY"
 
 private const val EXTRA_PARAM_SUBMIT = "org.greatfire.envoy.extra.PARAM_SUBMIT"
 private const val EXTRA_PARAM_DIRECT = "org.greatfire.envoy.extra.PARAM_DIRECT"
@@ -47,27 +46,25 @@ private const val EXTRA_PARAM_FIRST = "org.greatfire.envoy.extra.PARAM_FIRST"
 
 // Defines a custom Intent action
 const val ENVOY_BROADCAST_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
-const val ENVOY_BROADCAST_VALIDATION_CONTINUED = "org.greatfire.envoy.VALIDATION_CONTINUED"
 const val ENVOY_BROADCAST_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
-const val ENVOY_BROADCAST_VALIDATION_BLOCKED = "org.greatfire.envoy.VALIDATION_BLOCKED"
 const val ENVOY_BROADCAST_BATCH_SUCCEEDED = "org.greatfire.envoy.BATCH_SUCCEEDED"
 const val ENVOY_BROADCAST_BATCH_FAILED = "org.greatfire.envoy.BATCH_FAILED"
-const val ENVOY_BROADCAST_VALIDATION_TIME = "org.greatfire.envoy.VALIDATION_TIME"
 const val ENVOY_BROADCAST_UPDATE_SUCCEEDED = "org.greatfire.envoy.UPDATE_SUCCEEDED"
 const val ENVOY_BROADCAST_UPDATE_FAILED = "org.greatfire.envoy.UPDATE_FAILED"
+const val ENVOY_BROADCAST_VALIDATION_CONTINUED = "org.greatfire.envoy.VALIDATION_CONTINUED"
+const val ENVOY_BROADCAST_VALIDATION_ENDED = "org.greatfire.envoy.VALIDATION_ENDED"
 
 // Defines the key for the status "extra" in an Intent
-const val ENVOY_DATA_URLS_SUCCEEDED = "org.greatfire.envoy.URLS_SUCCEEDED"
-const val ENVOY_DATA_URLS_FAILED = "org.greatfire.envoy.URLS_FAILED"
 const val ENVOY_DATA_URL_SUCCEEDED = "org.greatfire.envoy.URL_SUCCEEDED"
 const val ENVOY_DATA_URL_FAILED = "org.greatfire.envoy.URL_FAILED"
 const val ENVOY_DATA_SERVICE_SUCCEEDED = "org.greatfire.envoy.SERVICE_SUCCEEDED"
 const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
-const val ENVOY_DATA_BATCH_LIST = "org.greatfire.envoy.BATCH_LIST"
+const val ENVOY_DATA_URL_LIST = "org.greatfire.envoy.URL_LIST"
 const val ENVOY_DATA_SERVICE_LIST = "org.greatfire.envoy.SERVICE_LIST"
-const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
 const val ENVOY_DATA_UPDATE_URL = "org.greatfire.envoy.UPDATE_URL"
 const val ENVOY_DATA_UPDATE_LIST = "org.greatfire.envoy.UPDATE_LIST"
+const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
+const val ENVOY_DATA_VALIDATION_ENDED_CAUSE = "org.greatfire.envoy.VALIDATION_ENDED_CAUSE"
 
 const val ENVOY_SERVICE_DIRECT = "direct"
 const val ENVOY_SERVICE_V2WS = "v2ws"
@@ -76,6 +73,11 @@ const val ENVOY_SERVICE_V2WECHAT = "v2wechat"
 const val ENVOY_SERVICE_HYSTERIA = "hysteria"
 const val ENVOY_SERVICE_SS = "ss"
 const val ENVOY_SERVICE_HTTPS = "https"
+const val ENVOY_ENDED_EMPTY = "empty"
+const val ENVOY_ENDED_BLOCKED = "blocked"
+const val ENVOY_ENDED_FAILED = "failed"
+const val ENVOY_ENDED_TIMEOUT = "timeout"
+const val ENVOY_ENDED_UNKNOWN = "unknown"
 
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
@@ -123,6 +125,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     // the valid url at index 0 should be the one that was selected to use for setting up cronet
     private var validUrls = Collections.synchronizedList(mutableListOf<String>())
     private var invalidUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var blockedUrls = Collections.synchronizedList(mutableListOf<String>())
 
     // Binder given to clients
     private val binder = NetworkBinder()
@@ -135,11 +138,76 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http", "envoy"))
     private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
 
-    fun handleValidationTime() {
+    fun checkValidationTime(): Boolean {
+        val validationCheck = System.currentTimeMillis()
+        if ((validationCheck - validationStart) < TIME_LIMIT) {
+            Log.d(TAG, "validation checked at " + validationCheck + ", time limit not yet exceeded: " + (validationCheck - validationStart))
+            return true
+        } else {
+            Log.d(TAG, "validation checked at " + validationCheck + ", time limit has been exceeded: " + (validationCheck - validationStart))
+            return false
+        }
+    }
+
+    fun calculateValidationTime(): Long {
         val validationStop = System.currentTimeMillis()
-        Log.d(TAG, "validation ended at " + validationStop + ", duration: " + (validationStop - validationStart))
-        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_TIME).apply {
-            putExtra(ENVOY_DATA_VALIDATION_MS, validationStop - validationStart)
+        Log.d(TAG, "validation calculated at " + validationStop + ", duration: " + (validationStop - validationStart))
+        return validationStop - validationStart
+    }
+
+    private fun getCauseOfFailure(): String {
+        if (!checkValidationTime()
+            && (((shuffledUrls.size + shuffledHttps.size) > 0)) || (additionalUrls.size > 0)) {
+            // the cause of failure is reported as a timeout only if there were remaining unchecked urls
+            return ENVOY_ENDED_TIMEOUT
+        } else if (submittedUrls.isNullOrEmpty()) {
+            // check whether no urls were submitted because they had all been previously blocked
+            if (blockedUrls.isNullOrEmpty()) {
+                return ENVOY_ENDED_EMPTY
+            } else {
+                return ENVOY_ENDED_BLOCKED
+            }
+        } else if (!invalidUrls.isNullOrEmpty()) {
+            return ENVOY_ENDED_FAILED
+        } else {
+            return ENVOY_ENDED_UNKNOWN
+        }
+    }
+
+    private fun broadcastValidationFailure() {
+        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_ENDED)
+        localIntent.putExtra(ENVOY_DATA_VALIDATION_MS, calculateValidationTime())
+        localIntent.putExtra(ENVOY_DATA_VALIDATION_ENDED_CAUSE, getCauseOfFailure())
+        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+    }
+
+    private fun broadcastUpdateFailed(url: String) {
+        Log.e(TAG, "broadcast failure for url: " + url)
+        val localIntent = Intent(ENVOY_BROADCAST_UPDATE_FAILED).apply {
+            putExtra(ENVOY_DATA_UPDATE_URL, url)
+        }
+        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+    }
+
+    private fun broadcastUpdateSucceeded(url: String, list: List<String>) {
+        Log.d(TAG, "broadcast success for url: " + url)
+        val localIntent = Intent(ENVOY_BROADCAST_UPDATE_SUCCEEDED).apply {
+            putExtra(ENVOY_DATA_UPDATE_URL, url)
+            putStringArrayListExtra(ENVOY_DATA_UPDATE_LIST, ArrayList(list))
+        }
+        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+    }
+
+    private fun broadcastBatchStatus(status: String) {
+        // create local copies to sort and avoid possible concurrent modification exception
+        val localBatchList = ArrayList<String>(currentBatchChecked)
+        val localServiceList = ArrayList<String>(currentServiceChecked)
+        Collections.sort(localBatchList)
+        Collections.sort(localServiceList)
+
+        val localIntent = Intent(status).apply {
+            putStringArrayListExtra(ENVOY_DATA_URL_LIST, localBatchList)
+            putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
         }
         LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
     }
@@ -162,16 +230,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 val firstAttempt = intent.getBooleanExtra(EXTRA_PARAM_FIRST, false)
                 handleActionSubmit(urls, directUrls, hysteriaCert, urlSources, urlInterval, urlStart, urlEnd, firstAttempt)
             }
-            ACTION_QUERY -> {
-                handleActionQuery()
-            }
         }
     }
 
     override fun onBind(intent: Intent): IBinder {
         return binder
     }
-
 
     // sorted by latency, from the the fastest one
     fun getValidUrls(): List<String> {
@@ -213,22 +277,28 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "clear " + additionalUrlSources.size + " previously submitted url sources")
             additionalUrlSources.clear()
 
+            Log.d(TAG, "clear " + additionalUrls.size + " previously submitted additional urls")
+            additionalUrls.clear()
+
             if (!urlSources.isNullOrEmpty()) {
                 urlSources.forEach { urlSource ->
                     Log.d(TAG, "found url source: " + urlSource)
                     additionalUrlSources.add(urlSource)
                 }
 
-                Log.d(TAG, "clear " + additionalUrls.size + " previously submitted urls")
-                additionalUrls.clear()
-
                 // fetch additional urls at startup to collect analytics
                 getAdditionalUrls(urlInterval, urlStart, urlEnd)
             }
+        } else {
+            Log.d(TAG, "additional urls have been submitted, clear " + additionalUrls.size + " cached urls")
+            additionalUrls.clear()
         }
 
         Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
         submittedUrls.clear()
+
+        Log.d(TAG, "clear " + blockedUrls.size + " previously blocked urls")
+        blockedUrls.clear()
 
         if (!directUrls.isNullOrEmpty()) {
             directUrls.forEach { directUrl ->
@@ -243,24 +313,19 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             urls.forEach { url ->
                 if (shouldSubmitUrl(url)) {
                     urlsToSubmit.add(url)
+                } else {
+                    blockedUrls.add(url)
                 }
             }
         }
 
         if (urlsToSubmit.isNullOrEmpty()) {
-            if (additionalUrls.isNullOrEmpty()) {
-                Log.w(TAG, "no additional urls found, cannot continue")
-                handleValidationTime()
-            } else {
-                // send broadcast if all included urls have previously been blocked
-                if (!urls.isNullOrEmpty()) {
-                    Log.w(TAG, "all urls previously blocked, submit additional urls")
-                    val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_BLOCKED)
-                    LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-                } else {
-                    Log.w(TAG, "no urls submitted, submit additional urls")
-                }
+            if (firstAttempt && !additionalUrls.isNullOrEmpty()) {
+                // if first attempt and additional urls available, submit additional urls
                 submitAdditionalUrls(hysteriaCert)
+            } else {
+                Log.w(TAG, "no urls found to submit, cannot continue")
+                broadcastValidationFailure()
             }
         } else {
             urlsToSubmit.forEach() { url ->
@@ -736,7 +801,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             shadowsocksUrls.remove(envoyUrl)
             if (shadowsocksUrls.isEmpty()) {
                 Log.d(TAG, "no shadowsocks urls remaining, stop service")
-                // how to stop shadowsocks service?
+                // TODO - how to stop shadowsocks service?
             } else {
                 Log.d(TAG, "" + shadowsocksUrls.size + " shadowsocks urls remaining, service in use")
             }
@@ -768,7 +833,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.d(TAG, "connect")
                     connection.connect()
                 } catch (e: SocketTimeoutException) {
-                    Log.e(TAG, "connection timeout when connecting: " + e.localizedMessage)
+                    Log.e(TAG, "socket timeout when connecting: " + e.localizedMessage)
                 } catch (e: ConnectException) {
                     Log.e(TAG, "connection error: " + e.localizedMessage)
                 } catch (e: Exception) {
@@ -807,14 +872,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                             }
                         }
 
-                        logUpdateSucceeded(url.toString(), newUrls)
+                        broadcastUpdateSucceeded(url.toString(), newUrls)
                         additionalUrls.addAll(newUrls)
                         continue
                     } else {
                         Log.e(TAG, "response contained no json to parse")
                     }
                 } catch (e: SocketTimeoutException) {
-                    Log.e(TAG, "connection timeout when getting input: " + e.localizedMessage)
+                    Log.e(TAG, "socket timeout when getting input: " + e.localizedMessage)
                 } catch (e: FileNotFoundException) {
                     Log.e(TAG, "config file error: " + e.localizedMessage)
                 } catch (e: Exception) {
@@ -826,13 +891,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.e(TAG, "unexpected error when opening connection: " + e.localizedMessage)
             }
 
-            logUpdateFailed(url.toString())
+            broadcastUpdateFailed(url.toString())
         }
     }
 
     fun submitAdditionalUrls(hysteriaCert: String?) {
         if (additionalUrls.isNullOrEmpty()) {
+            // this check may be redundant
             Log.w(TAG, "no additional urls to submit")
+            broadcastValidationFailure()
         } else {
             Log.d(TAG, "submit " + additionalUrls.size + " additional urls")
 
@@ -843,39 +910,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    fun logUpdateSucceeded(url: String, list: List<String>) {
-        Log.d(TAG, "broadcast success for url: " + url)
-        val localIntent = Intent(ENVOY_BROADCAST_UPDATE_SUCCEEDED).apply {
-            putExtra(ENVOY_DATA_UPDATE_URL, url)
-            putStringArrayListExtra(ENVOY_DATA_UPDATE_LIST, ArrayList(list))
-        }
-        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-    }
-
-    fun logUpdateFailed(url: String) {
-        Log.e(TAG, "broadcast failure for url: " + url)
-        val localIntent = Intent(ENVOY_BROADCAST_UPDATE_FAILED).apply {
-            putExtra(ENVOY_DATA_UPDATE_URL, url)
-        }
-        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-    }
-
-    /**
-     * Handle action Query in the provided background thread with the provided
-     * parameters.
-     */
-    private fun handleActionQuery() {
-        val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
-            // Puts the status into the Intent
-            putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(validUrls))
-        }
-        // Broadcasts the Intent to receivers in this app.
-        LocalBroadcastManager.getInstance(this).sendBroadcast(localIntent)
-    }
-
     companion object {
         private const val TAG = "NetworkIntentService"
 
+        private const val TIME_LIMIT = 30000
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
         private const val ONE_WEEK_MS = 604800000
@@ -962,20 +1000,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
             context.startService(intent)
         }
-
-        /**
-         * Starts this service to perform action Query with the given parameters. If
-         * the service is already performing a task this action will be queued.
-         *
-         * @see IntentService
-         */
-        @JvmStatic
-        fun enqueueQuery(context: Context) {
-            val intent = Intent(context, NetworkIntentService::class.java).apply {
-                action = ACTION_QUERY
-            }
-            context.startService(intent)
-        }
     }
 
     inner class MyUrlRequestCallback(private val originalUrl: String,
@@ -1029,9 +1053,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 if (this@NetworkIntentService.validUrls.size > 0) {
                     Log.d(TAG, "got redundant url: " + envoyUrl)
                     handleCleanup(envoyUrl)
-                } else {
-                    // for the first submitted url that succeeds, broadcast validation time
-                    handleValidationTime()
                 }
 
                 // only a 200 status code is valid, otherwise return invalid url as in onFailed
@@ -1051,17 +1072,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                     val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_SUCCEEDED).apply {
                         // puts the validation status into the intent
-                        putStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED, ArrayList(this@NetworkIntentService.validUrls))
                         putExtra(ENVOY_DATA_URL_SUCCEEDED, envoyUrl)
                         putExtra(ENVOY_DATA_SERVICE_SUCCEEDED, envoyService)
+                        putExtra(ENVOY_DATA_VALIDATION_MS, calculateValidationTime())
                     }
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-
-                    // create local copies to sort
-                    val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
-                    val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
-                    Collections.sort(localBatchList)
-                    Collections.sort(localServiceList)
 
                     // check whether batch is complete
                     if (this@NetworkIntentService.currentBatch.size > 0) {
@@ -1069,11 +1084,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     } else  {
                         Log.d(TAG, "current batch is empty, but a valid url was found: " + this@NetworkIntentService.validUrls.get(0))
 
-                        val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
-                            putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
-                            putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
-                        }
-                        LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                        broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)
                     }
                 } else {
                     // logs captive portal url used to validate envoy url
@@ -1166,17 +1177,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             this@NetworkIntentService.invalidUrls.add(envoyUrl)
             val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_FAILED).apply {
                 // puts the validation status into the intent
-                putStringArrayListExtra(ENVOY_DATA_URLS_FAILED, ArrayList(this@NetworkIntentService.invalidUrls))
                 putExtra(ENVOY_DATA_URL_FAILED, envoyUrl)
                 putExtra(ENVOY_DATA_SERVICE_FAILED, envoyService)
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
-
-            // create local copies to sort and avoid possible concurrent modification exception
-            val localBatchList = ArrayList<String>(this@NetworkIntentService.currentBatchChecked)
-            val localServiceList = ArrayList<String>(this@NetworkIntentService.currentServiceChecked)
-            Collections.sort(localBatchList)
-            Collections.sort(localServiceList)
 
             if (this@NetworkIntentService.currentBatch.size > 0) {
                 // check whether current batch of urls have failed
@@ -1185,38 +1189,40 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 // a valid url was found, do not continue
                 Log.d(TAG, "current batch is empty, but a valid url was previously found")
 
-                val localIntent = Intent(ENVOY_BROADCAST_BATCH_SUCCEEDED).apply {
-                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
-                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
-                }
-                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)
             } else if ((this@NetworkIntentService.shuffledUrls.size + this@NetworkIntentService.shuffledHttps.size) > 0) {
                 // check whether all submitted urls have failed
                 Log.d(TAG, "current batch is empty, " + (this@NetworkIntentService.shuffledUrls.size + this@NetworkIntentService.shuffledHttps.size) + " submitted urls remaining")
 
-                val localIntent = Intent(ENVOY_BROADCAST_BATCH_FAILED).apply {
-                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
-                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
-                }
-                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                broadcastBatchStatus(ENVOY_BROADCAST_BATCH_FAILED)
 
-                handleBatch(hysteriaCert)
+                if (checkValidationTime()) {
+                    // time remaining, continue
+                    handleBatch(hysteriaCert)
+                } else {
+                    // time expired, do not continue
+                    Log.w(TAG, "time expired, cannot continue with next batch")
+                    broadcastValidationFailure()
+                    return
+                }
             } else {
 
-                val localIntent = Intent(ENVOY_BROADCAST_BATCH_FAILED).apply {
-                    putStringArrayListExtra(ENVOY_DATA_BATCH_LIST, localBatchList)
-                    putStringArrayListExtra(ENVOY_DATA_SERVICE_LIST, localServiceList)
-                }
-                LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
+                broadcastBatchStatus(ENVOY_BROADCAST_BATCH_FAILED)
 
                 if (this@NetworkIntentService.additionalUrls.isNullOrEmpty()) {
                     // all available urls have failed, broadcast validation time
                     Log.w(TAG, "all available urls have failed, cannot continue")
-                    handleValidationTime()
-                } else {
-                    // all urls in original submission have failed, attempt to get additional urls
-                    Log.w(TAG, "all urls submitted have failed, fetch additional urls")
+                    broadcastValidationFailure()
+                    return
+                } else if (checkValidationTime()) {
+                    // all urls in original submission have failed, submit additional urls for validation
+                    Log.w(TAG, "all urls submitted have failed, validate additional urls")
                     submitAdditionalUrls(hysteriaCert)
+                } else {
+                    // time expired, do not continue
+                    Log.w(TAG, "time expired, cannot continue with additional urls")
+                    broadcastValidationFailure()
+                    return
                 }
             }
         }
