@@ -17,10 +17,10 @@
  16 files changed, 119 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/BUILD.gn b/components/cronet/BUILD.gn
-index 5be0ce232c13b..f4f539355fc09 100644
+index 06a938227f71b..8da038d769ea2 100644
 --- a/components/cronet/BUILD.gn
 +++ b/components/cronet/BUILD.gn
-@@ -101,6 +101,27 @@ if (is_android) {
+@@ -100,6 +100,27 @@ if (is_android) {
      testonly = true
      deps = [ "//components/cronet/android:cronet_package_android" ]
    }
@@ -49,7 +49,7 @@ index 5be0ce232c13b..f4f539355fc09 100644
    group("cronet_package") {
      deps = [ "//components/cronet/ios:cronet_package_ios" ]
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index bef24dc7872ac..361494be19579 100644
+index 99fc5f16ae2ac..dfd1ea05b3e1c 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -103,6 +103,16 @@ void CronetContextAdapter::InitRequestContextOnInitThread(
@@ -70,7 +70,7 @@ index bef24dc7872ac..361494be19579 100644
      JNIEnv* env,
      const JavaParamRef<jobject>& jcaller,
 diff --git a/components/cronet/android/cronet_context_adapter.h b/components/cronet/android/cronet_context_adapter.h
-index 271256f79ab5c..3985562592698 100644
+index 6c256da0a28ce..57478fe7d4044 100644
 --- a/components/cronet/android/cronet_context_adapter.h
 +++ b/components/cronet/android/cronet_context_adapter.h
 @@ -51,6 +51,11 @@ class CronetContextAdapter : public CronetContext::Callback {
@@ -85,7 +85,7 @@ index 271256f79ab5c..3985562592698 100644
    // Releases all resources for the request context and deletes the object.
    // Blocks until network thread is destroyed after running all pending tasks.
    void Destroy(JNIEnv* env,
-@@ -95,6 +100,9 @@ class CronetContextAdapter : public CronetContext::Callback {
+@@ -99,6 +104,9 @@ class CronetContextAdapter : public CronetContext::Callback {
    // Called on init Java thread to initialize URLRequestContext.
    void InitRequestContextOnInitThread();
  
@@ -96,10 +96,10 @@ index 271256f79ab5c..3985562592698 100644
    // to use smaller responses when estimating throughput, and to disable the
    // device offline checks when computing the effective connection type or when
 diff --git a/components/cronet/android/cronet_library_loader.cc b/components/cronet/android/cronet_library_loader.cc
-index cec35b8af6506..600fc26c3b883 100644
+index f25be3bfe8146..65c5cbaf4ac2a 100644
 --- a/components/cronet/android/cronet_library_loader.cc
 +++ b/components/cronet/android/cronet_library_loader.cc
-@@ -183,6 +183,17 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
+@@ -182,6 +182,17 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
    return service;
  }
  
@@ -118,10 +118,10 @@ index cec35b8af6506..600fc26c3b883 100644
  std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
      std::unique_ptr<net::ProxyConfigService> proxy_config_service,
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index 045a0183f3d60..cc2c1c2f2fc9f 100644
+index 2ff07ccada289..d3cf3bd77c417 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-@@ -200,8 +200,13 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -234,8 +234,13 @@ public class CronetUrlRequestContext extends CronetEngineBase {
                      // mUrlRequestContextAdapter is guaranteed to exist until
                      // initialization on init and network threads completes and
                      // initNetworkThread is called back on network thread.
@@ -135,7 +135,7 @@ index 045a0183f3d60..cc2c1c2f2fc9f 100644
                  }
              }
          });
-@@ -785,6 +790,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -826,6 +831,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
          @NativeClassQualifiedName("CronetContextAdapter")
          void initRequestContextOnInitThread(long nativePtr, CronetUrlRequestContext caller);
  
@@ -146,7 +146,7 @@ index 045a0183f3d60..cc2c1c2f2fc9f 100644
          void configureNetworkQualityEstimatorForTesting(long nativePtr,
                  CronetUrlRequestContext caller, boolean useLocalHostRequests,
 diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
-index 1ff0b8f2433ec..fce8343c460d4 100644
+index 9538b5072539a..399b4b9be683e 100644
 --- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
 +++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleActivity.java
 @@ -125,7 +125,8 @@ public class CronetSampleActivity extends Activity {
@@ -160,10 +160,10 @@ index 1ff0b8f2433ec..fce8343c460d4 100644
  
          mCronetEngine = myBuilder.build();
 diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
-index 926500f7ae1be..fcff4a4b75052 100644
+index f5510b6120248..d1b759279174b 100644
 --- a/components/cronet/cronet_context.cc
 +++ b/components/cronet/cronet_context.cc
-@@ -245,6 +245,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
+@@ -242,6 +242,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
      net::NetworkChangeNotifier::RemoveNetworkObserver(this);
  }
  
@@ -184,10 +184,10 @@ index 926500f7ae1be..fcff4a4b75052 100644
    DCHECK(OnInitThread());
    // Cannot create this inside Initialize because Android requires this to be
 diff --git a/components/cronet/cronet_context.h b/components/cronet/cronet_context.h
-index 6141657fb0df5..32dd16c4530d2 100644
+index 4570cd1938fb8..15d86089c074d 100644
 --- a/components/cronet/cronet_context.h
 +++ b/components/cronet/cronet_context.h
-@@ -109,6 +109,8 @@ class CronetContext {
+@@ -111,6 +111,8 @@ class CronetContext {
    // Blocks until network thread is destroyed after running all pending tasks.
    virtual ~CronetContext();
  
@@ -197,7 +197,7 @@ index 6141657fb0df5..32dd16c4530d2 100644
    void InitRequestContextOnInitThread();
  
 diff --git a/components/cronet/cronet_global_state.h b/components/cronet/cronet_global_state.h
-index 10003b0be1f4e..f3e959d817617 100644
+index 327a6cb424265..894221e95dab3 100644
 --- a/components/cronet/cronet_global_state.h
 +++ b/components/cronet/cronet_global_state.h
 @@ -8,6 +8,7 @@
@@ -219,7 +219,7 @@ index 10003b0be1f4e..f3e959d817617 100644
  // system proxy settings. Cronet will call this API only after a prior call
  // to EnsureInitialized() has returned.
 diff --git a/components/cronet/cronet_global_state_stubs.cc b/components/cronet/cronet_global_state_stubs.cc
-index a44ca10578f9f..89fe1a7c50177 100644
+index d110cae3e4c3b..ceff8d4082c6d 100644
 --- a/components/cronet/cronet_global_state_stubs.cc
 +++ b/components/cronet/cronet_global_state_stubs.cc
 @@ -8,6 +8,7 @@
@@ -242,9 +242,9 @@ index a44ca10578f9f..89fe1a7c50177 100644
 +
  std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
      const scoped_refptr<base::SequencedTaskRunner>& io_task_runner) {
-   return net::ConfiguredProxyResolutionService::CreateSystemProxyConfigService(
+   return net::ProxyConfigService::CreateSystemProxyConfigService(
 diff --git a/components/cronet/ios/cronet_global_state_ios.mm b/components/cronet/ios/cronet_global_state_ios.mm
-index acd8aa50a09a6..fe294842da3e2 100644
+index 3e215097596d4..ac789f02f77fb 100644
 --- a/components/cronet/ios/cronet_global_state_ios.mm
 +++ b/components/cronet/ios/cronet_global_state_ios.mm
 @@ -72,6 +72,11 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
@@ -260,7 +260,7 @@ index acd8aa50a09a6..fe294842da3e2 100644
      std::unique_ptr<net::ProxyConfigService> proxy_config_service,
      net::NetLog* net_log) {
 diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
-index 41394fda40683..271ab334f5b03 100644
+index d6ea7f8c8e3e0..a4e93b23c5b3f 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
 @@ -200,9 +200,16 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
@@ -281,7 +281,7 @@ index 41394fda40683..271ab334f5b03 100644
  }
  
 diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index 7b21245fdb8aa..1081a640cf726 100644
+index f69f8e5d3cd49..ffdb1a37fd629 100644
 --- a/components/cronet/native/sample/main.cc
 +++ b/components/cronet/native/sample/main.cc
 @@ -35,6 +35,7 @@ Cronet_EnginePtr CreateCronetEngine() {
@@ -293,10 +293,10 @@ index 7b21245fdb8aa..1081a640cf726 100644
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
 diff --git a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-index 7c354a6efbca4..b7c321451ee96 100644
+index 7bccc6fdb561b..f8863ee8c02b6 100644
 --- a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
 +++ b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-@@ -835,6 +835,8 @@ public class ExternalNavigationHandler {
+@@ -1048,6 +1048,8 @@ public class ExternalNavigationHandler {
      }
  
      private boolean externalIntentRequestsDisabledForUrl(ExternalNavigationParams params) {
@@ -305,7 +305,7 @@ index 7c354a6efbca4..b7c321451ee96 100644
          // TODO(changwan): check if we need to handle URL even when external intent is off.
          if (CommandLine.getInstance().hasSwitch(
                      ExternalIntentsSwitches.DISABLE_EXTERNAL_INTENT_REQUESTS)) {
-@@ -847,6 +849,7 @@ public class ExternalNavigationHandler {
+@@ -1060,6 +1062,7 @@ public class ExternalNavigationHandler {
              return true;
          }
          return false;
@@ -314,11 +314,11 @@ index 7c354a6efbca4..b7c321451ee96 100644
  
      /**
 diff --git a/net/proxy_resolution/configured_proxy_resolution_service.cc b/net/proxy_resolution/configured_proxy_resolution_service.cc
-index 2c02537409255..ee3192aeb633d 100644
+index 45a5e755fe1d6..974b9ed486652 100644
 --- a/net/proxy_resolution/configured_proxy_resolution_service.cc
 +++ b/net/proxy_resolution/configured_proxy_resolution_service.cc
-@@ -1405,6 +1405,20 @@ bool ConfiguredProxyResolutionService::CastToConfiguredProxyResolutionService(
-   return true;
+@@ -1353,6 +1353,20 @@ ConfiguredProxyResolutionService::set_pac_script_poll_policy(
+   return PacFileDeciderPoller::set_policy(policy);
  }
  
 +std::unique_ptr<ProxyConfigService>
@@ -336,10 +336,10 @@ index 2c02537409255..ee3192aeb633d 100644
 +}
 +
  // static
- std::unique_ptr<ProxyConfigService>
- ConfiguredProxyResolutionService::CreateSystemProxyConfigService(
+ std::unique_ptr<ConfiguredProxyResolutionService::PacPollPolicy>
+ ConfiguredProxyResolutionService::CreateDefaultPacPollPolicy() {
 diff --git a/net/proxy_resolution/configured_proxy_resolution_service.h b/net/proxy_resolution/configured_proxy_resolution_service.h
-index 80b96262c640d..b5b985f911cca 100644
+index 700cbc85c9dbf..a98b44f393eaa 100644
 --- a/net/proxy_resolution/configured_proxy_resolution_service.h
 +++ b/net/proxy_resolution/configured_proxy_resolution_service.h
 @@ -227,6 +227,9 @@ class NET_EXPORT ConfiguredProxyResolutionService
@@ -349,6 +349,6 @@ index 80b96262c640d..b5b985f911cca 100644
 +  static std::unique_ptr<ProxyConfigService> CreateFixedSystemProxyConfigService(
 +      const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri);
 +
-   // Creates a config service appropriate for this platform that fetches the
-   // system proxy settings. |main_task_runner| is the thread where the consumer
-   // of the ProxyConfigService will live.
+   // This method should only be used by unit tests.
+   void set_stall_proxy_auto_config_delay(base::TimeDelta delay) {
+     stall_proxy_auto_config_delay_ = delay;
