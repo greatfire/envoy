@@ -9,7 +9,7 @@ Some documentation and example Ansible playbooks are available [here](https://gi
 
 ## Build
 
-Run `./build-envoy.sh debug` or `./build-envoy.sh release` to build an envoy .aar file that can be indluded in other projects.
+Run `./build-envoy.sh debug` or `./build-envoy.sh release` to build an envoy .aar file that can be indluded in other projects. If using Android Studio, open this android subdirectoy as a project and select the "debug" or "release" build variant.
 
 ## Get Started
 
