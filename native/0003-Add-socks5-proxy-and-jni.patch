@@ -96,7 +96,7 @@ index 6c256da0a28ce..57478fe7d4044 100644
    // to use smaller responses when estimating throughput, and to disable the
    // device offline checks when computing the effective connection type or when
 diff --git a/components/cronet/android/cronet_library_loader.cc b/components/cronet/android/cronet_library_loader.cc
-index f25be3bfe8146..65c5cbaf4ac2a 100644
+index f25be3bfe8146..486eb7c7a990d 100644
 --- a/components/cronet/android/cronet_library_loader.cc
 +++ b/components/cronet/android/cronet_library_loader.cc
 @@ -182,6 +182,17 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
@@ -106,7 +106,7 @@ index f25be3bfe8146..65c5cbaf4ac2a 100644
 +std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
 +    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
 +  std::unique_ptr<net::ProxyConfigService> service =
-+      net::ConfiguredProxyResolutionService::CreateFixedSystemProxyConfigService(
++      net::ProxyConfigService::CreateFixedSystemProxyConfigService(
 +          io_task_runner, uri);
 +  //net::ProxyConfigServiceAndroid* android_proxy_config_service =
 +  //  static_cast<net::ProxyConfigServiceAndroid*>(service.get());
