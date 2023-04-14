@@ -9,7 +9,7 @@ Some documentation and example Ansible playbooks are available [here](https://gi
 
 ## Build
 
-Run `./build-envoy.sh debug` or `./build-envoy.sh release` to build an envoy .aar file that can be indluded in other projects.
+Run `./build-envoy.sh debug` or `./build-envoy.sh release` to build an envoy .aar file that can be indluded in other projects. If using Android Studio, open this android subdirectoy as a project and select the "debug" or "release" build variant.
 
 ## Get Started
 
@@ -82,48 +82,36 @@ If we have a server on 192.168.64.19 with V2Ray on port 16285, the URLs would be
     
 There are two options for submitting envoy urls:
     
- - submit(context: Context, urls: List<String>)
- - submit(context: Context, urls: List<String>, directUrls: List<String>?, hysteriaCert: String?, dnsttConfig: List<String>?)
+ - submit(context, urls)
+ - submit(context, urls, directUrls, hysteriaCert, urlSources, urlInterval, urlStart, urlEnd)
 
-The first method signature is intended for backwards compatibility, it will not support a Hysteria URL or fetch additional URLs with DNSTT.
+The first method signature is intended for simplified usage, it will not support a Hysteria URL or fetch additional URLs.
 
 If the optional directUrls parameter is included, Envoy will attempt to connect to those urls directly first. This can be included to avoid using proxy resources when the target domain is not blocked.
 
 The optional hysteriaCert parameter must be included if you submit any Hysteria URLs. It is a comma delimited string representing a self generated root certificate for the hysteria server in PEM format.
 
-If the optional dnsttConfig parameter is included, Envoy will attempt to fetch additional proxy URLs using DNSTT if all of the provided URLs fail.
+If the optional urlSources parameter is included, Envoy will attempt to fetch a list of additional URLs from those sources and validate them if all of the provided URLs fail. The remaining parameters can be used to specify certain URLs within those lists.
 
 ## Envoy broadcasts
 
 Envoy provides feedback with a variety of broadcasts. Create a BroadcastReceiver and add actions to an IntentFilter as needed. The following are some of the more significant actions and their parameters:
 
- - ENVOY_BROADCAST_VALIDATION_SUCCEEDED, includes ENVOY_DATA_URLS_SUCCEEDED, ENVOY_DATA_URL_SUCCEEDED, and ENVOY_DATA_SERVICE_SUCCEEDED
+ - ENVOY_BROADCAST_VALIDATION_SUCCEEDED, includes ENVOY_DATA_URL_SUCCEEDED, ENVOY_DATA_SERVICE_SUCCEEDED and ENVOY_DATA_VALIDATION_MS
  
-Received when a URL is validated successfully. This can include any direct URLs that were submitted. The parameters include the URL that was validated and the corresponding service, as well as a list of all URLs that have been validated. Use this URL to initialize Cronet (initializing Cronet with a direct URL will cause a redirection exception).
+Received when a URL is validated successfully. This can include any direct URLs that were submitted. The parameters include the URL that was validated and the corresponding service, as well as the number of milliseconds elapsed since validation began. Use this URL to initialize Cronet (initializing Cronet with a direct URL will cause a redirection exception).
  
- - ENVOY_BROADCAST_VALIDATION_FAILED, includes includes ENVOY_DATA_URLS_FAILED, ENVOY_DATA_URL_FAILED and ENVOY_DATA_SERVICE_FAILED
+ - ENVOY_BROADCAST_VALIDATION_FAILED, includes ENVOY_DATA_URL_FAILED and ENVOY_DATA_SERVICE_FAILED
  
-Received when a URL fails validation. This can include any direct URLs that were submitted. The parameters include the URL that failed validation and the corresponding service, as well as a list of all URLs that have failed validation.
+Received when a URL fails validation. This can include any direct URLs that were submitted. The parameters include the URL that failed validation and the corresponding service.
  
- - ENVOY_BROADCAST_VALIDATION_CONTINUED
- 
-Received if all originally submitted URLs fail validation but additional URLs are available for validation.
-
- - ENVOY_BROADCAST_BATCH_SUCCEEDED, includes ENVOY_DATA_BATCH_LIST and ENVOY_DATA_SERVICE_LIST
+ - ENVOY_BROADCAST_BATCH_SUCCEEDED, includes ENVOY_DATA_URL_LIST and ENVOY_DATA_SERVICE_LIST
 
 Received if a batch of URLs is validated successfully. The parameters include the set of URLs that were validated and the corresponding set of services.
 
- - ENVOY_BROADCAST_BATCH_FAILED, includes ENVOY_DATA_BATCH_LIST and ENVOY_DATA_SERVICE_LIST
+ - ENVOY_BROADCAST_BATCH_FAILED, includes ENVOY_DATA_URL_LIST and ENVOY_DATA_SERVICE_LIST
 
 Received if a batch of URLs fails validation. The parameters include the set of URLs that failed validation and the corresponding set of services.
-
- - ENVOY_BROADCAST_VALIDATION_BLOCKED
-
-Received if all submitted URLs have previously failed validation.
-
- - ENVOY_BROADCAST_VALIDATION_TIME, includes ENVOY_DATA_VALIDATION_MS
-
-Received after validation has succeeded or failed. The parameters include the number of milliseconds elapsed since validation began.
 
  - ENVOY_BROADCAST_UPDATE_SUCCEEDED, includes ENVOY_DATA_UPDATE_URL and ENVOY_DATA_UPDATE_LIST
 
@@ -133,25 +121,44 @@ Received if additional URLs have been fetched from a remote source. The paramete
 
 Received if additional URLs could not be fetched from a remote source. The parameters include the URL of the remote source.
 
+ - ENVOY_BROADCAST_VALIDATION_CONTINUED
+
+Received if all originally submitted URLs fail validation but additional URLs are available for validation.
+
+ - ENVOY_BROADCAST_VALIDATION_ENDED, includes ENVOY_DATA_VALIDATION_ENDED_CAUSE and ENVOY_DATA_VALIDATION_MS
+
+Received if envoy validation has stopped without finding a valid url. Includes the reason that validation stopped as well as the number of milliseconds elapsed since validation began.
+
 ## Basic envoy integration
 
 ```kotlin
-    private val envoyBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+    private val mBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent != null && context != null) {
-                if (intent.action == org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_SUCCEEDED) {
-                    val validUrl = intent.getStringExtra(org.greatfire.envoy.ENVOY_DATA_URL_SUCCEEDED)                    
+                if (intent.action == ENVOY_BROADCAST_VALIDATION_SUCCEEDED) {
+                    val validUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED)          
                     if (validUrl != null) {
-                        CronetNetworking.initializeCronetEngine(context, validUrl)
+                        if (CronetNetworking.cronetEngine() == null) {
+                            CronetNetworking.initializeCronetEngine(context, validUrl)
+                        } else {
+                            // cronet engine already initialized
+                        }
                     } else {
                         // received null url
                     }
-                } else if (intent.action == org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_FAILED) {
-                    val invalidUrl = intent.getStringExtra(org.greatfire.envoy.ENVOY_DATA_URL_FAILED)
+                } else if (intent.action == ENVOY_BROADCAST_VALIDATION_FAILED) {
+                    val invalidUrl = intent.getStringExtra(ENVOY_DATA_URL_FAILED)
                     if (invalidUrl != null) {
-                        // handle error state
+                        // report invalid url
                     } else {
                         // received null url
+                    }
+                } else if (intent.action == ENVOY_BROADCAST_VALIDATION_ENDED) {
+                    val cause = intent.getStringExtra(ENVOY_DATA_VALIDATION_ENDED_CAUSE)
+                    if (cause != null) {
+                        // report cause of failure
+                    } else {
+                        // received null cause
                     }
                 } else {
                     // received unexpected intent
@@ -165,30 +172,16 @@ Received if additional URLs could not be fetched from a remote source. The param
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        LocalBroadcastManager.getInstance(this).registerReceiver(envoyBroadcastReceiver, IntentFilter().apply {
-            addAction(org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_SUCCEEDED)
-            addAction(org.greatfire.envoy.ENVOY_BROADCAST_VALIDATION_FAILED)
+        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, IntentFilter().apply {
+            addAction(ENVOY_BROADCAST_VALIDATION_SUCCEEDED)
+            addAction(ENVOY_BROADCAST_VALIDATION_FAILED)
+            addAction(ENVOY_BROADCAST_VALIDATION_ENDED)
         })
     
         val listOfUrls = mutableListOf<String>()
         listOfUrls.add(urlOne)
         listOfUrls.add(urlTwo)
-        val directUrls = mutableListOf<String>()
-        directUrls.add(directUrl)
-        /* expected format:
-           0. dnstt domain
-           1. dnstt key
-           2. dnstt path
-           3. doh url
-           4. dot address
-           (either 4 or 5 should be an empty string) */
-        val dnsttConfig = mutableListOf<String>()
-        dnsttConfig.add(dnsttDomain)
-        dnsttConfig.add(dnsttKey)
-        dnsttConfig.add(dnsttPath)
-        dnsttConfig.add(dohUrl)
-        dnsttConfig.add("")
-        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls, directUrls, hysteriaCert, dnsttConfig)
+        org.greatfire.envoy.NetworkIntentService.submit(this@MainActivity, listOfUrls)
     }
 ```
 
@@ -196,24 +189,30 @@ Elsewhere, add the CronetInterceptor to your network client. This interceptor wi
 
 ```kotlin
     private fun createClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-                .addInterceptor(CronetInterceptor())
-                .build()
+        // the cronet interceptor will be bypassed if the cronet engine has not been initialized
+        return OkHttpConnectionFactory.client.newBuilder()
+            .addInterceptor(CronetInterceptor())
+            .build()
     }
 ```
 
 Add uses-permission and services to AndroidManifest.xml
 ```xml
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
 ...
 
 <service
-    android:name="org.greatfire.envoy.ShadowsocksService"
+    android:name="org.greatfire.envoy.NetworkIntentService"
+    android:stopWithTask="false"
     android:exported="false"
     android:isolatedProcess="false" />
+
 <service
-    android:name="org.greatfire.envoy.NetworkIntentService"
-    android:exported="false" />
+    android:name="org.greatfire.envoy.ShadowsocksService"
+    android:stopWithTask="false"
+    android:exported="false"
+    android:isolatedProcess="false" />
 ```
 
 ## FAQ
