@@ -19,7 +19,9 @@ Please note that this project is unrelated to the [Envoy Proxy project](https://
 
 ## Getting Envoy
 
-Envoy and our patched Cronet are released though Maven Central
+Envoy and our patched Cronet are released though Maven Central.
+Envoy releases can be found [here](https://mvnrepository.com/artifact/org.greatfire/envoy).
+Cronet releases can be found [here](https://mvnrepository.com/artifact/org.greatfire.envoy/cronet).
 
 ## Server Setup Examples
 
@@ -83,6 +85,8 @@ Go to patches for each application in directory `apps` to learn how to integrate
 3. WordPress:
    1. [WordPress-FluxC-Android](https://github.com/wordpress-mobile/WordPress-FluxC-Android): `echo "sdk.dir=YOUR_SDK_DIR" > local.properties && ./gradlew fluxc:build`
    2. [WordPress-Android](https://github.com/wordpress-mobile/WordPress-Android): set `wp.oauth.app_id` and `wp.oauth.app_secret`, then `cp gradle.properties-example gradle.properties && ./gradlew assembleVanillaDebug`
+
+(These patches do not reflect the most recent versions of Envoy or the original apps and may not work as intended at this time)
 
 You can submit more apps with `git -c diff.noprefix=false format-patch --numbered --binary HEAD~`.
 

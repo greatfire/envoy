@@ -8,7 +8,6 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -45,7 +44,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.greatfire.envoy.NetworkIntentServiceKt.ENVOY_BROADCAST_VALIDATION_SUCCEEDED;
-import static org.greatfire.envoy.NetworkIntentServiceKt.ENVOY_DATA_URLS_SUCCEEDED;
+import static org.greatfire.envoy.NetworkIntentServiceKt.ENVOY_DATA_URL_SUCCEEDED;
 
 public class MainActivity extends FragmentActivity {
 
@@ -73,13 +72,7 @@ public class MainActivity extends FragmentActivity {
         shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL.LOCAL_PORT", 1080);
         ContextCompat.startForegroundService(getApplicationContext(), shadowsocksIntent);
 
-        // https://developer.android.com/guide/components/bound-services#java
-        //Intent intent = new Intent(this, ShadowsocksService.class);
-        //private ServiceConnection connection = new ServiceConnection() { }
-        //bindService(intent, connection, Context.BIND_AUTO_CREATE);
-
         viewPager = findViewById(R.id.pager);
-        // viewPager.setPageTransformer();
         FragmentStateAdapter pagerAdapter = new MyFragmentStateAdapter(this);
         viewPager.setAdapter(pagerAdapter);
 
@@ -88,15 +81,12 @@ public class MainActivity extends FragmentActivity {
                 (tab, position) -> tab.setText(titles[position])
         ).attach();
 
-        // String url = "https://ifconfig.co/ip";
-        // url = "https://httpbin.org/ip";
         String envoyUrl = "socks5://127.0.0.1:1080"; // Keep this if no port conflicts
 
         List<String> envoyUrls = Collections.unmodifiableList(Arrays.asList(envoyUrl, "https://allowed.example.com/path/"));
         NetworkIntentService.submit(this, envoyUrls);
         // we will get responses in NetworkIntentServiceReceiver's onReceive
 
-        // NetworkIntentService.enqueueQuery(this); // async
         if (mBound) {
             Log.i(TAG, "current valid urls are " + mService.getValidUrls()); // sync
         }
@@ -107,19 +97,6 @@ public class MainActivity extends FragmentActivity {
 
         CronetEngine engine = engineBuilder.build();
         Log.d(TAG, "engine version " + engine.getVersionString());
-        //File outputFile = File.createTempFile("cronet", "log",
-        //    Environment.getExternalStorageDirectory());
-        //engine.startNetLogToFile(outputFile.toString(), false);
-/*        Executor executor = Executors.newSingleThreadExecutor();
-        CronetFragment.MyUrlRequestCallback callback = new CronetFragment.MyUrlRequestCallback();
-        UrlRequest.Builder requestBuilder = engine.newUrlRequestBuilder(
-                url, callback, executor);
-        UrlRequest request = requestBuilder.addHeader("My-Header1", "value1").build();
-        request.start();*/
-        // https://stackoverflow.com/questions/41110684/cronet-and-experimentalcronetengine
-        // URL.setURLStreamHandlerFactory(new CronetURLStreamHandlerFactory((ExperimentalCronetEngine)engine));
-
-        // new RetrofitRequestTask().execute(url);
     }
 
     @Override
@@ -186,7 +163,6 @@ public class MainActivity extends FragmentActivity {
                 linearLayout.setOrientation(LinearLayout.HORIZONTAL);
                 linearLayout.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
                 TextView textView = new TextView(getContext());
-                // textView.setInputType(EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE);
                 textView.setText(R.string.nuke_instruction);
                 linearLayout.addView(textView);
                 return linearLayout;
@@ -236,37 +212,36 @@ public class MainActivity extends FragmentActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent != null) {
-                final List<String> validUrls = intent.getStringArrayListExtra(ENVOY_DATA_URLS_SUCCEEDED);
-                if (validUrls != null && !validUrls.isEmpty()) {
-                    String envoyUrl = validUrls.get(0);
-                    Log.i(TAG, "Received valid urls: " + TextUtils.join(", ", validUrls));
-                    // Select the fastest one
-                    CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
-                    new Thread() {
-                        @Override
-                        public void run() {
-                            try {
-                                URL url = new URL("https://api.ipify.org/");
-                                BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-                                String inputLine;
-                                StringBuilder response = new StringBuilder();
-                                while ((inputLine = in.readLine()) != null)
-                                    response.append(inputLine);
-                                in.close();
+                final String envoyUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED);
+                if (envoyUrl != null && !envoyUrl.isEmpty()) {
+                    Log.i(TAG, "Received valid url: " + envoyUrl);
+                    if (CronetNetworking.cronetEngine() != null) {
+                        Log.i(TAG, "Cronet already started");
+                    } else {
+                        CronetNetworking.initializeCronetEngine(context, envoyUrl); // reInitializeIfNeeded set to false
+                        new Thread() {
+                            @Override
+                            public void run() {
+                                try {
+                                    URL url = new URL("https://api.ipify.org/");
+                                    BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+                                    String inputLine;
+                                    StringBuilder response = new StringBuilder();
+                                    while ((inputLine = in.readLine()) != null)
+                                        response.append(inputLine);
+                                    in.close();
 
-                                Log.d(TAG, "proxied request returns " + response.toString());
-                            } catch (MalformedURLException e) {
-                                Log.e(TAG, "failed to proxy request ", e);
-                            } catch (IOException e) {
-                                Log.e(TAG, "failed to read response ", e);
+                                    Log.d(TAG, "Proxied request returns " + response.toString());
+                                } catch (MalformedURLException e) {
+                                    Log.e(TAG, "Failed to proxy request ", e);
+                                } catch (IOException e) {
+                                    Log.e(TAG, "Failed to read response ", e);
+                                }
                             }
-                        }
-                    }.start();
-                    runOnUiThread(() -> {
-                        // MainActivity.this.setTitle("V " + validUrls.toString());
-                    });
+                        }.start();
+                    }
                 } else {
-                    Log.e(TAG, "Received empty valid urls");
+                    Log.e(TAG, "Received empty or invalid url");
                 }
             }
         }
