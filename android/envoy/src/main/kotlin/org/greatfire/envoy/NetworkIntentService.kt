@@ -1055,8 +1055,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     handleCleanup(envoyUrl)
                 }
 
-                // only a 200 status code is valid, otherwise return invalid url as in onFailed
-                if (info.httpStatusCode in 200..299) {
+                // only a 204 status code is valid, otherwise return invalid url as in onFailed
+                if (info.httpStatusCode == 204) {
                     // logs captive portal url used to validate envoy url
                     Log.d(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is valid")
                     this@NetworkIntentService.validUrls.add(envoyUrl)
@@ -1086,6 +1086,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                         broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)
                     }
+                } else if (info.httpStatusCode in 200..299) {
+                    // capturing this separately to troubleshoot redirect issue
+                    Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got unexpected response code " + info.httpStatusCode + " so tested url is invalid")
+                    handleInvalidUrl()
                 } else {
                     // logs captive portal url used to validate envoy url
                     Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
