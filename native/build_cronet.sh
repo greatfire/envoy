@@ -25,6 +25,7 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --for
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0002-geneva-dns-and-api-txt.patch"
 
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003-Add-socks5-proxy-and-jni.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-envoy-url-socks5-param.patch"
 
 # autoninja -C out/Default chrome_public_apk
 gn gen out/Cronet-Desktop
