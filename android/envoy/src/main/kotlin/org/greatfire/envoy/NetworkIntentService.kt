@@ -67,6 +67,7 @@ const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
 const val ENVOY_DATA_VALIDATION_ENDED_CAUSE = "org.greatfire.envoy.VALIDATION_ENDED_CAUSE"
 
 const val ENVOY_SERVICE_DIRECT = "direct"
+const val ENVVY_SERVICE_SNOWFLAKE = "snowflake"
 const val ENVOY_SERVICE_V2WS = "v2ws"
 const val ENVOY_SERVICE_V2SRTP = "v2srtp"
 const val ENVOY_SERVICE_V2WECHAT = "v2wechat"
@@ -119,6 +120,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var v2rayWechatUrls = Collections.synchronizedList(mutableListOf<String>())
     private var hysteriaUrls = Collections.synchronizedList(mutableListOf<String>())
     private var shadowsocksUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var snowflakeUrls = Collections.synchronizedList(mutableListOf<String>())
     private var httpsUrls = Collections.synchronizedList(mutableListOf<String>())
     private var additionalUrls = Collections.synchronizedList(mutableListOf<String>())
 
@@ -136,7 +138,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
 
     private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http", "envoy"))
-    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
+    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss", "snowflake"))
 
     fun checkValidationTime(): Boolean {
         val validationCheck = System.currentTimeMillis()
@@ -434,6 +436,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert)
+            } else if (envoyUrl.startsWith("")) {
+                Log.d(TAG, "found snowflake url: " + envoyUrl);
+                handleSnowflakeSubmit(envoyUrl, captive_portal_url, hysteriaCert);
             } else if (envoyUrl.startsWith("http") || envoyUrl.startsWith("envoy")) {
                 Log.d(TAG, "found http/envoy url: " + envoyUrl)
                 handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert)
@@ -679,6 +684,64 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
+    private fun handleSnowflakeSubmit(
+        url: String,
+        captive_portal_url: String,
+        hysteriaCert: String?
+    ) {
+
+        val uri = URI(url)
+        val ice = "stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478,stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478"
+        val brokerUrl = ""
+        val front = ""
+        val ampCache = ""
+        val rawQuery = uri.rawQuery
+        val queries = rawQuery.split("&")
+        for (i in 0 until queries.size) {
+            val queryParts = queries[i].split("=")
+            if (queryParts[0].equals("broker")) {
+                brokerUrl = queryParts[1]
+            } else if (queryParts[0].equals("ampCache")) {
+                ampCache = queryParts[1]
+            } else if (queryParts[0].equals("front")) {
+                front = queryParts[1]
+            }
+        }
+        // start v2ray wechat service
+        if (blockedUrls.isNullOrEmpty()) {
+            Log.e(TAG, "some arguments required for Snowflake service are missing")
+        } else {
+            // hardcoded values
+            val logFile = ""
+            val logToStateDir = false
+            val keepLocalAddresses = true
+            val unsafeLogging = false
+            val maxPeers = 1
+            // start
+            val snowflakePort = IEnvoyProxy.startSnowflake(
+                ice, brokerUrl, front, ampCache, logFile, logToStateDir, keepLocalAddresses,
+                unsafeLogging, maxPeers)
+            Log.d(TAG, "Snowflake service started at " + LOCAL_URL_BASE + snowflakePort)
+
+            snowflakeUrls.add(LOCAL_URL_BASE + snowflakePort)
+
+            // method returns port immediately but service is not ready immediately
+            Log.d(TAG, "submit url after a short delay for starting Snowflake")
+            ioScope.launch() {
+                Log.d(TAG, "start snowflake delay")
+                delay(1000L) // wait 1 second
+                Log.d(TAG, "end snowflake delay")
+                handleRequest(
+                    url,
+                    LOCAL_URL_BASE + snowflakePort,
+                    ENVOY_SERVICE_V2WECHAT,
+                    captive_portal_url,
+                    hysteriaCert
+                )
+            }
+        }
+    }
+
     // test direct connection to avoid using proxy resources when not required
     private fun handleDirectRequest(
         directUrl: String,
@@ -812,6 +875,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "no https urls remaining (no service)")
             } else {
                 Log.d(TAG, "" + httpsUrls.size + " https urls remaining (no service)")
+            }
+        } else if (snowflakeUrls.contains(envoyUrl)) {
+            snowflakeUrls.remove(envoyUrl)
+            if (snowflakeUrls.isEmpty()) {
+                Log.d(TAG, "no snowflake urls remaining")
+            } else {
+                Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, serice in use")
             }
         } else {
             Log.d(TAG, "url was not previously cached")
