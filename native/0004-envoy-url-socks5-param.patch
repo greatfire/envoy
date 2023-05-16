@@ -1,0 +1,101 @@
+ components/cronet/native/engine.cc      | 33 ++++++++++++++++++++++++++-------
+ components/cronet/native/sample/main.cc | 11 +++++++++--
+ 2 files changed, 35 insertions(+), 9 deletions(-)
+
+diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
+index a4e93b23c5b3f..cda95ba910509 100644
+--- a/components/cronet/native/engine.cc
++++ b/components/cronet/native/engine.cc
+@@ -15,6 +15,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/no_destructor.h"
+ #include "build/build_config.h"
++#include "base/strings/escape.h"
+ #include "components/cronet/cronet_context.h"
+ #include "components/cronet/cronet_global_state.h"
+ #include "components/cronet/native/generated/cronet.idl_impl_struct.h"
+@@ -24,6 +25,7 @@
+ #include "components/cronet/version.h"
+ #include "components/grpc_support/include/bidirectional_stream_c.h"
+ #include "net/base/hash_value.h"
++#include "net/base/url_util.h"
+ #include "net/url_request/url_request_context.h"
+ #include "net/url_request/url_request_context_builder.h"
+ #include "net/url_request/url_request_context_getter.h"
+@@ -199,16 +201,33 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
+   // private and mark CronetLibraryLoader.postToInitThread() as
+   // @VisibleForTesting (as the only external use will be in a test).
+ 
++  // This supports a 'socks5' param to envoy:// URLs
++  GURL envoy_socks;
++  GURL envoy_temp = GURL(params->envoy_url);
++  for (net::QueryIterator it(envoy_temp); !it.IsAtEnd(); it.Advance()) {
++    auto key = it.GetKey();
++    auto value = it.GetUnescapedValue();
++    if (key.compare("socks5") == 0) {
++      envoy_socks =
++          GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
++    }
++  }
+   // Initialize context on the init thread.
+-  if (params->envoy_url.rfind("socks5://", 0) != 0) {
+-  cronet::PostTaskToInitThread(
++  if (!envoy_socks.is_empty()) {
++    cronet::PostTaskToInitThread(
++      FROM_HERE,
++      base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
++                     base::Unretained(context_.get()), envoy_socks.spec()));
++  } else if (params->envoy_url.rfind("socks5://", 0) == 0) {
++    // socks5:// URL
++    cronet::PostTaskToInitThread(
++      FROM_HERE,
++      base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
++                     base::Unretained(context_.get()), params->envoy_url));
++  } else {
++    cronet::PostTaskToInitThread(
+       FROM_HERE, base::BindOnce(&CronetContext::InitRequestContextOnInitThread,
+                                 base::Unretained(context_.get())));
+-  } else {
+-      cronet::PostTaskToInitThread(
+-          FROM_HERE,
+-          base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
+-                         base::Unretained(context_.get()), params->envoy_url));
+   }
+   return CheckResult(Cronet_RESULT_SUCCESS);
+ }
+diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
+index ffdb1a37fd629..007d5bbab90d7 100644
+--- a/components/cronet/native/sample/main.cc
++++ b/components/cronet/native/sample/main.cc
+@@ -12,6 +12,7 @@ Cronet_EnginePtr CreateCronetEngine() {
+   Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
+   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
+   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
++
+   Cronet_EngineParams_envoy_url_set(engine_params,
+                                     "https://example.com/enovy_path/");
+   Cronet_EngineParams_envoy_url_set(
+@@ -36,7 +37,13 @@ Cronet_EnginePtr CreateCronetEngine() {
+       "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
+       "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
+   Cronet_EngineParams_envoy_url_set(engine_params, "socks5://127.0.0.1:1080");
+-
++  // proxy URL and SOCKS5 together (for true PTs)
++  Cronet_EngineParams_envoy_url_set(
++      engine_params,
++      "envoy://"
++      "?url=https%3A%2F%2Frayon.example.com%2Fwikipedia%2F&address=142.65.13.41"
++      "&header_Host=abc.example.com&socks5=socks5%3A%2F%2Flocalhost%3A8192");
++ 
+   Cronet_EngineParams_enable_quic_set(engine_params, true);
+ 
+   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+@@ -73,7 +80,7 @@ int main(int argc, const char* argv[]) {
+   std::cout << "Cronet version: "
+             << Cronet_Engine_GetVersionString(cronet_engine) << std::endl;
+ 
+-  std::string url(argc > 1 ? argv[1] : "https://www.example.com");
++  std::string url(argc > 1 ? argv[1] : "https://www.google.com/generate_204");
+   std::cout << "URL: " << url << std::endl;
+   SampleExecutor executor;
+   PerformRequest(cronet_engine, url, executor.GetExecutor());
