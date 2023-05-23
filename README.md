@@ -15,7 +15,7 @@ Please note that this project is unrelated to the [Envoy Proxy project](https://
 
 ## Example Applications
 
-* Wiki Unblocked: a fork of the official Wikipedia app with Envoy support [Play Store](https://play.google.com/store/apps/details?id=org.greatfire.wikiunblocked) [F-Droid](https://f-droid.org/en/packages/org.greatfire.wikiunblocked.fdroid/) [Source](https://github.com/greatfire/apps-android-wikipedia-envoy/tree/wiki-unblocked)
+* Wiki Unblocked: a fork of the official Wikipedia app with Envoy support [[Play Store](https://play.google.com/store/apps/details?id=org.greatfire.wikiunblocked)] [[F-Droid](https://f-droid.org/en/packages/org.greatfire.wikiunblocked.fdroid/)] [[Source](https://github.com/greatfire/apps-android-wikipedia-envoy/tree/wiki-unblocked)]
 
 ## Getting Envoy
 
