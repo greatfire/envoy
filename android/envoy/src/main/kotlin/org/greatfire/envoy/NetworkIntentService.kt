@@ -67,12 +67,12 @@ const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
 const val ENVOY_DATA_VALIDATION_ENDED_CAUSE = "org.greatfire.envoy.VALIDATION_ENDED_CAUSE"
 
 const val ENVOY_SERVICE_DIRECT = "direct"
-const val ENVVY_SERVICE_SNOWFLAKE = "snowflake"
 const val ENVOY_SERVICE_V2WS = "v2ws"
 const val ENVOY_SERVICE_V2SRTP = "v2srtp"
 const val ENVOY_SERVICE_V2WECHAT = "v2wechat"
 const val ENVOY_SERVICE_HYSTERIA = "hysteria"
 const val ENVOY_SERVICE_SS = "ss"
+const val ENVOY_SERVICE_SNOWFLAKE = "snowflake"
 const val ENVOY_SERVICE_HTTPS = "https"
 const val ENVOY_ENDED_EMPTY = "empty"
 const val ENVOY_ENDED_BLOCKED = "blocked"
@@ -82,6 +82,8 @@ const val ENVOY_ENDED_UNKNOWN = "unknown"
 
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
+const val TUNNEL_URL_BASE_1 = "envoy://?url="
+const val TUNNEL_URL_BASE_2 = "&socks5=socks5%3A%2F%2F127.0.0.1%3A"
 
 /**
  * An [IntentService] subclass for handling asynchronous task requests in
@@ -352,6 +354,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun shouldSubmitUrl(url: String): Boolean {
 
+        // TEMP - don't want to disable urls in test build
+        return true
+
+        /*
         val currentTime = System.currentTimeMillis()
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
@@ -366,6 +372,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + url)
             return true
         }
+        */
     }
 
     private fun handleBatch(hysteriaCert: String?,
@@ -431,12 +438,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 handleV2rayWechatSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("hysteria://")) {
                 Log.d(TAG, "found hysteria url: " + envoyUrl)
-                handleHysteriaSubmit(envoyUrl, captive_portal_url, hysteriaCert
-                )
+                handleHysteriaSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("ss://")) {
                 Log.d(TAG, "found ss url: " + envoyUrl)
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("")) {
+            } else if (envoyUrl.startsWith("snowflake://")) {
                 Log.d(TAG, "found snowflake url: " + envoyUrl);
                 handleSnowflakeSubmit(envoyUrl, captive_portal_url, hysteriaCert);
             } else if (envoyUrl.startsWith("http") || envoyUrl.startsWith("envoy")) {
@@ -690,58 +696,84 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         hysteriaCert: String?
     ) {
 
-        val uri = URI(url)
-        // borrowed from the list Tor Browser uses
-        // https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/merge_requests/617/diffs
+        // borrowed from the list Tor Browser uses: https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/merge_requests/617/diffs
         val ice = "stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478,stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478"
-        val brokerUrl = ""
-        val front = ""
-        val ampCache = ""
+        // additional hardcoded snowflake parameters
+        val logFile = ""
+        val logToStateDir = false
+        val keepLocalAddresses = true
+        val unsafeLogging = false
+        val maxPeers = 1L  // TODO - consider whether this should be user-configurable
+
+        val uri = URI(url)
+        var brokerUrl = ""
+        var ampCache = ""
+        var front = ""
+        var tunnelUrl = ""
         val rawQuery = uri.rawQuery
         val queries = rawQuery.split("&")
         for (i in 0 until queries.size) {
             val queryParts = queries[i].split("=")
             if (queryParts[0].equals("broker")) {
-                brokerUrl = queryParts[1]
+                brokerUrl = URLDecoder.decode(queryParts[1], "UTF-8")
             } else if (queryParts[0].equals("ampCache")) {
                 ampCache = queryParts[1]
             } else if (queryParts[0].equals("front")) {
+                // TODO - generate randomized host names where wildcard dns is supported
+                // front = randomString().plus(queryParts[1])
                 front = queryParts[1]
+            } else if (queryParts[0].equals("tunnel")) {
+                tunnelUrl = queryParts[1]
             }
         }
-        // start v2ray wechat service
-        if (blockedUrls.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for Snowflake service are missing")
+        // start snowflake service
+        if (brokerUrl.isNullOrEmpty() || front.isNullOrEmpty() || tunnelUrl.isNullOrEmpty()) {
+            Log.e(TAG, "some arguments required for snowflake service are missing")
         } else {
-            // hardcoded values
-            val logFile = ""
-            val logToStateDir = false
-            val keepLocalAddresses = true
-            val unsafeLogging = false
-            val maxPeers = 1
-            // start
+
+            Log.e(TAG, "ice: " + ice)
+            Log.e(TAG, "brokerUrl: " + brokerUrl)
+            Log.e(TAG, "front: " + front)
+            Log.e(TAG, "ampCache: " + ampCache)
+            Log.e(TAG, "logFile: " + logFile)
+            Log.e(TAG, "logToStateDir: " + logToStateDir)
+            Log.e(TAG, "keepLocalAddresses: " + keepLocalAddresses)
+            Log.e(TAG, "unsafeLogging: " + unsafeLogging)
+            Log.e(TAG, "maxPeers: " + maxPeers)
+
             val snowflakePort = IEnvoyProxy.startSnowflake(
                 ice, brokerUrl, front, ampCache, logFile, logToStateDir, keepLocalAddresses,
                 unsafeLogging, maxPeers)
-            Log.d(TAG, "Snowflake service started at " + LOCAL_URL_BASE + snowflakePort)
+            val urlString = TUNNEL_URL_BASE_1 + tunnelUrl + TUNNEL_URL_BASE_2 + snowflakePort
 
-            snowflakeUrls.add(LOCAL_URL_BASE + snowflakePort)
+            Log.d(TAG, "snowflake service started at " + urlString)
+
+            snowflakeUrls.add(urlString)
 
             // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting Snowflake")
+            Log.d(TAG, "submit url after a short delay for starting snowflake")
             ioScope.launch() {
                 Log.d(TAG, "start snowflake delay")
-                delay(1000L) // wait 1 second
+                delay(10000L) // wait 10 seconds
                 Log.d(TAG, "end snowflake delay")
                 handleRequest(
                     url,
-                    LOCAL_URL_BASE + snowflakePort,
-                    ENVOY_SERVICE_V2WECHAT,
+                    urlString,
+                    ENVOY_SERVICE_SNOWFLAKE,
                     captive_portal_url,
                     hysteriaCert
                 )
             }
         }
+    }
+
+    private fun randomString(): String {
+        val length: Int = (4..16).random()
+        var randomstring: String = ""
+        while (randomstring.length < length) {
+            randomstring = randomstring.plus(('a'..'z').random())
+        }
+        return randomstring
     }
 
     // test direct connection to avoid using proxy resources when not required
@@ -881,9 +913,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         } else if (snowflakeUrls.contains(envoyUrl)) {
             snowflakeUrls.remove(envoyUrl)
             if (snowflakeUrls.isEmpty()) {
+                // TEMP - leave snowflake running for debugging
                 Log.d(TAG, "no snowflake urls remaining")
+                // Log.d(TAG, "no snowflake urls remaining, stop service")
+                // IEnvoyProxy.stopSnowflake()
             } else {
-                Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, serice in use")
+                Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, service in use")
             }
         } else {
             Log.d(TAG, "url was not previously cached")
@@ -968,7 +1003,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     fun submitAdditionalUrls(hysteriaCert: String?) {
-        if (additionalUrls.isNullOrEmpty()) {
+        // TEMP - don't want to submit additional urls in test build
+        // if (additionalUrls.isNullOrEmpty()) {
+        if (true) {
             // this check may be redundant
             Log.w(TAG, "no additional urls to submit")
             broadcastValidationFailure()
@@ -1127,8 +1164,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     handleCleanup(envoyUrl)
                 }
 
-                // only a 200 status code is valid, otherwise return invalid url as in onFailed
-                if (info.httpStatusCode in 200..299) {
+                // only a 204 status code is valid, otherwise return invalid url as in onFailed
+                if (info.httpStatusCode == 204) {
                     // logs captive portal url used to validate envoy url
                     Log.d(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is valid")
                     this@NetworkIntentService.validUrls.add(envoyUrl)
@@ -1158,6 +1195,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                         broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)
                     }
+                } else if (info.httpStatusCode in 200..299) {
+                    // capturing this separately to troubleshoot redirect issue
+                    Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got unexpected response code " + info.httpStatusCode + " so tested url is invalid")
+                    handleInvalidUrl()
                 } else {
                     // logs captive portal url used to validate envoy url
                     Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
