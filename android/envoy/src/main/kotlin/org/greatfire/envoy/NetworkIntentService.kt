@@ -697,7 +697,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     ) {
 
         // borrowed from the list Tor Browser uses: https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/merge_requests/617/diffs
-        val ice = "stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478"
+        // too many is a problem, both of these seem to work for us
+        var ice = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478"
         // additional hardcoded snowflake parameters
         val logFile = ""
         val logToStateDir = false
@@ -717,13 +718,17 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             if (queryParts[0].equals("broker")) {
                 brokerUrl = URLDecoder.decode(queryParts[1], "UTF-8")
             } else if (queryParts[0].equals("ampCache")) {
-                ampCache = queryParts[1]
+                ampCache = URLDecoder.decode(queryParts[1], "UTF-8")
             } else if (queryParts[0].equals("front")) {
                 // TODO - generate randomized host names where wildcard dns is supported
                 // front = randomString().plus(queryParts[1])
                 front = queryParts[1]
             } else if (queryParts[0].equals("tunnel")) {
+                // this is purposfully not decocded to add to an Envoy URL
                 tunnelUrl = queryParts[1]
+            } else if (queryParts[0].equals("ice")) {
+                // allow overriding the STUN server list
+                ice = URLDecoder.decode(queryParts[1], "UTF-8")
             }
         }
         // start snowflake service
