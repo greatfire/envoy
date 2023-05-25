@@ -727,7 +727,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
         }
         // start snowflake service
-        if (brokerUrl.isNullOrEmpty() || front.isNullOrEmpty() || tunnelUrl.isNullOrEmpty()) {
+        if (brokerUrl.isNullOrEmpty() || tunnelUrl.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for snowflake service are missing")
         } else {
 
@@ -913,10 +913,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         } else if (snowflakeUrls.contains(envoyUrl)) {
             snowflakeUrls.remove(envoyUrl)
             if (snowflakeUrls.isEmpty()) {
-                // TEMP - leave snowflake running for debugging
-                Log.d(TAG, "no snowflake urls remaining")
-                // Log.d(TAG, "no snowflake urls remaining, stop service")
-                // IEnvoyProxy.stopSnowflake()
+                Log.d(TAG, "no snowflake urls remaining, stop service")
+                IEnvoyProxy.stopSnowflake()
             } else {
                 Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, service in use")
             }
