@@ -117,6 +117,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var additionalUrlSources = Collections.synchronizedList(mutableListOf<String>())
 
     // currently only a single url is supported for each service but we may support more in the future
+    // NOTE: only one url for a service can be tested at a time, because once a service has been started,
+    // the current port will be returned for any subsequent start call, even if the config is different
     private var v2rayWsUrls = Collections.synchronizedList(mutableListOf<String>())
     private var v2raySrtpUrls = Collections.synchronizedList(mutableListOf<String>())
     private var v2rayWechatUrls = Collections.synchronizedList(mutableListOf<String>())
@@ -720,9 +722,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else if (queryParts[0].equals("ampCache")) {
                 ampCache = URLDecoder.decode(queryParts[1], "UTF-8")
             } else if (queryParts[0].equals("front")) {
-                // TODO - generate randomized host names where wildcard dns is supported
-                // front = randomString().plus(queryParts[1])
+                // generate randomized host names where wildcard dns is supported
                 front = queryParts[1]
+                if (front.startsWith('.')) {
+                    // if needed, generate randomized host name prefix
+                    front = randomString().plus(front)
+                    Log.e(TAG, "front updated with random prefix: " + front)
+                } else {
+                    Log.e(TAG, "front included as-is: " + front)
+                }
             } else if (queryParts[0].equals("tunnel")) {
                 // this is purposfully not decocded to add to an Envoy URL
                 tunnelUrl = queryParts[1]
