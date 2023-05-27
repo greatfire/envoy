@@ -700,13 +700,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // borrowed from the list Tor Browser uses: https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/merge_requests/617/diffs
         // too many is a problem, both of these seem to work for us
-        var ice = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478"
+        var ice = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478,stun:stun.voipgate.com:3478"
         // additional hardcoded snowflake parameters
         val logFile = ""
         val logToStateDir = false
         val keepLocalAddresses = true
         val unsafeLogging = true
-        val maxPeers = 2L  // Tor Browser sets this to 2, seems reasonable
+        val maxPeers = 1L  // With >1 our test client can never make more than one
 
         val uri = URI(url)
         var brokerUrl = ""
