@@ -356,10 +356,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun shouldSubmitUrl(url: String): Boolean {
 
-        // TEMP - don't want to disable urls in test build
-        return true
-
-        /*
         val currentTime = System.currentTimeMillis()
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
@@ -374,7 +370,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + url)
             return true
         }
-        */
     }
 
     private fun handleBatch(hysteriaCert: String?,
@@ -722,10 +717,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else if (queryParts[0].equals("ampCache")) {
                 ampCache = URLDecoder.decode(queryParts[1], "UTF-8")
             } else if (queryParts[0].equals("front")) {
-                // generate randomized host names where wildcard dns is supported
                 front = queryParts[1]
+                // if needed, generate randomized host name prefix
                 if (front.startsWith('.')) {
-                    // if needed, generate randomized host name prefix
                     front = randomString().plus(front)
                     Log.e(TAG, "front updated with random prefix: " + front)
                 } else {
@@ -743,17 +737,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (brokerUrl.isNullOrEmpty() || tunnelUrl.isNullOrEmpty()) {
             Log.e(TAG, "some arguments required for snowflake service are missing")
         } else {
-
-            Log.e(TAG, "ice: " + ice)
-            Log.e(TAG, "brokerUrl: " + brokerUrl)
-            Log.e(TAG, "front: " + front)
-            Log.e(TAG, "ampCache: " + ampCache)
-            Log.e(TAG, "logFile: " + logFile)
-            Log.e(TAG, "logToStateDir: " + logToStateDir)
-            Log.e(TAG, "keepLocalAddresses: " + keepLocalAddresses)
-            Log.e(TAG, "unsafeLogging: " + unsafeLogging)
-            Log.e(TAG, "maxPeers: " + maxPeers)
-
             val snowflakePort = IEnvoyProxy.startSnowflake(
                 ice, brokerUrl, front, ampCache, logFile, logToStateDir, keepLocalAddresses,
                 unsafeLogging, maxPeers)
@@ -1014,9 +997,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     fun submitAdditionalUrls(hysteriaCert: String?) {
-        // TEMP - don't want to submit additional urls in test build
-        // if (additionalUrls.isNullOrEmpty()) {
-        if (true) {
+        if (additionalUrls.isNullOrEmpty()) {
             // this check may be redundant
             Log.w(TAG, "no additional urls to submit")
             broadcastValidationFailure()
