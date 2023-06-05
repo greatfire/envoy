@@ -87,6 +87,7 @@ Patches for adding Envoy support to several applications can be found in the `ap
    2. [WordPress-Android](https://github.com/wordpress-mobile/WordPress-Android): set `wp.oauth.app_id` and `wp.oauth.app_secret`, then `cp gradle.properties-example gradle.properties && ./gradlew assembleVanillaDebug`
 
 [Wiki Unblocked](https://github.com/greatfire/envoy#example-applications) has been expanded into a stand-alone application. Links to the application and source code can be found above.
+
 [Feeder Unblocked](https://github.com/mnbogner/feeder-unblocked/tree/envoy-integration) is a fork of the Feeder RSS reader with Envoy support added. It is currently in development.
 
 You can submit more apps with `git -c diff.noprefix=false format-patch --numbered --binary HEAD~`.
