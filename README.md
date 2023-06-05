@@ -47,7 +47,7 @@ Cronet is the networking stack of Chromium put into a library for use on mobile.
 
 ### Cronet release schedule
 
-The cronet builds are based on the Chromium "Extended Support" releases.  They generally stick with one major version, e.g. 102.0.5005.x, until the end of the support period.  The Chromium LTS end of life date can be found under "ChromeOS LTS Last Refresh" on https://chromiumdash.appspot.com/schedule
+The cronet builds are based on the Chromium "Extended Support" releases. They generally stick with one major version, e.g. 102.0.5005.x, until the end of the support period. The Chromium LTS end of life date can be found under "ChromeOS LTS Last Refresh" on https://chromiumdash.appspot.com/schedule
 
 ## All About Envoy
 Envoy is built on top of cronet which offers support for OkHttp, Volley, WebView, Cronet basic and java.net.HttpURLConnection.
@@ -63,11 +63,11 @@ It is used to make app which is resistant to **censorship**
 
 ## What is Envoy And Where It can be used
 
-As name suggest envoy is a **representative** or  **messenger**
+As name suggest envoy is a **representative** or **messenger**
 
 Like it our tool will work as messenger or representative for certain website or web content access without worrying of censorship as our tool will work as representative.
 
-As earlier said it can be used to make app resistant to  **censorship**.
+As earlier said it can be used to make app resistant to **censorship**.
 
 Also it can be used as proxy tool communication for secure web access to your app.
 E.g. if facebook and YouTube is not accessible to country like china and you want to make app which shows facebook content or YouTube content then you can use this tool to show your content.
@@ -78,7 +78,7 @@ Also if you don't want to use envoy proxy then also you can use this tool to get
 
 ## App examples
 
-Go to patches for each application in directory `apps` to learn how to integrate `envoy` library, or test with our demo apk files.
+Patches for adding Envoy support to several applications can be found in the `apps` directory. However, these patches do not reflect the most recent versions of Envoy or the original apps and may not work as intended at this time.
 
 1. [Wikipedia](https://github.com/wikimedia/apps-android-wikipedia): `./gradlew clean assembleDevDebug`, [demo apk](https://envoy.greatfire.org/static/wikipedia-prod.apk), and the [migration guide](apps/wikipedia.md).
 2. [DuckDuckGo](https://github.com/duckduckgo/Android): `./gradlew assembleDebug`, [demo apk](https://envoy.greatfire.org/static/duckduckgo-5.41.0-debug.apk)
@@ -86,7 +86,8 @@ Go to patches for each application in directory `apps` to learn how to integrate
    1. [WordPress-FluxC-Android](https://github.com/wordpress-mobile/WordPress-FluxC-Android): `echo "sdk.dir=YOUR_SDK_DIR" > local.properties && ./gradlew fluxc:build`
    2. [WordPress-Android](https://github.com/wordpress-mobile/WordPress-Android): set `wp.oauth.app_id` and `wp.oauth.app_secret`, then `cp gradle.properties-example gradle.properties && ./gradlew assembleVanillaDebug`
 
-(These patches do not reflect the most recent versions of Envoy or the original apps and may not work as intended at this time)
+[Wiki Unblocked](https://github.com/greatfire/envoy#example-applications) has been expanded into a stand-alone application. Links to the application and source code can be found above.
+[Feeder Unblocked](https://github.com/mnbogner/feeder-unblocked/tree/envoy-integration) is a fork of the Feeder RSS reader with Envoy support added. It is currently in development.
 
 You can submit more apps with `git -c diff.noprefix=false format-patch --numbered --binary HEAD~`.
 
@@ -96,7 +97,7 @@ You can submit more apps with `git -c diff.noprefix=false format-patch --numbere
 2. Rebuild envoy: `./android/build-envoy.sh`
 3. Rebuild demo apps: `./apps/build-apps.sh`
 
-Building everything from source requires around 100GB of disk space and time. The whole release process is also scripted in the [_.gitlab-ci.yml_](.gitlab-ci.yml).  This can also be run using [Vagrant](https://www.vagrantup.com/) by running `vagrant up --provision --no-destroy-on-error`.
+Building everything from source requires around 100GB of disk space and time. The whole release process is also scripted in the [_.gitlab-ci.yml_](.gitlab-ci.yml). This can also be run using [Vagrant](https://www.vagrantup.com/) by running `vagrant up --provision --no-destroy-on-error`.
 
 
 ## History
