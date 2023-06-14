@@ -1,0 +1,111 @@
+package org.greatfire.envoy
+
+import android.util.Log
+import java.net.URI
+
+class UrlUtil {
+
+    companion object {
+
+        private val TAG = "UrlUtil"
+
+        fun sanitizeUrl(url: String, urlService: String): String {
+
+            var sanitizedString = ""
+            var service = urlService
+
+            // special handling for local socks urls
+            if (url.startsWith("socks5:")) {
+                service = ENVOY_SERVICE_SOCKS
+            }
+
+            // attempt to guess service for some unknowns
+            if (urlService.equals(ENVOY_SERVICE_UNKNOWN) && url.startsWith("https://")) {
+                service = ENVOY_SERVICE_HTTPS
+            } else if (urlService.equals(ENVOY_SERVICE_UNKNOWN) && url.startsWith("envoy://")) {
+                service = ENVOY_SERVICE_ENVOY
+            }
+
+            try {
+                if (service.equals(ENVOY_SERVICE_UPDATE)) {
+                    // extract number from url
+                    val parts = url.split("/")
+                    if (parts.size > 1) {
+                        sanitizedString = parts[parts.size - 2]
+                    }
+                } else if (service.equals(ENVOY_SERVICE_DIRECT)
+                    || service.equals(ENVOY_SERVICE_HTTPS)
+                ) {
+                    // extract domain from url
+                    sanitizedString = sanitizedString.plus(
+                        url.substring(
+                            url.indexOf('.') + 1,
+                            url.indexOf("/", url.indexOf('.'))
+                        )
+                    )
+                } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
+                    // extract domain and ip from queries
+                    val uri = URI(url)
+                    val rawQuery = uri.rawQuery
+                    val queries = rawQuery.split("&")
+                    for (i in 0 until queries.size) {
+                        val queryParts = queries[i].split("=")
+                        if (queryParts[0].equals("url")) {
+                            if (!sanitizedString.isNullOrEmpty()) {
+                                sanitizedString = sanitizedString.plus(",")
+                            }
+                            sanitizedString = sanitizedString.plus(
+                                queryParts[1].substring(
+                                    queryParts[1].indexOf('.') + 1,
+                                    queryParts[1].indexOf("%2F", queryParts[1].indexOf('.'))
+                                )
+                            )
+                        } else if (queryParts[0].equals("address")) {
+                            if (!sanitizedString.isNullOrEmpty()) {
+                                sanitizedString = sanitizedString.plus(",")
+                            }
+                            sanitizedString = sanitizedString.plus(queryParts[1])
+                        }
+                    }
+                } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+                    // extract domain from queries
+                    val uri = URI(url)
+                    val rawQuery = uri.rawQuery
+                    val queries = rawQuery.split("&")
+                    for (i in 0 until queries.size) {
+                        val queryParts = queries[i].split("=")
+                        if (queryParts[0].equals("url")) {
+                            sanitizedString = sanitizedString.plus(
+                                queryParts[1].substring(
+                                    queryParts[1].indexOf('.') + 1,
+                                    queryParts[1].indexOf("/", queryParts[1].indexOf('.'))
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    // handles v2ray/hysteria/ss and unknown services
+                    // if possible, extract prefix and port from url
+                    if (url.contains(":")) {
+                        val urlParts = url.split(":")
+                        sanitizedString = urlParts[0]
+                        if (urlParts.size == 3) {
+                            // if found, remove queries
+                            if (urlParts[2].contains("?")) {
+                                sanitizedString = sanitizedString.plus(":" + urlParts[2].split("?")[0])
+                            } else {
+                                sanitizedString = sanitizedString.plus(":" + urlParts[2])
+                            }
+                        }
+                    } else {
+                        sanitizedString = "***"
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "got exception while sanitizing url for service " + service + ": " + e.message)
+            }
+
+            return sanitizedString
+        }
+    }
+}
