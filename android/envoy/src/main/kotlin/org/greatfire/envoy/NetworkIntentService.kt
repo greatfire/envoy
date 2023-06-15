@@ -313,10 +313,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
             || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
             || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
-            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + UrlUtil.sanitizeUrl(url, ENVOY_SERVICE_UNKNOWN))
+            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + UrlUtil.sanitizeUrl(url))
             return false
         } else {
-            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + UrlUtil.sanitizeUrl(url, ENVOY_SERVICE_UNKNOWN))
+            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + UrlUtil.sanitizeUrl(url))
             return true
         }
     }
@@ -346,11 +346,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         repeat(max) { index ->
             if (shuffledUrls.isNullOrEmpty() || (alternativeIncluded && !shuffledHttps.isNullOrEmpty())) {
-                Log.d(TAG, "add " + (index + 1) + " http url out of " + max + " to batch: " + UrlUtil.sanitizeUrl(shuffledHttps[0], ENVOY_SERVICE_UNKNOWN))
+                Log.d(TAG, "add " + (index + 1) + " http url out of " + max + " to batch: " + UrlUtil.sanitizeUrl(shuffledHttps[0]))
                 currentBatch.add(shuffledHttps[0])
                 shuffledHttps.removeAt(0)
             } else {
-                Log.d(TAG, "add " + (index + 1) + " non-http url out of " + max + " to batch: " + UrlUtil.sanitizeUrl(shuffledUrls[0], ENVOY_SERVICE_UNKNOWN))
+                Log.d(TAG, "add " + (index + 1) + " non-http url out of " + max + " to batch: " + UrlUtil.sanitizeUrl(shuffledUrls[0]))
                 currentBatch.add(shuffledUrls[0])
                 shuffledUrls.removeAt(0)
                 alternativeIncluded = true
@@ -399,7 +399,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 handleEnvoySubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else {
                 // prefix check should handle this but if not, batch count may not add up
-                Log.w(TAG, "found unsupported url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_UNKNOWN))
+                Log.w(TAG, "found unsupported url: " + UrlUtil.sanitizeUrl(envoyUrl))
             }
         }
 
@@ -936,11 +936,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                 continue
                             }
                             if (submittedUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG, "additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i), ENVOY_SERVICE_UNKNOWN) + " has already been submitted")
+                                Log.d(TAG, "additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i)) + " has already been submitted")
                             } else if (additionalUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG,"additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i), ENVOY_SERVICE_UNKNOWN) + " was already found")
+                                Log.d(TAG,"additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i)) + " was already found")
                             } else {
-                                Log.d(TAG, "additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i), ENVOY_SERVICE_UNKNOWN) + " has not been submitted yet")
+                                Log.d(TAG, "additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i)) + " has not been submitted yet")
                                 newUrls.add(envoyUrlArray.getString(i))
                             }
                         }

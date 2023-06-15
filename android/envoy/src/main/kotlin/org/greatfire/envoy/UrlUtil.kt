@@ -9,6 +9,11 @@ class UrlUtil {
 
         private val TAG = "UrlUtil"
 
+        // added for convenience
+        fun sanitizeUrl(url: String): String {
+            return sanitizeUrl(url, ENVOY_SERVICE_UNKNOWN)
+        }
+
         fun sanitizeUrl(url: String, urlService: String): String {
 
             var sanitizedString = ""
