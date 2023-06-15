@@ -52,7 +52,7 @@ class UrlUtil {
                         val queryParts = queries[i].split("=")
                         if (queryParts[0].equals("url")) {
                             if (!sanitizedString.isNullOrEmpty()) {
-                                sanitizedString = sanitizedString.plus(",")
+                                sanitizedString = sanitizedString.plus(":")
                             }
                             sanitizedString = sanitizedString.plus(
                                 queryParts[1].substring(
@@ -62,7 +62,7 @@ class UrlUtil {
                             )
                         } else if (queryParts[0].equals("address")) {
                             if (!sanitizedString.isNullOrEmpty()) {
-                                sanitizedString = sanitizedString.plus(",")
+                                sanitizedString = sanitizedString.plus(":")
                             }
                             sanitizedString = sanitizedString.plus(queryParts[1])
                         }
@@ -103,6 +103,43 @@ class UrlUtil {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "got exception while sanitizing url for service " + service + ": " + e.message)
+            }
+
+            return sanitizedString
+        }
+
+        fun sanitizeUrlList(urls: List<String>, urlServices: List<String>): String {
+
+            var sanitizedString = ""
+
+            // method assumes the elements in each list match up
+            if (urls.size != urlServices.size) {
+                Log.e(TAG, "url/service list mismatch while sanitizing urls")
+                return "***"
+            }
+
+            for (i in 0..(urls.size - 1)) {
+                Log.d(TAG, "sanitize url " + i + " from batch")
+                if (!sanitizedString.isNullOrEmpty()) {
+                    sanitizedString = sanitizedString.plus(",")
+                }
+                sanitizedString = sanitizedString.plus(sanitizeUrl(urls[i], urlServices[i]))
+            }
+
+            return sanitizedString
+        }
+
+        // added for convenience
+        fun sanitizeServiceList(urlServices: List<String>): String {
+
+            var sanitizedString = ""
+
+            for (i in 0..(urlServices.size - 1)) {
+                Log.d(TAG, "sanitize service " + i + " from batch")
+                if (!sanitizedString.isNullOrEmpty()) {
+                    sanitizedString = sanitizedString.plus(",")
+                }
+                sanitizedString = sanitizedString.plus(urlServices[i])
             }
 
             return sanitizedString
