@@ -149,5 +149,63 @@ class UrlUtil {
 
             return sanitizedString
         }
+
+        @JvmStatic
+        fun getServiceFromUrl(url: String): String? {
+            if (url.isNotEmpty()) {
+                val split = url.split("://")[0]
+                Utils.d(TAG, "getServiceFromUrl split: $split")
+                return split
+            }
+            return null
+        }
+
+        @JvmStatic
+        fun getSanitizedUrlList(urls: List<String>): ArrayList<String> {
+            val sanitizedUrls = ArrayList<String>()
+            for (url in urls)
+                sanitizedUrls += urls.joinToString(separator = ",", transform = { sanitizeUrl(it).take(30) })
+            return sanitizedUrls
+        }
+
+        @JvmStatic
+        // FIXME should n always be 30? 100 char limit, always 3 items?
+        fun truncate(s: String, n: Int): String {
+            return s.take(n)
+        }
+
+        @JvmStatic
+        fun joinTruncatedUrlList(urls: ArrayList<String>, n: Int): ArrayList<String> {
+            var truncatedUrls = ArrayList<String>()
+            for (url in urls)
+                truncatedUrls += urls.joinToString(separator = ",", transform = { it.take(n) })
+            return truncatedUrls
+        }
+
+        /*
+         *  joins an ArrayList<String>, truncating and sanitizing as it goes
+         */
+        @JvmStatic
+        fun joinToSanitizedAndTruncatedString(urls: List<String>, service: String, length: Int): String {
+            return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it, service), length) })
+        }
+
+        /*
+         *  joins an ArrayList<String>, truncating and sanitizing as it goes
+         */
+        @JvmStatic
+        fun joinToSanitizedAndTruncatedString(urls: List<String>, length: Int): String {
+            return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it), length) })
+        }
+
+        @JvmStatic
+        fun joinToTruncatedString(list: List<String>, length: Int): String {
+            return list.joinToString(separator = ",", transform = { truncate(it, length) })
+        }
+
+        @JvmStatic
+        fun joinToString(urls: ArrayList<String>): String {
+            return urls.joinToString(",")
+        }
     }
 }
