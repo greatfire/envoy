@@ -310,13 +310,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
         val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
 
+        val sanitizedUrl = UrlUtil.sanitizeUrl(url)
+
         if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
             || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
             || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
-            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + UrlUtil.sanitizeUrl(url))
+            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
             return false
         } else {
-            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + UrlUtil.sanitizeUrl(url))
+            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
             return true
         }
     }
@@ -783,9 +785,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         Log.d(TAG, "create request to " + captive_portal_url + " for url: " + UrlUtil.sanitizeUrl(envoyUrl, envoyService))
 
+        val sanitizedOriginal = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
         if (cacheMap.keys.contains(originalUrl)) {
 
-            Log.d(TAG, "cache setup, found cache directory for " + UrlUtil.sanitizeUrl(originalUrl, envoyService) + " -> " + cacheMap.get(originalUrl))
+            Log.d(TAG, "cache setup, found cache directory for " + sanitizedOriginal + " -> " + cacheMap.get(originalUrl))
             val cacheDir = File(applicationContext.cacheDir, cacheMap.get(originalUrl))
 
             try {
@@ -813,13 +817,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 )
                 val request: UrlRequest = requestBuilder.build()
                 request.start()
-                Log.d(TAG, "cache setup, cache cronet engine for url " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+                Log.d(TAG, "cache setup, cache cronet engine for url " + sanitizedOriginal)
                 cronetMap.put(originalUrl, cronetEngine)
             } catch (ise: IllegalStateException) {
                 Log.e(TAG, "cache setup, " + cacheDir.absolutePath + " could not be used")
             }
         } else {
-            Log.e(TAG, "cache setup, could not find cache directory for " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+            Log.e(TAG, "cache setup, could not find cache directory for " + sanitizedOriginal)
         }
     }
 
@@ -935,12 +939,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                 Log.d(TAG, "skip url at index " + i)
                                 continue
                             }
+
+                            val sanitizedUrl = UrlUtil.sanitizeUrl(envoyUrlArray.getString(i))
+
                             if (submittedUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG, "additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i)) + " has already been submitted")
+                                Log.d(TAG, "additional url " + sanitizedUrl + " has already been submitted")
                             } else if (additionalUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG,"additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i)) + " was already found")
+                                Log.d(TAG,"additional url " + sanitizedUrl + " was already found")
                             } else {
-                                Log.d(TAG, "additional url " + UrlUtil.sanitizeUrl(envoyUrlArray.getString(i)) + " has not been submitted yet")
+                                Log.d(TAG, "additional url " + sanitizedUrl + " has not been submitted yet")
                                 newUrls.add(envoyUrlArray.getString(i))
                             }
                         }
@@ -1111,10 +1118,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // TODO: do we continue to return all urls or can we start cronet here?
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
+
+            val sanitizedUrl = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
             // update batch
-            Log.d(TAG, "batch cleanup, remove valid url: " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+            Log.d(TAG, "batch cleanup, remove valid url: " + sanitizedUrl)
             if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
-                Log.d(TAG, "direct url " + UrlUtil.sanitizeUrl(originalUrl, envoyService) + " was valid, but do not update lists")
+                Log.d(TAG, "direct url " + sanitizedUrl + " was valid, but do not update lists")
             } else {
                 this@NetworkIntentService.currentBatchChecked.add(originalUrl)
                 this@NetworkIntentService.currentServiceChecked.add(envoyService)
@@ -1182,10 +1192,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             info: UrlResponseInfo?,
             error: CronetException?
         ) {
+
+            val sanitizedUrl = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
             // update batch
-            Log.d(TAG, "batch cleanup, remove invalid url: " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+            Log.d(TAG, "batch cleanup, remove invalid url: " + sanitizedUrl)
             if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
-                Log.d(TAG, "direct url " + UrlUtil.sanitizeUrl(originalUrl, envoyService) + " was invalid, but do not update lists")
+                Log.d(TAG, "direct url " + sanitizedUrl + " was invalid, but do not update lists")
             } else {
                 this@NetworkIntentService.currentBatchChecked.add(originalUrl)
                 this@NetworkIntentService.currentServiceChecked.add(envoyService)
@@ -1201,21 +1214,23 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         private fun cacheCleanup() {
 
+            val sanitizedOriginal = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
             val engine = cronetMap.get(originalUrl)
             if (engine == null) {
-                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + sanitizedOriginal)
             } else {
-                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + sanitizedOriginal)
                 engine.shutdown()
-                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + sanitizedOriginal)
             }
 
             val cacheName = cacheMap.get(originalUrl)
             if (cacheName == null) {
-                Log.w(TAG, "cache cleanup, could not find cached directory for url " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+                Log.w(TAG, "cache cleanup, could not find cached directory for url " + sanitizedOriginal)
                 return
             } else {
-                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + UrlUtil.sanitizeUrl(originalUrl, envoyService))
+                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + sanitizedOriginal)
             }
 
             // clean up http cache dir
