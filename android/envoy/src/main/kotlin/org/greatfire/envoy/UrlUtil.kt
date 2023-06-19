@@ -154,7 +154,6 @@ class UrlUtil {
         fun getServiceFromUrl(url: String): String? {
             if (url.isNotEmpty()) {
                 val split = url.split("://")[0]
-                Utils.d(TAG, "getServiceFromUrl split: $split")
                 return split
             }
             return null
@@ -164,7 +163,7 @@ class UrlUtil {
         fun getSanitizedUrlList(urls: List<String>): ArrayList<String> {
             val sanitizedUrls = ArrayList<String>()
             for (url in urls)
-                sanitizedUrls += urls.joinToString(separator = ",", transform = { sanitizeUrl(it).take(30) })
+                sanitizedUrls += urls.joinToString(separator = ",", transform = { sanitizeUrl(it))
             return sanitizedUrls
         }
 
@@ -196,16 +195,6 @@ class UrlUtil {
         @JvmStatic
         fun joinToSanitizedAndTruncatedString(urls: List<String>, length: Int): String {
             return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it), length) })
-        }
-
-        @JvmStatic
-        fun joinToTruncatedString(list: List<String>, length: Int): String {
-            return list.joinToString(separator = ",", transform = { truncate(it, length) })
-        }
-
-        @JvmStatic
-        fun joinToString(urls: ArrayList<String>): String {
-            return urls.joinToString(",")
         }
     }
 }
