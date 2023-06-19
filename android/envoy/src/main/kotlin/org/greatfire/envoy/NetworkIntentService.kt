@@ -31,55 +31,6 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import kotlin.collections.ArrayList
 
-
-// IntentService can perform, e.g. ACTION_FETCH_NEW_ITEMS
-private const val ACTION_SUBMIT = "org.greatfire.envoy.action.SUBMIT"
-
-private const val EXTRA_PARAM_SUBMIT = "org.greatfire.envoy.extra.PARAM_SUBMIT"
-private const val EXTRA_PARAM_DIRECT = "org.greatfire.envoy.extra.PARAM_DIRECT"
-private const val EXTRA_PARAM_CERT = "org.greatfire.envoy.extra.PARAM_CERT"
-private const val EXTRA_PARAM_SOURCES = "org.greatfire.envoy.extra.PARAM_SOURCES"
-private const val EXTRA_PARAM_INTERVAL = "org.greatfire.envoy.extra.PARAM_INTERVAL"
-private const val EXTRA_PARAM_START = "org.greatfire.envoy.extra.PARAM_START"
-private const val EXTRA_PARAM_END = "org.greatfire.envoy.extra.PARAM_END"
-private const val EXTRA_PARAM_FIRST = "org.greatfire.envoy.extra.PARAM_FIRST"
-
-// Defines a custom Intent action
-const val ENVOY_BROADCAST_VALIDATION_SUCCEEDED = "org.greatfire.envoy.VALIDATION_SUCCEEDED"
-const val ENVOY_BROADCAST_VALIDATION_FAILED = "org.greatfire.envoy.VALIDATION_FAILED"
-const val ENVOY_BROADCAST_BATCH_SUCCEEDED = "org.greatfire.envoy.BATCH_SUCCEEDED"
-const val ENVOY_BROADCAST_BATCH_FAILED = "org.greatfire.envoy.BATCH_FAILED"
-const val ENVOY_BROADCAST_UPDATE_SUCCEEDED = "org.greatfire.envoy.UPDATE_SUCCEEDED"
-const val ENVOY_BROADCAST_UPDATE_FAILED = "org.greatfire.envoy.UPDATE_FAILED"
-const val ENVOY_BROADCAST_VALIDATION_CONTINUED = "org.greatfire.envoy.VALIDATION_CONTINUED"
-const val ENVOY_BROADCAST_VALIDATION_ENDED = "org.greatfire.envoy.VALIDATION_ENDED"
-
-// Defines the key for the status "extra" in an Intent
-const val ENVOY_DATA_URL_SUCCEEDED = "org.greatfire.envoy.URL_SUCCEEDED"
-const val ENVOY_DATA_URL_FAILED = "org.greatfire.envoy.URL_FAILED"
-const val ENVOY_DATA_SERVICE_SUCCEEDED = "org.greatfire.envoy.SERVICE_SUCCEEDED"
-const val ENVOY_DATA_SERVICE_FAILED = "org.greatfire.envoy.SERVICE_FAILED"
-const val ENVOY_DATA_URL_LIST = "org.greatfire.envoy.URL_LIST"
-const val ENVOY_DATA_SERVICE_LIST = "org.greatfire.envoy.SERVICE_LIST"
-const val ENVOY_DATA_UPDATE_URL = "org.greatfire.envoy.UPDATE_URL"
-const val ENVOY_DATA_UPDATE_LIST = "org.greatfire.envoy.UPDATE_LIST"
-const val ENVOY_DATA_VALIDATION_MS = "org.greatfire.envoy.VALIDATION_MS"
-const val ENVOY_DATA_VALIDATION_ENDED_CAUSE = "org.greatfire.envoy.VALIDATION_ENDED_CAUSE"
-
-const val ENVOY_SERVICE_DIRECT = "direct"
-const val ENVOY_SERVICE_V2WS = "v2ws"
-const val ENVOY_SERVICE_V2SRTP = "v2srtp"
-const val ENVOY_SERVICE_V2WECHAT = "v2wechat"
-const val ENVOY_SERVICE_HYSTERIA = "hysteria"
-const val ENVOY_SERVICE_SS = "ss"
-const val ENVOY_SERVICE_SNOWFLAKE = "snowflake"
-const val ENVOY_SERVICE_HTTPS = "https"
-const val ENVOY_ENDED_EMPTY = "empty"
-const val ENVOY_ENDED_BLOCKED = "blocked"
-const val ENVOY_ENDED_FAILED = "failed"
-const val ENVOY_ENDED_TIMEOUT = "timeout"
-const val ENVOY_ENDED_UNKNOWN = "unknown"
-
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
 const val TUNNEL_URL_BASE_1 = "envoy://?url="
@@ -188,7 +139,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private fun broadcastUpdateFailed(url: String) {
-        Log.e(TAG, "broadcast failure for url: " + url)
+        Log.e(TAG, "broadcast update failure for url: " + UrlUtil.sanitizeUrl(url, ENVOY_SERVICE_UPDATE))
         val localIntent = Intent(ENVOY_BROADCAST_UPDATE_FAILED).apply {
             putExtra(ENVOY_DATA_UPDATE_URL, url)
         }
@@ -196,7 +147,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private fun broadcastUpdateSucceeded(url: String, list: List<String>) {
-        Log.d(TAG, "broadcast success for url: " + url)
+        Log.d(TAG, "broadcast update success for url: " + UrlUtil.sanitizeUrl(url, ENVOY_SERVICE_UPDATE))
         val localIntent = Intent(ENVOY_BROADCAST_UPDATE_SUCCEEDED).apply {
             putExtra(ENVOY_DATA_UPDATE_URL, url)
             putStringArrayListExtra(ENVOY_DATA_UPDATE_LIST, ArrayList(list))
@@ -205,11 +156,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     }
 
     private fun broadcastBatchStatus(status: String) {
-        // create local copies to sort and avoid possible concurrent modification exception
+        // create local copies to avoid possible concurrent modification exception
         val localBatchList = ArrayList<String>(currentBatchChecked)
         val localServiceList = ArrayList<String>(currentServiceChecked)
-        Collections.sort(localBatchList)
-        Collections.sort(localServiceList)
 
         val localIntent = Intent(status).apply {
             putStringArrayListExtra(ENVOY_DATA_URL_LIST, localBatchList)
@@ -288,7 +237,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             if (!urlSources.isNullOrEmpty()) {
                 urlSources.forEach { urlSource ->
-                    Log.d(TAG, "found url source: " + urlSource)
+                    Log.d(TAG, "found url source: " + UrlUtil.sanitizeUrl(urlSource, ENVOY_SERVICE_UPDATE))
                     additionalUrlSources.add(urlSource)
                 }
 
@@ -308,7 +257,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         if (!directUrls.isNullOrEmpty()) {
             directUrls.forEach { directUrl ->
-                Log.d(TAG, "found direct url: " + directUrl)
+                Log.d(TAG, "found direct url: " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
                 submittedUrls.add(directUrl)
                 handleDirectRequest(directUrl, hysteriaCert)
             }
@@ -361,13 +310,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
         val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
 
+        val sanitizedUrl = UrlUtil.sanitizeUrl(url)
+
         if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
             || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
             || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
-            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + url)
+            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
             return false
         } else {
-            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + url)
+            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
             return true
         }
     }
@@ -397,11 +348,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         repeat(max) { index ->
             if (shuffledUrls.isNullOrEmpty() || (alternativeIncluded && !shuffledHttps.isNullOrEmpty())) {
-                Log.d(TAG, "add " + (index + 1) + " http url out of " + max + " to batch: " + shuffledHttps[0])
+                Log.d(TAG, "add " + (index + 1) + " http url out of " + max + " to batch: " + UrlUtil.sanitizeUrl(shuffledHttps[0]))
                 currentBatch.add(shuffledHttps[0])
                 shuffledHttps.removeAt(0)
             } else {
-                Log.d(TAG, "add " + (index + 1) + " non-http url out of " + max + " to batch: " + shuffledUrls[0])
+                Log.d(TAG, "add " + (index + 1) + " non-http url out of " + max + " to batch: " + UrlUtil.sanitizeUrl(shuffledUrls[0]))
                 currentBatch.add(shuffledUrls[0])
                 shuffledUrls.removeAt(0)
                 alternativeIncluded = true
@@ -425,29 +376,32 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             cacheDir.mkdirs()
 
             if (envoyUrl.startsWith("v2ws://")) {
-                Log.d(TAG, "found v2ray url: " + envoyUrl)
+                Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2WS))
                 handleV2rayWsSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("v2srtp://")) {
-                Log.d(TAG, "found v2ray url: " + envoyUrl)
+                Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2SRTP))
                 handleV2raySrtpSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("v2wechat://")) {
-                Log.d(TAG, "found v2ray url: " + envoyUrl)
+                Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2WECHAT))
                 handleV2rayWechatSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("hysteria://")) {
-                Log.d(TAG, "found hysteria url: " + envoyUrl)
+                Log.d(TAG, "found hysteria url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_HYSTERIA))
                 handleHysteriaSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("ss://")) {
-                Log.d(TAG, "found ss url: " + envoyUrl)
+                Log.d(TAG, "found ss url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SS))
                 handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else if (envoyUrl.startsWith("snowflake://")) {
-                Log.d(TAG, "found snowflake url: " + envoyUrl);
+                Log.d(TAG, "found snowflake url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SNOWFLAKE));
                 handleSnowflakeSubmit(envoyUrl, captive_portal_url, hysteriaCert);
-            } else if (envoyUrl.startsWith("http") || envoyUrl.startsWith("envoy")) {
-                Log.d(TAG, "found http/envoy url: " + envoyUrl)
+            } else if (envoyUrl.startsWith("http")) {
+                Log.d(TAG, "found http url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_HTTPS))
                 handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert)
+            } else if (envoyUrl.startsWith("envoy")) {
+                Log.d(TAG, "found envoy url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_ENVOY))
+                handleEnvoySubmit(envoyUrl, captive_portal_url, hysteriaCert)
             } else {
                 // prefix check should handle this but if not, batch count may not add up
-                Log.w(TAG, "found unsupported url: " + envoyUrl)
+                Log.w(TAG, "found unsupported url: " + UrlUtil.sanitizeUrl(envoyUrl))
             }
         }
 
@@ -472,6 +426,26 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             delay(5000L) // wait 5 seconds
             Log.d(TAG, "end https delay")
             handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, hysteriaCert)
+        }
+    }
+
+    private fun handleEnvoySubmit(
+        url: String,
+        captive_portal_url: String,
+        hysteriaCert: String?
+    ) {
+
+        // nothing to parse at this time, leave url in string format
+
+        httpsUrls.add(url)
+
+        // add a slight delay to give the direct connection a chance
+        Log.d(TAG, "submit url after a short delay for testing direct connection")
+        ioScope.launch() {
+            Log.d(TAG, "start envoy delay")
+            delay(5000L) // wait 5 seconds
+            Log.d(TAG, "end envoy delay")
+            handleRequest(url, url, ENVOY_SERVICE_ENVOY, captive_portal_url, hysteriaCert)
         }
     }
 
@@ -778,7 +752,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         hysteriaCert: String?
     ) {
 
-        Log.d(TAG, "create direct request to " + directUrl)
+        Log.d(TAG, "create direct request to " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
 
         val executor: Executor = Executors.newSingleThreadExecutor()
         val myBuilder = CronetEngine.Builder(applicationContext)
@@ -809,11 +783,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         strategy: Int = 0
     ) {
 
-        Log.d(TAG, "create request to " + captive_portal_url + " for url: " + envoyUrl)
+        Log.d(TAG, "create request to " + captive_portal_url + " for url: " + UrlUtil.sanitizeUrl(envoyUrl, envoyService))
+
+        val sanitizedOriginal = UrlUtil.sanitizeUrl(originalUrl, envoyService)
 
         if (cacheMap.keys.contains(originalUrl)) {
 
-            Log.d(TAG, "cache setup, found cache directory for " + originalUrl + " -> " + cacheMap.get(originalUrl))
+            Log.d(TAG, "cache setup, found cache directory for " + sanitizedOriginal + " -> " + cacheMap.get(originalUrl))
             val cacheDir = File(applicationContext.cacheDir, cacheMap.get(originalUrl))
 
             try {
@@ -841,19 +817,19 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 )
                 val request: UrlRequest = requestBuilder.build()
                 request.start()
-                Log.d(TAG, "cache setup, cache cronet engine for url " + originalUrl)
+                Log.d(TAG, "cache setup, cache cronet engine for url " + sanitizedOriginal)
                 cronetMap.put(originalUrl, cronetEngine)
             } catch (ise: IllegalStateException) {
                 Log.e(TAG, "cache setup, " + cacheDir.absolutePath + " could not be used")
             }
         } else {
-            Log.e(TAG, "cache setup, could not find cache directory for " + originalUrl)
+            Log.e(TAG, "cache setup, could not find cache directory for " + sanitizedOriginal)
         }
     }
 
-    private fun handleCleanup(envoyUrl: String) {
+    private fun handleCleanup(envoyUrl: String, envoyService: String) {
 
-        Log.d(TAG, envoyUrl + " is redundant or invalid, cleanup and/or stop services if needed")
+        Log.d(TAG, UrlUtil.sanitizeUrl(envoyUrl, envoyService) + " is redundant or invalid, cleanup and/or stop services if needed")
 
         if (v2rayWsUrls.contains(envoyUrl)) {
             v2rayWsUrls.remove(envoyUrl)
@@ -926,7 +902,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             val url = URL(additionalUrlSources.removeAt(0))
 
             try {
-                Log.d(TAG, "open connection: " + url)
+                Log.d(TAG, "open connection: " + UrlUtil.sanitizeUrl(url.toString(), ENVOY_SERVICE_UPDATE))
                 val connection = url.openConnection() as HttpURLConnection
                 try {
                     Log.d(TAG, "set timeout")
@@ -948,12 +924,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         Log.d(TAG, "parse json and extract possible urls")
                         val json = input.bufferedReader().use(BufferedReader::readText)
 
-                        Log.w(TAG, "received json: \n" + json)
-
                         val newUrls = Collections.synchronizedList(mutableListOf<String>())
 
                         val envoyObject = JSONObject(json)
                         val envoyUrlArray = envoyObject.getJSONArray("envoyUrls")
+
+                        Log.w(TAG, "received json with " + envoyUrlArray.length() + " urls")
 
                         for (i in 0 until envoyUrlArray.length()) {
                             if (((urlInterval > 1) && ((i % urlInterval) > 0))
@@ -963,12 +939,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                                 Log.d(TAG, "skip url at index " + i)
                                 continue
                             }
+
+                            val sanitizedUrl = UrlUtil.sanitizeUrl(envoyUrlArray.getString(i))
+
                             if (submittedUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG, "additional url " + envoyUrlArray.getString(i) + " has already been submitted")
+                                Log.d(TAG, "additional url " + sanitizedUrl + " has already been submitted")
                             } else if (additionalUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG,"additional url " + envoyUrlArray.getString(i) + " was already found")
+                                Log.d(TAG,"additional url " + sanitizedUrl + " was already found")
                             } else {
-                                Log.d(TAG, "additional url " + envoyUrlArray.getString(i) + " has not been submitted yet")
+                                Log.d(TAG, "additional url " + sanitizedUrl + " has not been submitted yet")
                                 newUrls.add(envoyUrlArray.getString(i))
                             }
                         }
@@ -1139,10 +1118,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         // TODO: do we continue to return all urls or can we start cronet here?
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
+
+            val sanitizedUrl = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
             // update batch
-            Log.d(TAG, "batch cleanup, remove valid url: " + originalUrl)
+            Log.d(TAG, "batch cleanup, remove valid url: " + sanitizedUrl)
             if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
-                Log.d(TAG, "direct url " + originalUrl + " was valid, but do not update lists")
+                Log.d(TAG, "direct url " + sanitizedUrl + " was valid, but do not update lists")
             } else {
                 this@NetworkIntentService.currentBatchChecked.add(originalUrl)
                 this@NetworkIntentService.currentServiceChecked.add(envoyService)
@@ -1152,14 +1134,16 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             if (info != null) {
 
                 if (this@NetworkIntentService.validUrls.size > 0) {
-                    Log.d(TAG, "got redundant url: " + envoyUrl)
-                    handleCleanup(envoyUrl)
+                    Log.d(TAG, "got redundant url: " + UrlUtil.sanitizeUrl(envoyUrl, envoyService))
+                    handleCleanup(envoyUrl, envoyService)
                 }
 
                 // only a 204 status code is valid, otherwise return invalid url as in onFailed
-                if (info.httpStatusCode == 204) {
+                if ((envoyService.equals(ENVOY_SERVICE_DIRECT) && info.httpStatusCode == 200)
+                    || info.httpStatusCode == 204
+                ) {
                     // logs captive portal url used to validate envoy url
-                    Log.d(TAG, "onSucceeded method called for " + info.url + " / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is valid")
+                    Log.d(TAG, "onSucceeded method called, got response code " + info.httpStatusCode + " so tested url is valid")
                     this@NetworkIntentService.validUrls.add(envoyUrl)
 
                     // store valid urls in preferences
@@ -1183,17 +1167,17 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     if (this@NetworkIntentService.currentBatch.size > 0) {
                         Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
                     } else  {
-                        Log.d(TAG, "current batch is empty, but a valid url was found: " + this@NetworkIntentService.validUrls.get(0))
+                        Log.d(TAG, "current batch is empty, but a valid url was already found")
 
                         broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)
                     }
                 } else if (info.httpStatusCode in 200..299) {
                     // capturing this separately to troubleshoot redirect issue
-                    Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got unexpected response code " + info.httpStatusCode + " so tested url is invalid")
+                    Log.e(TAG, "onSucceeded method called, got unexpected response code " + info.httpStatusCode + " so tested url is invalid")
                     handleInvalidUrl()
                 } else {
                     // logs captive portal url used to validate envoy url
-                    Log.e(TAG, "onSucceeded method called for " + info.url + " (" + envoyUrl + ") / " + envoyService + " -> got " + info.httpStatusCode + " response code so tested url is invalid")
+                    Log.e(TAG, "onSucceeded method called, got response code " + info.httpStatusCode + " so tested url is invalid")
                     handleInvalidUrl()
                 }
             } else {
@@ -1208,10 +1192,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             info: UrlResponseInfo?,
             error: CronetException?
         ) {
+
+            val sanitizedUrl = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
             // update batch
-            Log.d(TAG, "batch cleanup, remove invalid url: " + originalUrl)
+            Log.d(TAG, "batch cleanup, remove invalid url: " + sanitizedUrl)
             if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
-                Log.d(TAG, "direct url " + originalUrl + " was invalid, but do not update lists")
+                Log.d(TAG, "direct url " + sanitizedUrl + " was invalid, but do not update lists")
             } else {
                 this@NetworkIntentService.currentBatchChecked.add(originalUrl)
                 this@NetworkIntentService.currentServiceChecked.add(envoyService)
@@ -1219,7 +1206,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
 
             // logs captive portal url used to validate envoy url
-            Log.e(TAG, "onFailed method called for invalid url " + info?.url + " (" + envoyUrl + ") / " + envoyService + " -> " + error?.message)
+            Log.e(TAG, "onFailed method called, got error message " + error?.message)
             handleInvalidUrl()
 
             cacheCleanup()
@@ -1227,21 +1214,23 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         private fun cacheCleanup() {
 
+            val sanitizedOriginal = UrlUtil.sanitizeUrl(originalUrl, envoyService)
+
             val engine = cronetMap.get(originalUrl)
             if (engine == null) {
-                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + originalUrl)
+                Log.w(TAG, "cache cleanup, could not find cached cronet engine for url " + sanitizedOriginal)
             } else {
-                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + originalUrl)
+                Log.d(TAG, "cache cleanup, found cached cronet engine for url " + sanitizedOriginal)
                 engine.shutdown()
-                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + originalUrl)
+                Log.d(TAG, "cache cleanup, shut down cached cronet engine for url " + sanitizedOriginal)
             }
 
             val cacheName = cacheMap.get(originalUrl)
             if (cacheName == null) {
-                Log.w(TAG, "cache cleanup, could not find cached directory for url " + originalUrl)
+                Log.w(TAG, "cache cleanup, could not find cached directory for url " + sanitizedOriginal)
                 return
             } else {
-                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + originalUrl)
+                Log.d(TAG, "cache cleanup, found cached directory " + cacheName + " for url " + sanitizedOriginal)
             }
 
             // clean up http cache dir
@@ -1267,7 +1256,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         fun handleInvalidUrl() {
-            handleCleanup(envoyUrl)
+            handleCleanup(envoyUrl, envoyService)
 
             // store failed urls so they are not attempted again
             val currentTime = System.currentTimeMillis()

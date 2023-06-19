@@ -1,5 +1,8 @@
 package com.example.myapplication;
 
+import static org.greatfire.envoy.ConstantsKt.ENVOY_BROADCAST_VALIDATION_SUCCEEDED;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_SUCCEEDED;
+
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -42,9 +45,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static org.greatfire.envoy.NetworkIntentServiceKt.ENVOY_BROADCAST_VALIDATION_SUCCEEDED;
-import static org.greatfire.envoy.NetworkIntentServiceKt.ENVOY_DATA_URL_SUCCEEDED;
 
 public class MainActivity extends FragmentActivity {
 
