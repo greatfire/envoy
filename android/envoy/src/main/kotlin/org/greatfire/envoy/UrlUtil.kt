@@ -174,9 +174,8 @@ class UrlUtil {
 
         @JvmStatic
         fun joinTruncatedUrlList(urls: ArrayList<String>, n: Int): ArrayList<String> {
-            var truncatedUrls = ArrayList<String>()
-            for (url in urls)
-                truncatedUrls += urls.joinToString(separator = ",", transform = { it.take(n) })
+            val truncatedUrls = ArrayList<String>()
+            urls.map { truncatedUrls += it.take(n) }
             return truncatedUrls
         }
 
