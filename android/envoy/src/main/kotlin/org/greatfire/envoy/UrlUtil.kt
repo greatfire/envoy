@@ -160,7 +160,7 @@ class UrlUtil {
         }
 
         @JvmStatic
-        fun getSanitizedUrlList(urls: List<String>): ArrayList<String> {
+        fun sanitizeUrlList(urls: List<String>): ArrayList<String> {
             val sanitizedUrls = ArrayList<String>()
             urls.map { sanitizedUrls += sanitizeUrl(it) }
             return sanitizedUrls
@@ -173,7 +173,7 @@ class UrlUtil {
         }
 
         @JvmStatic
-        fun joinTruncatedUrlList(urls: ArrayList<String>, n: Int): ArrayList<String> {
+        fun truncateUrlList(urls: ArrayList<String>, n: Int): ArrayList<String> {
             val truncatedUrls = ArrayList<String>()
             urls.map { truncatedUrls += it.take(n) }
             return truncatedUrls
