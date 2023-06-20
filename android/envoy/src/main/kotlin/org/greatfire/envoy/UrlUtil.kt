@@ -149,5 +149,50 @@ class UrlUtil {
 
             return sanitizedString
         }
+
+        @JvmStatic
+        fun getServiceFromUrl(url: String): String? {
+            if (url.isNotEmpty()) {
+                val split = url.split("://")[0]
+                return split
+            }
+            return null
+        }
+
+        @JvmStatic
+        fun sanitizeUrlList(urls: List<String>): ArrayList<String> {
+            val sanitizedUrls = ArrayList<String>()
+            urls.map { sanitizedUrls += sanitizeUrl(it) }
+            return sanitizedUrls
+        }
+
+        @JvmStatic
+        // FIXME should n always be 30? 100 char limit, always 3 items?
+        fun truncate(s: String, n: Int): String {
+            return s.take(n)
+        }
+
+        @JvmStatic
+        fun truncateUrlList(urls: ArrayList<String>, n: Int): ArrayList<String> {
+            val truncatedUrls = ArrayList<String>()
+            urls.map { truncatedUrls += it.take(n) }
+            return truncatedUrls
+        }
+
+        /*
+         *  joins an ArrayList<String>, truncating and sanitizing as it goes
+         */
+        @JvmStatic
+        fun joinToSanitizedAndTruncatedString(urls: List<String>, service: String, length: Int): String {
+            return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it, service), length) })
+        }
+
+        /*
+         *  joins an ArrayList<String>, truncating and sanitizing as it goes
+         */
+        @JvmStatic
+        fun joinToSanitizedAndTruncatedString(urls: List<String>, length: Int): String {
+            return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it), length) })
+        }
     }
 }
