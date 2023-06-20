@@ -162,8 +162,7 @@ class UrlUtil {
         @JvmStatic
         fun getSanitizedUrlList(urls: List<String>): ArrayList<String> {
             val sanitizedUrls = ArrayList<String>()
-            for (url in urls)
-                sanitizedUrls += urls.joinToString(separator = ",", transform = { sanitizeUrl(it))
+            urls.map { sanitizedUrls += sanitizeUrl(it) }
             return sanitizedUrls
         }
 
