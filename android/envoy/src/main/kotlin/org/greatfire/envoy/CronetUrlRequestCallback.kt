@@ -147,9 +147,6 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
                 negotiatedProtocol.contains("1.1") -> {
                     Protocol.HTTP_1_1
                 }
-                negotiatedProtocol.contains("spdy") -> {
-                    Protocol.SPDY_3
-                }
                 else -> {
                     Protocol.HTTP_1_0
                 }
