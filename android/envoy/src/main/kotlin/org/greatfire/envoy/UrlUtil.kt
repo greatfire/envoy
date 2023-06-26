@@ -10,10 +10,12 @@ class UrlUtil {
         private val TAG = "UrlUtil"
 
         // added for convenience
+        @JvmStatic
         fun sanitizeUrl(url: String): String {
             return sanitizeUrl(url, ENVOY_SERVICE_UNKNOWN)
         }
 
+        @JvmStatic
         fun sanitizeUrl(url: String, urlService: String): String {
 
             var sanitizedString = ""
@@ -113,6 +115,7 @@ class UrlUtil {
             return sanitizedString
         }
 
+        @JvmStatic
         fun sanitizeUrlList(urls: List<String>, urlServices: List<String>): String {
 
             var sanitizedString = ""
@@ -135,6 +138,7 @@ class UrlUtil {
         }
 
         // added for convenience
+        @JvmStatic
         fun sanitizeServiceList(urlServices: List<String>): String {
 
             var sanitizedString = ""
