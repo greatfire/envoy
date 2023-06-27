@@ -75,13 +75,14 @@ class UrlUtil {
                         }
                     }
                 } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+                    // handles both submitted and local urls for snowflake service
                     // extract domain from queries
                     val uri = URI(url)
                     val rawQuery = uri.rawQuery
                     val queries = rawQuery.split("&")
                     for (i in 0 until queries.size) {
                         val queryParts = queries[i].split("=")
-                        if (queryParts[0].equals("url")) {
+                        if (queryParts[0].equals("tunnel") || queryParts[0].equals("url")) {
                             sanitizedString = sanitizedString.plus(
                                 queryParts[1].substring(
                                     queryParts[1].indexOf('.') + 1,
