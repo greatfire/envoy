@@ -915,6 +915,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.e(TAG, "connection error: " + e.localizedMessage)
                 } catch (e: Exception) {
                     Log.e(TAG, "unexpected error when connecting: " + e.localizedMessage)
+                    e.printStackTrace()
                 }
 
                 try {
@@ -945,7 +946,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                             if (submittedUrls.contains(envoyUrlArray.getString(i))) {
                                 Log.d(TAG, "additional url " + sanitizedUrl + " has already been submitted")
                             } else if (additionalUrls.contains(envoyUrlArray.getString(i))) {
-                                Log.d(TAG,"additional url " + sanitizedUrl + " was already found")
+                                Log.d(TAG, "additional url " + sanitizedUrl + " was already found")
                             } else {
                                 Log.d(TAG, "additional url " + sanitizedUrl + " has not been submitted yet")
                                 newUrls.add(envoyUrlArray.getString(i))
@@ -964,11 +965,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.e(TAG, "config file error: " + e.localizedMessage)
                 } catch (e: Exception) {
                     Log.e(TAG, "unexpected error when reading file: " + e.localizedMessage)
+                    e.printStackTrace()
                 }
             } catch (e: Error) {
                 Log.e(TAG, "connection error: " + e.localizedMessage)
             } catch (e: Exception) {
                 Log.e(TAG, "unexpected error when opening connection: " + e.localizedMessage)
+                e.printStackTrace()
             }
 
             broadcastUpdateFailed(url.toString())
