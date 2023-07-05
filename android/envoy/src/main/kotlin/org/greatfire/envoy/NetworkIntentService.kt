@@ -64,6 +64,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var currentBatchChecked = Collections.synchronizedList(mutableListOf<String>())
     private var currentServiceChecked = Collections.synchronizedList(mutableListOf<String>())
     private var batchInProgress = false
+    private var directUrlCount = 0
     private var validationStart = 0L
     private var additionalUrlSources = Collections.synchronizedList(mutableListOf<String>())
 
@@ -93,7 +94,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
 
     private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http", "envoy"))
-    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss", "snowflake"))
+    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
+    private val preferredPrefixes = Collections.synchronizedList(mutableListOf<String>("snowflake"))
 
     fun checkValidationTime(): Boolean {
         val validationCheck = System.currentTimeMillis()
@@ -252,6 +254,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
         submittedUrls.clear()
 
+        Log.d(TAG, "reset previous direct url count")
+        directUrlCount = 0
+
         Log.d(TAG, "clear " + blockedUrls.size + " previously blocked urls")
         blockedUrls.clear()
 
@@ -259,8 +264,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             directUrls.forEach { directUrl ->
                 Log.d(TAG, "found direct url: " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
                 submittedUrls.add(directUrl)
+                directUrlCount = directUrlCount + 1
                 handleDirectRequest(directUrl, hysteriaCert)
             }
+        } else {
+            Log.d(TAG, "found no direct urls to test")
         }
 
         val urlsToSubmit = mutableListOf<String>()
@@ -283,6 +291,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 broadcastValidationFailure()
             }
         } else {
+
+            // set aside certain urls to test first
+            var preferredUrls = Collections.synchronizedList(mutableListOf<String>())
+
             urlsToSubmit.forEach() { url ->
                 val parts = url.split(":")
                 val prefix = parts[0]
@@ -292,13 +304,22 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     shuffledHttps.add(url)
                 } else if (supportedPrefixes.contains(prefix)) {
                     shuffledUrls.add(url)
+                } else if (preferredPrefixes.contains(prefix)) {
+                    preferredUrls.add(url)
                 } else {
                     Log.w(TAG, "found url with unsupported prefix: " + prefix)
                 }
             }
+
             Log.d(TAG, "shuffle " + (shuffledHttps.size + shuffledUrls.size) + " submitted urls")
             Collections.shuffle(shuffledHttps)
             Collections.shuffle(shuffledUrls)
+
+            Log.d(TAG, "insert " + preferredUrls.size + " preferred urls")
+            preferredUrls.forEach() { url ->
+                shuffledUrls.add(0, url)
+            }
+
             handleBatch(hysteriaCert)
         }
     }
@@ -335,9 +356,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "start new batch")
         }
 
+        val batchSize: Int = (2..5).random()
+
         var max = shuffledUrls.size + shuffledHttps.size
-        if (max > 3) {
-            max = 3
+        if (max > batchSize) {
+            max = batchSize
         }
 
         currentBatch.clear()
@@ -418,15 +441,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         // nothing to parse at this time, leave url in string format
 
         httpsUrls.add(url)
-
-        // add a slight delay to give the direct connection a chance
-        Log.d(TAG, "submit url after a short delay for testing direct connection")
-        ioScope.launch() {
-            Log.d(TAG, "start https delay")
-            delay(5000L) // wait 5 seconds
-            Log.d(TAG, "end https delay")
-            handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, hysteriaCert)
-        }
+        Log.d(TAG, "submit http(s) url")
+        handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, hysteriaCert)
     }
 
     private fun handleEnvoySubmit(
@@ -438,15 +454,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         // nothing to parse at this time, leave url in string format
 
         httpsUrls.add(url)
-
-        // add a slight delay to give the direct connection a chance
-        Log.d(TAG, "submit url after a short delay for testing direct connection")
-        ioScope.launch() {
-            Log.d(TAG, "start envoy delay")
-            delay(5000L) // wait 5 seconds
-            Log.d(TAG, "end envoy delay")
-            handleRequest(url, url, ENVOY_SERVICE_ENVOY, captive_portal_url, hysteriaCert)
-        }
+        Log.d(TAG, "submit envoy url")
+        handleRequest(url, url, ENVOY_SERVICE_ENVOY, captive_portal_url, hysteriaCert)
     }
 
     private fun handleShadowsocksSubmit(
@@ -469,7 +478,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "submit url after a short delay for starting shadowsocks")
         ioScope.launch() {
             Log.d(TAG, "start shadowsocks delay")
-            delay(10000L) // wait 10 seconds
+            delay(5000L) // wait 5 seconds
             Log.d(TAG, "end shadowsocks delay")
             handleRequest(
                 url,
@@ -517,7 +526,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting hysteria")
             ioScope.launch() {
                 Log.d(TAG, "start hysteria delay")
-                delay(10000L) // wait 10 seconds
+                delay(5000L) // wait 5 seconds
                 Log.d(TAG, "end hysteria delay")
                 handleRequest(
                     url,
@@ -563,7 +572,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting v2ray websocket")
             ioScope.launch() {
                 Log.d(TAG, "start v2ray websocket delay")
-                delay(10000L) // wait 10 seconds
+                delay(5000L) // wait 5 seconds
                 Log.d(TAG, "end v2ray websocket delay")
                 handleRequest(
                     url,
@@ -606,7 +615,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting v2ray srtp")
             ioScope.launch() {
                 Log.d(TAG, "start v2ray srtp delay")
-                delay(10000L) // wait 10 seconds
+                delay(5000L) // wait 5 seconds
                 Log.d(TAG, "end v2ray srtp delay")
                 handleRequest(
                     url,
@@ -648,7 +657,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting v2ray wechat")
             ioScope.launch() {
                 Log.d(TAG, "start v2ray wechat delay")
-                delay(10000L) // wait 10 seconds
+                delay(5000L) // wait 5 seconds
                 Log.d(TAG, "end v2ray wechat delay")
                 handleRequest(
                     url,
@@ -695,9 +704,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 // if needed, generate randomized host name prefix
                 if (front.startsWith('.')) {
                     front = randomString().plus(front)
-                    Log.e(TAG, "front updated with random prefix: " + front)
+                    Log.d(TAG, "front updated with random prefix: " + front)
                 } else {
-                    Log.e(TAG, "front included as-is: " + front)
+                    Log.d(TAG, "front included as-is: " + front)
                 }
             } else if (queryParts[0].equals("tunnel")) {
                 // this is purposfully not decocded to add to an Envoy URL
@@ -724,7 +733,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting snowflake")
             ioScope.launch() {
                 Log.d(TAG, "start snowflake delay")
-                delay(10000L) // wait 10 seconds
+                delay(1000L) // wait 1 second
                 Log.d(TAG, "end snowflake delay")
                 handleRequest(
                     url,
@@ -1119,6 +1128,27 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         // TODO: do we continue to return all urls or can we start cronet here?
         override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
 
+            // delay processing of proxy results if results for direct urls have not been received
+
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                directUrlCount = directUrlCount - 1
+                Log.d(TAG, "got direct url result, " + directUrlCount + " direct urls remaining")
+                processSuccess(request, info)
+            } else if (directUrlCount == 0) {
+                Log.d(TAG, "skip onSucceeded delay")
+                processSuccess(request, info)
+            } else {
+                ioScope.launch() {
+                    Log.d(TAG, "start onSucceeded delay, " + directUrlCount + " direct urls remaining")
+                    delay(5000L) // wait 5 seconds
+                    Log.d(TAG, "end onSucceeded delay")
+                    processSuccess(request, info)
+                }
+            }
+        }
+
+        private fun processSuccess(request: UrlRequest?, info: UrlResponseInfo?) {
+
             val sanitizedUrl = UrlUtil.sanitizeUrl(originalUrl, envoyService)
 
             // update batch
@@ -1188,6 +1218,18 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         override fun onFailed(
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            error: CronetException?
+        ) {
+            if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
+                directUrlCount = directUrlCount - 1
+                Log.d(TAG, "got direct url result, " + directUrlCount + " direct urls remaining")
+            }
+            processFailure(request, info, error)
+        }
+
+        fun processFailure(
             request: UrlRequest?,
             info: UrlResponseInfo?,
             error: CronetException?
