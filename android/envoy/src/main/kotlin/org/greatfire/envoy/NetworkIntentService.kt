@@ -293,7 +293,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         } else {
 
             // set aside certain urls to test first
-            var preferredUrls = Collections.synchronizedList(mutableListOf<String>())
+            var preferredUrls = ArrayList<String>()
 
             urlsToSubmit.forEach() { url ->
                 val parts = url.split(":")
