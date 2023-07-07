@@ -31,6 +31,9 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import kotlin.collections.ArrayList
 
+const val SHORT_DELAY = 1000L
+const val MEDIUM_DELAY = 5000L
+const val LONG_DELAY = 10000L
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
 const val TUNNEL_URL_BASE_1 = "envoy://?url="
@@ -478,7 +481,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "submit url after a short delay for starting shadowsocks")
         ioScope.launch() {
             Log.d(TAG, "start shadowsocks delay")
-            delay(5000L) // wait 5 seconds
+            delay(MEDIUM_DELAY)
             Log.d(TAG, "end shadowsocks delay")
             handleRequest(
                 url,
@@ -526,7 +529,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting hysteria")
             ioScope.launch() {
                 Log.d(TAG, "start hysteria delay")
-                delay(5000L) // wait 5 seconds
+                delay(MEDIUM_DELAY)
                 Log.d(TAG, "end hysteria delay")
                 handleRequest(
                     url,
@@ -572,7 +575,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting v2ray websocket")
             ioScope.launch() {
                 Log.d(TAG, "start v2ray websocket delay")
-                delay(5000L) // wait 5 seconds
+                delay(MEDIUM_DELAY)
                 Log.d(TAG, "end v2ray websocket delay")
                 handleRequest(
                     url,
@@ -615,7 +618,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting v2ray srtp")
             ioScope.launch() {
                 Log.d(TAG, "start v2ray srtp delay")
-                delay(5000L) // wait 5 seconds
+                delay(MEDIUM_DELAY)
                 Log.d(TAG, "end v2ray srtp delay")
                 handleRequest(
                     url,
@@ -657,7 +660,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting v2ray wechat")
             ioScope.launch() {
                 Log.d(TAG, "start v2ray wechat delay")
-                delay(5000L) // wait 5 seconds
+                delay(MEDIUM_DELAY)
                 Log.d(TAG, "end v2ray wechat delay")
                 handleRequest(
                     url,
@@ -733,7 +736,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "submit url after a short delay for starting snowflake")
             ioScope.launch() {
                 Log.d(TAG, "start snowflake delay")
-                delay(1000L) // wait 1 second
+                delay(SHORT_DELAY)
                 Log.d(TAG, "end snowflake delay")
                 handleRequest(
                     url,
@@ -1140,7 +1143,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else {
                 ioScope.launch() {
                     Log.d(TAG, "start onSucceeded delay, " + directUrlCount + " direct urls remaining")
-                    delay(5000L) // wait 5 seconds
+                    delay(MEDIUM_DELAY)
                     Log.d(TAG, "end onSucceeded delay")
                     processSuccess(request, info)
                 }
