@@ -1005,7 +1005,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     companion object {
         private const val TAG = "NetworkIntentService"
 
-        private const val TIME_LIMIT = 30000
+        private const val TIME_LIMIT = 60000
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
         private const val ONE_WEEK_MS = 604800000
