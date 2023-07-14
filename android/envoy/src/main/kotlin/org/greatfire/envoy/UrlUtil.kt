@@ -16,6 +16,39 @@ class UrlUtil {
         }
 
         @JvmStatic
+        fun sanitizeException(e: Exception, urlService: String): String {
+
+            val eString = "" + e
+            return sanitizeEString(eString, urlService)
+        }
+
+        @JvmStatic
+        fun sanitizeError(e: Error, urlService: String): String {
+
+            val eString = "" + e
+            return sanitizeEString(eString, urlService)
+        }
+
+        fun sanitizeEString(eString: String, urlService: String): String {
+
+            val eParts = eString.split(" ")
+            var newString = ""
+
+            eParts.forEach { part ->
+                if (newString.length > 0) {
+                    newString = newString + " "
+                }
+                if (part.contains("://")) {
+                    newString = newString + sanitizeUrl(part, urlService)
+                } else {
+                    newString = newString + part
+                }
+            }
+
+            return newString
+        }
+
+        @JvmStatic
         fun sanitizeUrl(url: String, urlService: String): String {
 
             var sanitizedString = ""
