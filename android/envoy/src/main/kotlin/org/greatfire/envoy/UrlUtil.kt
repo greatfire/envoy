@@ -2,6 +2,7 @@ package org.greatfire.envoy
 
 import android.util.Log
 import java.net.URI
+import java.util.regex.Pattern
 
 class UrlUtil {
 
@@ -68,10 +69,11 @@ class UrlUtil {
 
             try {
                 if (service.equals(ENVOY_SERVICE_UPDATE)) {
-                    // extract number from url
+                    // extract prefix and number from url
                     val parts = url.split("/")
                     if (parts.size > 1) {
-                        sanitizedString = parts[parts.size - 2]
+                        val domain = Pattern.compile("\\.").split(parts[2])
+                        sanitizedString = domain[0] + "/" + parts[parts.size - 2]
                     }
                 } else if (service.equals(ENVOY_SERVICE_DIRECT)
                     || service.equals(ENVOY_SERVICE_HTTPS)

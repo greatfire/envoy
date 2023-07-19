@@ -259,6 +259,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
         submittedUrls.clear()
 
+        // observed behavior where this may be called when no urls are submitted and additional urls
+        // are submitted immediately. this will cause the check in the receiver to decrement the count
+        // of 0 when the direct url result comes back. unclear whether this is a problem.
+
         Log.d(TAG, "reset previous direct url count")
         directUrlCount = 0
 
@@ -388,7 +392,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         Collections.shuffle(currentBatch)
-        currentBatch.forEach { envoyUrl ->
+        // implementing this as an interator seemed to cause a concurrent access exceptin
+        var index = currentBatch.size
+        while (index > 0) {
+            index = index - 1
+            var envoyUrl = currentBatch.get(index)
             submittedUrls.add(envoyUrl)
 
             // generate cache directories here where it's synchronized
