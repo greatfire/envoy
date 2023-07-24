@@ -2,6 +2,7 @@ package org.greatfire.envoy
 
 import android.util.Log
 import java.net.URI
+import java.util.regex.Pattern
 
 class UrlUtil {
 
@@ -13,6 +14,39 @@ class UrlUtil {
         @JvmStatic
         fun sanitizeUrl(url: String): String {
             return sanitizeUrl(url, ENVOY_SERVICE_UNKNOWN)
+        }
+
+        @JvmStatic
+        fun sanitizeException(e: Exception, urlService: String): String {
+
+            val eString = "" + e
+            return sanitizeEString(eString, urlService)
+        }
+
+        @JvmStatic
+        fun sanitizeError(e: Error, urlService: String): String {
+
+            val eString = "" + e
+            return sanitizeEString(eString, urlService)
+        }
+
+        fun sanitizeEString(eString: String, urlService: String): String {
+
+            val eParts = eString.split(" ")
+            var newString = ""
+
+            eParts.forEach { part ->
+                if (newString.length > 0) {
+                    newString = newString + " "
+                }
+                if (part.contains("://")) {
+                    newString = newString + sanitizeUrl(part, urlService)
+                } else {
+                    newString = newString + part
+                }
+            }
+
+            return newString
         }
 
         @JvmStatic
@@ -35,10 +69,11 @@ class UrlUtil {
 
             try {
                 if (service.equals(ENVOY_SERVICE_UPDATE)) {
-                    // extract number from url
+                    // extract prefix and number from url
                     val parts = url.split("/")
                     if (parts.size > 1) {
-                        sanitizedString = parts[parts.size - 2]
+                        val domain = Pattern.compile("\\.").split(parts[2])
+                        sanitizedString = domain[0] + "/" + parts[parts.size - 2]
                     }
                 } else if (service.equals(ENVOY_SERVICE_DIRECT)
                     || service.equals(ENVOY_SERVICE_HTTPS)

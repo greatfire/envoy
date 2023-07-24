@@ -143,18 +143,20 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
     }
 
-    private fun broadcastUpdateFailed(url: String) {
+    private fun broadcastUpdateFailed(url: String, msg: String) {
         Log.e(TAG, "broadcast update failure for url: " + UrlUtil.sanitizeUrl(url, ENVOY_SERVICE_UPDATE))
         val localIntent = Intent(ENVOY_BROADCAST_UPDATE_FAILED).apply {
             putExtra(ENVOY_DATA_UPDATE_URL, url)
+            putExtra(ENVOY_DATA_UPDATE_STATUS, msg)
         }
         LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
     }
 
-    private fun broadcastUpdateSucceeded(url: String, list: List<String>) {
+    private fun broadcastUpdateSucceeded(url: String, msg: String, list: List<String>) {
         Log.d(TAG, "broadcast update success for url: " + UrlUtil.sanitizeUrl(url, ENVOY_SERVICE_UPDATE))
         val localIntent = Intent(ENVOY_BROADCAST_UPDATE_SUCCEEDED).apply {
             putExtra(ENVOY_DATA_UPDATE_URL, url)
+            putExtra(ENVOY_DATA_UPDATE_STATUS, msg)
             putStringArrayListExtra(ENVOY_DATA_UPDATE_LIST, ArrayList(list))
         }
         LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
@@ -256,6 +258,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         Log.d(TAG, "clear " + submittedUrls.size + " previously submitted urls")
         submittedUrls.clear()
+
+        // observed behavior where this may be called when no urls are submitted and additional urls
+        // are submitted immediately. this will cause the check in the receiver to decrement the count
+        // of 0 when the direct url result comes back. unclear whether this is a problem.
 
         Log.d(TAG, "reset previous direct url count")
         directUrlCount = 0
@@ -386,7 +392,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
 
         Collections.shuffle(currentBatch)
-        currentBatch.forEach { envoyUrl ->
+        // implementing this as an interator seemed to cause a concurrent access exceptin
+        var index = currentBatch.size
+        while (index > 0) {
+            index = index - 1
+            var envoyUrl = currentBatch.get(index)
             submittedUrls.add(envoyUrl)
 
             // generate cache directories here where it's synchronized
@@ -913,6 +923,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "get a list of additional urls")
             val url = URL(additionalUrlSources.removeAt(0))
 
+            var msg = "ok"
+
             try {
                 Log.d(TAG, "open connection: " + UrlUtil.sanitizeUrl(url.toString(), ENVOY_SERVICE_UPDATE))
                 val connection = url.openConnection() as HttpURLConnection
@@ -922,11 +934,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     Log.d(TAG, "connect")
                     connection.connect()
                 } catch (e: SocketTimeoutException) {
-                    Log.e(TAG, "socket timeout when connecting: " + e.localizedMessage)
+                    msg = "socket timeout when connecting: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                    Log.e(TAG, msg)
                 } catch (e: ConnectException) {
-                    Log.e(TAG, "connection error: " + e.localizedMessage)
+                    msg = "connection error: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                    Log.e(TAG, msg)
                 } catch (e: Exception) {
-                    Log.e(TAG, "unexpected error when connecting: " + e.localizedMessage)
+                    msg = "unexpected error (" + e.javaClass.canonicalName + ") when connecting: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                    Log.e(TAG, msg)
                 }
 
                 try {
@@ -964,26 +979,32 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                             }
                         }
 
-                        broadcastUpdateSucceeded(url.toString(), newUrls)
+                        broadcastUpdateSucceeded(url.toString(), msg, newUrls)
                         additionalUrls.addAll(newUrls)
                         continue
                     } else {
-                        Log.e(TAG, "response contained no json to parse")
+                        msg = "response contained no json to parse"
+                        Log.e(TAG, msg)
                     }
                 } catch (e: SocketTimeoutException) {
-                    Log.e(TAG, "socket timeout when getting input: " + e.localizedMessage)
+                    msg = "socket timeout when getting input: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                    Log.e(TAG, msg)
                 } catch (e: FileNotFoundException) {
-                    Log.e(TAG, "config file error: " + e.localizedMessage)
+                    msg = "config file error: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                    Log.e(TAG, msg)
                 } catch (e: Exception) {
-                    Log.e(TAG, "unexpected error when reading file: " + e.localizedMessage)
+                    msg = "unexpected error (" + e.javaClass.canonicalName + ") when reading file: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                    Log.e(TAG, msg)
                 }
             } catch (e: Error) {
-                Log.e(TAG, "connection error: " + e.localizedMessage)
+                msg = "connection error: " + UrlUtil.sanitizeError(e, ENVOY_SERVICE_UPDATE)
+                Log.e(TAG, msg)
             } catch (e: Exception) {
-                Log.e(TAG, "unexpected error when opening connection: " + e.localizedMessage)
+                msg = "unexpected error (" + e.javaClass.canonicalName + ") when opening connection: " + UrlUtil.sanitizeException(e, ENVOY_SERVICE_UPDATE)
+                Log.e(TAG, msg)
             }
 
-            broadcastUpdateFailed(url.toString())
+            broadcastUpdateFailed(url.toString(), msg)
         }
     }
 
