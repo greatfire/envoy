@@ -100,6 +100,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
     private val preferredPrefixes = Collections.synchronizedList(mutableListOf<String>("snowflake"))
 
+    fun manageCurrentBatch(itemToRemove: String?): Int {
+        synchronized(currentBatch) {
+            if (!itemToRemove.isNullOrEmpty()) {
+                currentBatch.remove(itemToRemove)
+            }
+            return currentBatch.size
+        }
+    }
+
     fun checkValidationTime(): Boolean {
         val validationCheck = System.currentTimeMillis()
         if ((validationCheck - validationStart) < TIME_LIMIT) {
@@ -1177,12 +1186,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             // update batch
             Log.d(TAG, "batch cleanup, remove valid url: " + sanitizedUrl)
+            var batchCount = 0
             if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
                 Log.d(TAG, "direct url " + sanitizedUrl + " was valid, but do not update lists")
+                batchCount = manageCurrentBatch(null)
             } else {
                 this@NetworkIntentService.currentBatchChecked.add(originalUrl)
                 this@NetworkIntentService.currentServiceChecked.add(envoyService)
-                this@NetworkIntentService.currentBatch.remove(originalUrl)
+                batchCount = manageCurrentBatch(originalUrl)
             }
 
             if (info != null) {
@@ -1218,8 +1229,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
                     // check whether batch is complete
-                    if (this@NetworkIntentService.currentBatch.size > 0) {
-                        Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
+                    if (batchCount > 0) {
+                        Log.d(TAG, "" + batchCount + " urls remaining in current batch")
                     } else  {
                         Log.d(TAG, "current batch is empty, but a valid url was already found")
 
@@ -1228,11 +1239,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 } else if (info.httpStatusCode in 200..299) {
                     // capturing this separately to troubleshoot redirect issue
                     Log.e(TAG, "onSucceeded method called, got unexpected response code " + info.httpStatusCode + " so tested url is invalid")
-                    handleInvalidUrl()
+                    handleInvalidUrl(batchCount)
                 } else {
                     // logs captive portal url used to validate envoy url
                     Log.e(TAG, "onSucceeded method called, got response code " + info.httpStatusCode + " so tested url is invalid")
-                    handleInvalidUrl()
+                    handleInvalidUrl(batchCount)
                 }
             } else {
                 Log.w(TAG, "onSucceeded method called but UrlResponseInfo was null")
@@ -1263,17 +1274,19 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             // update batch
             Log.d(TAG, "batch cleanup, remove invalid url: " + sanitizedUrl)
+            var batchCount = 0
             if (envoyService.equals(ENVOY_SERVICE_DIRECT)) {
                 Log.d(TAG, "direct url " + sanitizedUrl + " was invalid, but do not update lists")
+                batchCount = manageCurrentBatch(null)
             } else {
                 this@NetworkIntentService.currentBatchChecked.add(originalUrl)
                 this@NetworkIntentService.currentServiceChecked.add(envoyService)
-                this@NetworkIntentService.currentBatch.remove(originalUrl)
+                batchCount = manageCurrentBatch(originalUrl)
             }
 
             // logs captive portal url used to validate envoy url
             Log.e(TAG, "onFailed method called, got error message " + error?.message)
-            handleInvalidUrl()
+            handleInvalidUrl(batchCount)
 
             cacheCleanup()
         }
@@ -1321,7 +1334,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             cacheDir.deleteRecursively()
         }
 
-        fun handleInvalidUrl() {
+        fun handleInvalidUrl(batchCount: Int) {
             handleCleanup(envoyUrl, envoyService)
 
             // store failed urls so they are not attempted again
@@ -1342,9 +1355,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             }
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
-            if (this@NetworkIntentService.currentBatch.size > 0) {
+            if (batchCount > 0) {
                 // check whether current batch of urls have failed
-                Log.d(TAG, "" + this@NetworkIntentService.currentBatch.size + " urls remaining in current batch")
+                Log.d(TAG, "" + batchCount + " urls remaining in current batch")
             } else if (this@NetworkIntentService.validUrls.size > 0) {
                 // a valid url was found, do not continue
                 Log.d(TAG, "current batch is empty, but a valid url was previously found")
