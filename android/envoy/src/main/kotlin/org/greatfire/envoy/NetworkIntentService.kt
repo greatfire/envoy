@@ -344,6 +344,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun shouldSubmitUrl(url: String): Boolean {
 
+        // disable this feature for debugging
+        if (BuildConfig.BUILD_TYPE == "debug") {
+            Log.d(TAG, "debug build, ignore time limit and submit")
+            return true
+        }
+
         val currentTime = System.currentTimeMillis()
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
