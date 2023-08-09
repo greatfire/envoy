@@ -771,21 +771,37 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         captive_portal_url: String,
         hysteriaCert: String?
     ) {
-
-        Log.d(TAG, "GOT MEEK URL: " + url)
+        val MEEK_TAG = "NetworkIntent.MEEK"
+        Log.d(MEEK_TAG, "GOT MEEK URL: " + url)
 
         val uri = URI(url)
-        var serverUrl = ""
-        var tunnelUrl = ""
-        var front = ""
+        var meekUrl = ""
+        var meekFront = ""
+        var meekTunnel = ""
         val rawQuery = uri.rawQuery
         val queries = rawQuery.split("&")
         for (i in 0 until queries.size) {
             val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("server")) {
-                // passed to meek method, decode?
-                serverUrl = queryParts[1]
+            if (queryParts[0].equals("url")) {
+                // decode
+                meekUrl = URLDecoder.decode(queryParts[1], "UTF-8")
+                Log.d(MEEK_TAG, "GOT URL PARAMETER: " + queryParts[1] + " -> " + meekUrl)
+            } else if (queryParts[0].equals("front")) {
+                // decode
+                meekFront = URLDecoder.decode(queryParts[1], "UTF-8")
+                // randomize front
+                meekFront = randomString() + meekFront
+                Log.d(MEEK_TAG, "GOT FRONT PARAMETER: " + queryParts[1] + " -> " + meekFront)
             } else if (queryParts[0].equals("tunnel")) {
+                // don't decode
+                meekTunnel = queryParts[1]
+                Log.d(MEEK_TAG, "GOT TUNNEL PARAMETER: " + queryParts[1] + " -> " + meekTunnel)
+            } else {
+                Log.d(MEEK_TAG, "GOT UNEXPECTED PARAMETER: " + queryParts[0] + " / " + queryParts[1])
+            }
+
+            /*
+            if (queryParts[0].equals("tunnel")) {
                 // this is purposefully not decoded to add to an Envoy URL
                 tunnelUrl = queryParts[1]
                 // build front url from tunnel url
@@ -797,29 +813,39 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 } else {
                     Log.d(TAG, "not enough parts found in " + queryParts[1])
                 }
-
             }
+            */
         }
 
-        Log.d(TAG, "ARGUMENTS: " + serverUrl + " / " + tunnelUrl + " / " + front)
-
         // start meek service
-        if (serverUrl.isNullOrEmpty() || tunnelUrl.isNullOrEmpty() || front.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for meek service are missing")
+        if (meekUrl.isNullOrEmpty() || meekFront.isNullOrEmpty() || meekTunnel.isNullOrEmpty()) {
+            Log.e(MEEK_TAG, "some arguments required for meek service are missing")
         } else {
-            val meekPort = IEnvoyProxy.startMeek(serverUrl, front)
-            val urlString = MEEK_URL_BASE_1 + tunnelUrl + MEEK_URL_BASE_2 + meekPort
 
-            Log.d(TAG, "meek service started at " + urlString)
+            // make the login params
+            val meekUserString = "url=" + meekUrl + ";front=" + meekFront
+            val nullCharString = "" + Char.MIN_VALUE
+
+            // make the last 3 params: "DEBUG", true, true
+            val logLevel = "DEBUG"
+            val enableLogging = true
+            val unsafeLogging = true
+
+            Log.d(MEEK_TAG, "ARGUMENTS: " + meekUserString + " / <" + nullCharString + "> / " + logLevel + " / " + enableLogging + " / " + unsafeLogging)
+
+            val meekPort = IEnvoyProxy.startMeek(meekUserString, nullCharString, logLevel, enableLogging, unsafeLogging)
+            val urlString = "envoy://?url=" + meekTunnel + "&socks5=127.0.0.0%3A" + meekPort
+
+            Log.d(MEEK_TAG, "URL FOR MEEK SERVICE: " + urlString)
 
             meekUrls.add(urlString)
 
             // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting meek")
+            Log.d(MEEK_TAG, "submit url after a short delay for starting meek")
             ioScope.launch() {
-                Log.d(TAG, "start meek delay")
+                Log.d(MEEK_TAG, "start meek delay")
                 delay(SHORT_DELAY)
-                Log.d(TAG, "end meek delay")
+                Log.d(MEEK_TAG, "end meek delay")
                 handleRequest(
                     url,
                     urlString,
@@ -989,7 +1015,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             if (meekUrls.isEmpty()) {
                 Log.d(TAG, "no meek urls remaining, (don't) stop service")
                 // TEMP
-                // IEnvoyProxy.stopMeek()
+                // stop lyrebird for meek/obfs4
+                // IEnvoyProxy.stopLyrebird()
             } else {
                 Log.d(TAG, "" + meekUrls.size + " meek urls remaining, service in use")
             }
