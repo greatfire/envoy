@@ -29,7 +29,6 @@ import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
-import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
 const val SHORT_DELAY = 1000L
@@ -239,6 +238,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (firstAttempt) {
             validationStart = System.currentTimeMillis()
             Log.d(TAG, "validation started at " + validationStart)
+
+            // set logging directory
+            Log.d(TAG, "set logging directory to " + filesDir.path)
+            IEnvoyProxy.setStateLocation(filesDir.path)
 
             Log.d(TAG, "clear " + additionalUrlSources.size + " previously submitted url sources")
             additionalUrlSources.clear()
@@ -771,8 +774,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         captive_portal_url: String,
         hysteriaCert: String?
     ) {
-        val MEEK_TAG = "NetworkIntent.MEEK"
-        Log.d(MEEK_TAG, "GOT MEEK URL: " + url)
 
         val uri = URI(url)
         var meekUrl = ""
@@ -783,69 +784,48 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         for (i in 0 until queries.size) {
             val queryParts = queries[i].split("=")
             if (queryParts[0].equals("url")) {
-                // decode
                 meekUrl = URLDecoder.decode(queryParts[1], "UTF-8")
-                Log.d(MEEK_TAG, "GOT URL PARAMETER: " + queryParts[1] + " -> " + meekUrl)
             } else if (queryParts[0].equals("front")) {
-                // decode
                 meekFront = URLDecoder.decode(queryParts[1], "UTF-8")
-                // randomize front
-                meekFront = randomString() + meekFront
-                Log.d(MEEK_TAG, "GOT FRONT PARAMETER: " + queryParts[1] + " -> " + meekFront)
-            } else if (queryParts[0].equals("tunnel")) {
-                // don't decode
-                meekTunnel = queryParts[1]
-                Log.d(MEEK_TAG, "GOT TUNNEL PARAMETER: " + queryParts[1] + " -> " + meekTunnel)
-            } else {
-                Log.d(MEEK_TAG, "GOT UNEXPECTED PARAMETER: " + queryParts[0] + " / " + queryParts[1])
-            }
-
-            /*
-            if (queryParts[0].equals("tunnel")) {
-                // this is purposefully not decoded to add to an Envoy URL
-                tunnelUrl = queryParts[1]
-                // build front url from tunnel url
-                val tunnelParts = queryParts[1].split("%2F")
-                if (tunnelParts.size >= 4) {
-                    val domain = Pattern.compile("\\.").split(tunnelParts[2])
-                    front = tunnelParts[0] + "%2F%2F" + randomString() + "." + domain[1] + "." + domain[2] + "%2F" + tunnelParts[3]
-                    Log.d(TAG, "CONSTRUCTED FRONT: " + front)
+                // if needed, generate randomized host name prefix
+                if (meekFront.startsWith('.')) {
+                    meekFront = randomString().plus(meekFront)
+                    Log.d(TAG, "front updated with random prefix: " + meekFront)
                 } else {
-                    Log.d(TAG, "not enough parts found in " + queryParts[1])
+                    Log.d(TAG, "front included as-is: " + meekFront)
                 }
+            } else if (queryParts[0].equals("tunnel")) {
+                // this is purposfully not decocded to add to an Envoy URL
+                meekTunnel = queryParts[1]
             }
-            */
         }
-
         // start meek service
         if (meekUrl.isNullOrEmpty() || meekFront.isNullOrEmpty() || meekTunnel.isNullOrEmpty()) {
-            Log.e(MEEK_TAG, "some arguments required for meek service are missing")
+            Log.e(TAG, "some arguments required for meek service are missing")
         } else {
 
-            // make the login params
+            // set the login params
             val meekUserString = "url=" + meekUrl + ";front=" + meekFront
             val nullCharString = "" + Char.MIN_VALUE
 
-            // make the last 3 params: "DEBUG", true, true
+            // additional hardcoded meek parameters
             val logLevel = "DEBUG"
             val enableLogging = true
             val unsafeLogging = true
 
-            Log.d(MEEK_TAG, "ARGUMENTS: " + meekUserString + " / <" + nullCharString + "> / " + logLevel + " / " + enableLogging + " / " + unsafeLogging)
-
             val meekPort = IEnvoyProxy.startMeek(meekUserString, nullCharString, logLevel, enableLogging, unsafeLogging)
-            val urlString = "envoy://?url=" + meekTunnel + "&socks5=127.0.0.0%3A" + meekPort
+            val urlString = MEEK_URL_BASE_1 + meekTunnel + MEEK_URL_BASE_2 + meekPort
 
-            Log.d(MEEK_TAG, "URL FOR MEEK SERVICE: " + urlString)
+            Log.d(TAG, "meek service started at " + urlString)
 
             meekUrls.add(urlString)
 
             // method returns port immediately but service is not ready immediately
-            Log.d(MEEK_TAG, "submit url after a short delay for starting meek")
+            Log.d(TAG, "submit url after a short delay for starting meek")
             ioScope.launch() {
-                Log.d(MEEK_TAG, "start meek delay")
+                Log.d(TAG, "start meek delay")
                 delay(SHORT_DELAY)
-                Log.d(MEEK_TAG, "end meek delay")
+                Log.d(TAG, "end meek delay")
                 handleRequest(
                     url,
                     urlString,
@@ -1013,10 +993,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         } else if (meekUrls.contains(envoyUrl)) {
             meekUrls.remove(envoyUrl)
             if (meekUrls.isEmpty()) {
-                Log.d(TAG, "no meek urls remaining, (don't) stop service")
-                // TEMP
-                // stop lyrebird for meek/obfs4
-                // IEnvoyProxy.stopLyrebird()
+                Log.d(TAG, "no meek urls remaining, stop service")
+                // stop lyrebird for both meek/obfs4
+                IEnvoyProxy.stopLyrebird()
             } else {
                 Log.d(TAG, "" + meekUrls.size + " meek urls remaining, service in use")
             }
