@@ -809,9 +809,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             val nullCharString = "" + Char.MIN_VALUE
 
             // additional hardcoded meek parameters
-            val logLevel = "DEBUG"
-            val enableLogging = true
-            val unsafeLogging = true
+            val logLevel = "ERROR"
+            val enableLogging = false
+            val unsafeLogging = false
 
             val meekPort = IEnvoyProxy.startMeek(meekUserString, nullCharString, logLevel, enableLogging, unsafeLogging)
             val urlString = MEEK_URL_BASE_1 + meekTunnel + MEEK_URL_BASE_2 + meekPort
