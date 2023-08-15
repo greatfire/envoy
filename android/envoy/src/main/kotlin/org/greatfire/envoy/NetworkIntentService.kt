@@ -36,8 +36,10 @@ const val MEDIUM_DELAY = 5000L
 const val LONG_DELAY = 10000L
 const val PREF_VALID_URLS = "validUrls"
 const val LOCAL_URL_BASE = "socks5://127.0.0.1:"
-const val TUNNEL_URL_BASE_1 = "envoy://?url="
-const val TUNNEL_URL_BASE_2 = "&socks5=socks5%3A%2F%2F127.0.0.1%3A"
+const val SNOWFLAKE_URL_BASE_1 = "envoy://?url="
+const val SNOWFLAKE_URL_BASE_2 = "&socks5=socks5%3A%2F%2F127.0.0.1%3A"
+const val MEEK_URL_BASE_1 = SNOWFLAKE_URL_BASE_1
+const val MEEK_URL_BASE_2 = SNOWFLAKE_URL_BASE_2
 
 /**
  * An [IntentService] subclass for handling asynchronous task requests in
@@ -80,6 +82,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private var hysteriaUrls = Collections.synchronizedList(mutableListOf<String>())
     private var shadowsocksUrls = Collections.synchronizedList(mutableListOf<String>())
     private var snowflakeUrls = Collections.synchronizedList(mutableListOf<String>())
+    private var meekUrls = Collections.synchronizedList(mutableListOf<String>())
     private var httpsUrls = Collections.synchronizedList(mutableListOf<String>())
     private var additionalUrls = Collections.synchronizedList(mutableListOf<String>())
 
@@ -97,7 +100,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private val cronetMap = Collections.synchronizedMap(mutableMapOf<String, CronetEngine>())
 
     private val httpPrefixes = Collections.synchronizedList(mutableListOf<String>("https", "http", "envoy"))
-    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss"))
+    private val supportedPrefixes = Collections.synchronizedList(mutableListOf<String>("v2ws", "v2srtp", "v2wechat", "hysteria", "ss", "meek"))
     private val preferredPrefixes = Collections.synchronizedList(mutableListOf<String>("snowflake"))
 
     fun manageCurrentBatch(itemToRemove: String?): Int {
@@ -244,6 +247,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (firstAttempt) {
             validationStart = System.currentTimeMillis()
             Log.d(TAG, "validation started at " + validationStart)
+
+            // set logging directory
+            Log.d(TAG, "set logging directory to " + filesDir.path)
+            IEnvoyProxy.setStateLocation(filesDir.path)
 
             Log.d(TAG, "clear " + additionalUrlSources.size + " previously submitted url sources")
             additionalUrlSources.clear()
@@ -444,6 +451,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else if (envoyUrl.startsWith("snowflake://")) {
                 Log.d(TAG, "found snowflake url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SNOWFLAKE));
                 handleSnowflakeSubmit(envoyUrl, captive_portal_url, hysteriaCert);
+            } else if (envoyUrl.startsWith("meek://")) {
+                Log.d(TAG, "found meek url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_MEEK));
+                handleMeekSubmit(envoyUrl, captive_portal_url, hysteriaCert);
             } else if (envoyUrl.startsWith("http")) {
                 Log.d(TAG, "found http url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_HTTPS))
                 handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert)
@@ -751,7 +761,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             val snowflakePort = IEnvoyProxy.startSnowflake(
                 ice, brokerUrl, front, ampCache, logFile, logToStateDir, keepLocalAddresses,
                 unsafeLogging, maxPeers)
-            val urlString = TUNNEL_URL_BASE_1 + tunnelUrl + TUNNEL_URL_BASE_2 + snowflakePort
+            val urlString = SNOWFLAKE_URL_BASE_1 + tunnelUrl + SNOWFLAKE_URL_BASE_2 + snowflakePort
 
             Log.d(TAG, "snowflake service started at " + urlString)
 
@@ -767,6 +777,74 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     url,
                     urlString,
                     ENVOY_SERVICE_SNOWFLAKE,
+                    captive_portal_url,
+                    hysteriaCert
+                )
+            }
+        }
+    }
+
+    private fun handleMeekSubmit(
+        url: String,
+        captive_portal_url: String,
+        hysteriaCert: String?
+    ) {
+
+        val uri = URI(url)
+        var meekUrl = ""
+        var meekFront = ""
+        var meekTunnel = ""
+        val rawQuery = uri.rawQuery
+        val queries = rawQuery.split("&")
+        for (i in 0 until queries.size) {
+            val queryParts = queries[i].split("=")
+            if (queryParts[0].equals("url")) {
+                meekUrl = URLDecoder.decode(queryParts[1], "UTF-8")
+            } else if (queryParts[0].equals("front")) {
+                meekFront = URLDecoder.decode(queryParts[1], "UTF-8")
+                // if needed, generate randomized host name prefix
+                if (meekFront.startsWith('.')) {
+                    meekFront = randomString().plus(meekFront)
+                    Log.d(TAG, "front updated with random prefix: " + meekFront)
+                } else {
+                    Log.d(TAG, "front included as-is: " + meekFront)
+                }
+            } else if (queryParts[0].equals("tunnel")) {
+                // this is purposfully not decocded to add to an Envoy URL
+                meekTunnel = queryParts[1]
+            }
+        }
+        // start meek service
+        if (meekUrl.isNullOrEmpty() || meekFront.isNullOrEmpty() || meekTunnel.isNullOrEmpty()) {
+            Log.e(TAG, "some arguments required for meek service are missing")
+        } else {
+
+            // set the login params
+            val meekUserString = "url=" + meekUrl + ";front=" + meekFront
+            val nullCharString = "" + Char.MIN_VALUE
+
+            // additional hardcoded meek parameters
+            val logLevel = "ERROR"
+            val enableLogging = false
+            val unsafeLogging = false
+
+            val meekPort = IEnvoyProxy.startMeek(meekUserString, nullCharString, logLevel, enableLogging, unsafeLogging)
+            val urlString = MEEK_URL_BASE_1 + meekTunnel + MEEK_URL_BASE_2 + meekPort
+
+            Log.d(TAG, "meek service started at " + urlString)
+
+            meekUrls.add(urlString)
+
+            // method returns port immediately but service is not ready immediately
+            Log.d(TAG, "submit url after a short delay for starting meek")
+            ioScope.launch() {
+                Log.d(TAG, "start meek delay")
+                delay(SHORT_DELAY)
+                Log.d(TAG, "end meek delay")
+                handleRequest(
+                    url,
+                    urlString,
+                    ENVOY_SERVICE_MEEK,
                     captive_portal_url,
                     hysteriaCert
                 )
@@ -926,6 +1004,15 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 IEnvoyProxy.stopSnowflake()
             } else {
                 Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, service in use")
+            }
+        } else if (meekUrls.contains(envoyUrl)) {
+            meekUrls.remove(envoyUrl)
+            if (meekUrls.isEmpty()) {
+                Log.d(TAG, "no meek urls remaining, stop service")
+                // stop lyrebird for both meek/obfs4
+                IEnvoyProxy.stopLyrebird()
+            } else {
+                Log.d(TAG, "" + meekUrls.size + " meek urls remaining, service in use")
             }
         } else {
             Log.d(TAG, "url was not previously cached")
