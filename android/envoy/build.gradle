@@ -128,7 +128,7 @@ task writeNewPom {
                 dependency {
                     groupId = 'org.greatfire.envoy'
                     artifactId = 'cronet'
-                    version = '107.0.5304.150-1'
+                    version = '108.0.5359.195'
                 }
                 dependency {
                     groupId = 'org.greatfire'

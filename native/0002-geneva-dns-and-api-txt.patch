@@ -21,14 +21,14 @@
  net/dns/dns_transaction.h                          |   3 +
  net/dns/host_resolver.cc                           |   8 +
  net/dns/host_resolver.h                            |   7 +-
- net/dns/host_resolver_manager.cc                   |  68 +++-
+ net/dns/host_resolver_manager.cc                   |  60 +++-
  net/dns/host_resolver_manager.h                    |   7 +
  net/url_request/url_request_context.cc             |  10 +
  net/url_request/url_request_context.h              |   6 +
- 27 files changed, 664 insertions(+), 75 deletions(-)
+ 27 files changed, 657 insertions(+), 74 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index f6bef3d5fccc4..5a85d6a81bbc5 100644
+index 20187639346eb..f1ba1ba851268 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
 @@ -57,6 +57,7 @@ public class org.chromium.net.CronetEngine$Builder {
@@ -67,12 +67,12 @@ index f6bef3d5fccc4..5a85d6a81bbc5 100644
  }
  public final class org.chromium.net.InlineExecutionProhibitedException extends java.util.concurrent.RejectedExecutionException {
    public org.chromium.net.InlineExecutionProhibitedException();
-@@ -395,4 +400,4 @@ public final class org.chromium.net.apihelpers.UploadDataProviders {
-   public static org.chromium.net.UploadDataProvider create(byte[], int, int);
-   public static org.chromium.net.UploadDataProvider create(byte[]);
+@@ -465,4 +470,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
+   public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
+   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
  }
--Stamp: 9ca96d8e2cee4df3a62cefff1a431d5a
-+Stamp: a480ae599bf93318cd9905fa85ef4a0d
+-Stamp: 5dff94de1767666692c1e34106bc2e13
++Stamp: 1edfe3a5bb5fe941467ea864b9e96f81
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 index af658b248e122..8bad676d2906e 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
@@ -160,19 +160,19 @@ index c299277e95b86..7f1bdd9f1e475 100644
    void Start(JNIEnv* env, const base::android::JavaParamRef<jobject>& jcaller);
  
 diff --git a/components/cronet/android/implementation_api_version.txt b/components/cronet/android/implementation_api_version.txt
-index 98d9bcb75a685..3c032078a4a21 100644
+index d6b24041cf041..209e3ef4b6247 100644
 --- a/components/cronet/android/implementation_api_version.txt
 +++ b/components/cronet/android/implementation_api_version.txt
 @@ -1 +1 @@
--17
-+18
+-19
++20
 diff --git a/components/cronet/android/interface_api_version.txt b/components/cronet/android/interface_api_version.txt
-index 98d9bcb75a685..3c032078a4a21 100644
+index d6b24041cf041..209e3ef4b6247 100644
 --- a/components/cronet/android/interface_api_version.txt
 +++ b/components/cronet/android/interface_api_version.txt
 @@ -1 +1 @@
--17
-+18
+-19
++20
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java
 index 590d29c1b09ae..e34692a7f2268 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequest.java
@@ -378,7 +378,7 @@ index ab27797989898..a6fd1015e2ca9 100644
    };
  
 diff --git a/net/dns/context_host_resolver.cc b/net/dns/context_host_resolver.cc
-index 9773076f60c59..e5170afb20792 100644
+index 066fc004b5883..687b0d0df8a00 100644
 --- a/net/dns/context_host_resolver.cc
 +++ b/net/dns/context_host_resolver.cc
 @@ -74,6 +74,7 @@ ContextHostResolver::CreateRequest(
@@ -405,10 +405,10 @@ index 9773076f60c59..e5170afb20792 100644
  std::unique_ptr<HostResolver::ResolveHostRequest>
  ContextHostResolver::CreateRequest(
 diff --git a/net/dns/context_host_resolver.h b/net/dns/context_host_resolver.h
-index fb537024f8dc5..bb79ea9617d40 100644
+index 49d161eefd782..77d1024641c8a 100644
 --- a/net/dns/context_host_resolver.h
 +++ b/net/dns/context_host_resolver.h
-@@ -87,6 +87,8 @@ class NET_EXPORT ContextHostResolver : public HostResolver {
+@@ -88,6 +88,8 @@ class NET_EXPORT ContextHostResolver : public HostResolver {
      return resolve_context_.get();
    }
  
@@ -1284,10 +1284,10 @@ index c388ff8a3098b..c996a51e3ce13 100644
  
  // Startable/Cancellable object to represent a DNS probe sequence.
 diff --git a/net/dns/host_resolver.cc b/net/dns/host_resolver.cc
-index b9325a9173830..0011291906b60 100644
+index c554a1cf67ba2..5d904d0041768 100644
 --- a/net/dns/host_resolver.cc
 +++ b/net/dns/host_resolver.cc
-@@ -207,6 +207,8 @@ std::unique_ptr<HostResolver> HostResolver::Factory::CreateResolver(
+@@ -275,6 +275,8 @@ std::unique_ptr<HostResolver> HostResolver::Factory::CreateResolver(
      HostResolverManager* manager,
      base::StringPiece host_mapping_rules,
      bool enable_caching) {
@@ -1296,7 +1296,7 @@ index b9325a9173830..0011291906b60 100644
    return HostResolver::CreateResolver(manager, host_mapping_rules,
                                        enable_caching);
  }
-@@ -227,6 +229,10 @@ HostResolver::ResolveHostParameters::ResolveHostParameters(
+@@ -295,6 +297,10 @@ HostResolver::ResolveHostParameters::ResolveHostParameters(
  
  HostResolver::~HostResolver() = default;
  
@@ -1307,7 +1307,7 @@ index b9325a9173830..0011291906b60 100644
  std::unique_ptr<HostResolver::ProbeRequest>
  HostResolver::CreateDohProbeRequest() {
    // Should be overridden in any HostResolver implementation where this method
-@@ -281,6 +287,8 @@ std::unique_ptr<HostResolver> HostResolver::CreateResolver(
+@@ -349,6 +355,8 @@ std::unique_ptr<HostResolver> HostResolver::CreateResolver(
      HostResolverManager* manager,
      base::StringPiece host_mapping_rules,
      bool enable_caching) {
@@ -1317,10 +1317,10 @@ index b9325a9173830..0011291906b60 100644
  
    auto resolve_context = std::make_unique<ResolveContext>(
 diff --git a/net/dns/host_resolver.h b/net/dns/host_resolver.h
-index bbe3888c28ac8..18ee9c29738b6 100644
+index 42068d196fffc..b1539a3614eee 100644
 --- a/net/dns/host_resolver.h
 +++ b/net/dns/host_resolver.h
-@@ -226,7 +226,9 @@ class NET_EXPORT HostResolver {
+@@ -245,7 +245,9 @@ class NET_EXPORT HostResolver {
      // Initial setting for whether the insecure portion of the built-in
      // asynchronous DnsClient is enabled or disabled. See HostResolverManager::
      // SetInsecureDnsClientEnabled() for details.
@@ -1331,7 +1331,7 @@ index bbe3888c28ac8..18ee9c29738b6 100644
  
      // Initial setting for whether additional DNS types (e.g. HTTPS) may be
      // queried when using the built-in resolver for insecure DNS.
-@@ -504,6 +506,9 @@ class NET_EXPORT HostResolver {
+@@ -523,6 +525,9 @@ class NET_EXPORT HostResolver {
    static std::vector<IPEndPoint> GetNonProtocolEndpoints(
        const std::vector<HostResolverEndpointResult>& endpoints);
  
@@ -1342,10 +1342,10 @@ index bbe3888c28ac8..18ee9c29738b6 100644
    HostResolver();
  
 diff --git a/net/dns/host_resolver_manager.cc b/net/dns/host_resolver_manager.cc
-index 066fd3fa9942e..78c26faf534cd 100644
+index 9db789cd87a24..0846a080f54e9 100644
 --- a/net/dns/host_resolver_manager.cc
 +++ b/net/dns/host_resolver_manager.cc
-@@ -643,6 +643,8 @@ class HostResolverManager::RequestImpl
+@@ -566,6 +566,8 @@ class HostResolverManager::RequestImpl
      // Parent HostResolver must still be alive to call Start().
      DCHECK(resolver_);
  
@@ -1354,15 +1354,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      if (!resolve_context_) {
        complete_ = true;
        resolver_.reset();
-@@ -1034,6 +1036,7 @@ class HostResolverManager::ProcTask {
-   }
- 
-   void Start() {
-+    VLOG(1) << "[breakerspace] Starting resolution using ProcTask";
-     DCHECK(network_task_runner_->BelongsToCurrentThread());
-     DCHECK(!was_completed());
-     net_log_.BeginEvent(NetLogEventType::HOST_RESOLVER_MANAGER_PROC_TASK);
-@@ -1242,7 +1245,8 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -935,7 +937,8 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
            const NetLogWithSource& job_net_log,
            const base::TickClock* tick_clock,
            bool fallback_available,
@@ -1372,7 +1364,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
        : client_(client),
          host_(std::move(host)),
          resolve_context_(resolve_context->AsSafeRef()),
-@@ -1253,10 +1257,12 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -946,10 +949,12 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
          tick_clock_(tick_clock),
          task_start_time_(tick_clock_->NowTicks()),
          fallback_available_(fallback_available),
@@ -1386,7 +1378,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      if (!secure_) {
        DCHECK(client_->CanUseInsecureDnsTransactions());
      }
-@@ -1279,7 +1285,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -972,7 +977,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
  
    void StartNextTransaction() {
      DCHECK_GE(num_additional_transactions_needed(), 1);
@@ -1395,7 +1387,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      if (!any_transaction_started_) {
        net_log_.BeginEvent(NetLogEventType::HOST_RESOLVER_MANAGER_DNS_TASK,
                            [&] { return NetLogDnsTaskCreationParams(); });
-@@ -1421,6 +1427,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -1096,6 +1101,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
    void PushTransactionsNeeded(DnsQueryTypeSet query_types) {
      DCHECK(transactions_needed_.empty());
  
@@ -1403,7 +1395,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      if (query_types.Has(DnsQueryType::HTTPS) &&
          features::kUseDnsHttpsSvcbEnforceSecureResponse.Get() && secure_) {
        query_types.Remove(DnsQueryType::HTTPS);
-@@ -1457,6 +1464,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -1130,6 +1136,7 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
      DCHECK_NE(DnsQueryType::UNSPECIFIED, transaction_info.type);
  
      std::string transaction_hostname(GetHostname(host_));
@@ -1411,7 +1403,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
  
      // For HTTPS, prepend "_<port>._https." for any non-default port.
      uint16_t request_port = 0;
-@@ -1473,6 +1481,9 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -1146,6 +1153,9 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
              DnsQueryTypeToQtype(transaction_info.type), net_log_, secure_,
              secure_dns_mode_, &*resolve_context_,
              fallback_available_ /* fast_timeout */);
@@ -1421,7 +1413,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      transaction_info.transaction->SetRequestPriority(delegate_->priority());
  
      auto transaction_info_it =
-@@ -2075,6 +2086,9 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
+@@ -1691,6 +1701,9 @@ class HostResolverManager::DnsTask : public base::SupportsWeakPtr<DnsTask> {
    bool fallback_available_;
  
    const HostResolver::HttpsSvcbOptions https_svcb_options_;
@@ -1431,8 +1423,8 @@ index 066fd3fa9942e..78c26faf534cd 100644
  };
  
  //-----------------------------------------------------------------------------
-@@ -2148,7 +2162,8 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
-       scoped_refptr<base::TaskRunner> proc_task_runner,
+@@ -1761,7 +1774,8 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+       RequestPriority priority,
        const NetLogWithSource& source_net_log,
        const base::TickClock* tick_clock,
 -      const HostResolver::HttpsSvcbOptions& https_svcb_options)
@@ -1441,7 +1433,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
        : resolver_(resolver),
          key_(std::move(key)),
          cache_usage_(cache_usage),
-@@ -2160,9 +2175,10 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+@@ -1772,9 +1786,10 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
          https_svcb_options_(https_svcb_options),
          net_log_(
              NetLogWithSource::Make(source_net_log.net_log(),
@@ -1454,7 +1446,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      net_log_.BeginEvent(NetLogEventType::HOST_RESOLVER_MANAGER_JOB, [&] {
        return NetLogJobCreationParams(source_net_log.source());
      });
-@@ -2193,6 +2209,11 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+@@ -1805,6 +1820,11 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
      }
    }
  
@@ -1466,7 +1458,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
    // Add this job to the dispatcher.  If "at_head" is true, adds at the front
    // of the queue.
    void Schedule(bool at_head) {
-@@ -2374,9 +2395,12 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+@@ -1988,9 +2008,12 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
    }
  
    void RunNextTask() {
@@ -1479,7 +1471,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      if (tasks_.empty()) {
        // If there are no stored results, complete with an error.
        if (completion_results_.size() == 0) {
-@@ -2657,7 +2681,7 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+@@ -2276,7 +2299,7 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
          resolver_->dns_client_.get(), key_.host, key_.query_types,
          &*key_.resolve_context, secure, key_.secure_dns_mode, this, net_log_,
          tick_clock_, !tasks_.empty() /* fallback_available */,
@@ -1488,7 +1480,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      dns_task_->StartNextTransaction();
      // Schedule a second transaction, if needed. DoH queries can bypass the
      // dispatcher and start all of their transactions immediately.
-@@ -3072,12 +3096,18 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
+@@ -2709,12 +2732,18 @@ class HostResolverManager::Job : public PrioritizedDispatcher::Job,
    // A handle used for |dispatcher_|.
    PrioritizedDispatcher::Handle handle_;
  
@@ -1507,17 +1499,8 @@ index 066fd3fa9942e..78c26faf534cd 100644
  };
  
  //-----------------------------------------------------------------------------
-@@ -3205,6 +3235,8 @@ HostResolverManager::CreateRequest(
-   // ensure cached data is invalidated on network and configuration changes.
-   DCHECK(registered_contexts_.HasObserver(resolve_context));
- 
-+  VLOG(1) << "[breakerspace] HostResolverManager::CreateRequest()";
-+
- return std::make_unique<RequestImpl>(std::move(net_log),
-                                      std::move(host),
-                                      std::move(network_anonymization_key),
-@@ -3215,6 +3247,10 @@ return std::make_unique<RequestImpl>(std::move(net_log),
-                                      tick_clock_);
+@@ -2855,6 +2884,10 @@ HostResolverManager::CreateRequest(
+       weak_ptr_factory_.GetWeakPtr(), tick_clock_);
  }
  
 +void HostResolverManager::SetStrategy(unsigned int packet_strategy) {
@@ -1527,7 +1510,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
  std::unique_ptr<HostResolver::ProbeRequest>
  HostResolverManager::CreateDohProbeRequest(ResolveContext* context) {
    DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-@@ -3387,6 +3423,7 @@ bool HostResolverManager::IsLocalTask(TaskType task) {
+@@ -3022,6 +3055,7 @@ bool HostResolverManager::IsLocalTask(TaskType task) {
  }
  
  int HostResolverManager::Resolve(RequestImpl* request) {
@@ -1535,7 +1518,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
    DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
    // Request should not yet have a scheduled Job.
    DCHECK(!request->HasJob());
-@@ -3450,7 +3487,7 @@ HostCache::Entry HostResolverManager::ResolveLocally(
+@@ -3087,7 +3121,7 @@ HostCache::Entry HostResolverManager::ResolveLocally(
      absl::optional<HostCache::EntryStaleness>* out_stale_info) {
    DCHECK(out_stale_info);
    *out_stale_info = absl::nullopt;
@@ -1544,7 +1527,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
    CreateTaskSequence(job_key, cache_usage, secure_dns_policy, out_tasks);
  
    if (!ip_address.IsValid()) {
-@@ -3550,17 +3587,19 @@ void HostResolverManager::CreateAndStartJob(JobKey key,
+@@ -3198,17 +3232,19 @@ void HostResolverManager::CreateAndStartJob(JobKey key,
                                              std::deque<TaskType> tasks,
                                              RequestImpl* request) {
    DCHECK(!tasks.empty());
@@ -1565,7 +1548,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
      job->AddRequest(request);
    }
  }
-@@ -3841,6 +3880,7 @@ void HostResolverManager::PushDnsTasks(bool proc_task_allowed,
+@@ -3490,6 +3526,7 @@ void HostResolverManager::PushDnsTasks(bool system_task_allowed,
    // Upgrade the insecure DnsTask depending on the secure dns mode.
    switch (secure_dns_mode) {
      case SecureDnsMode::kSecure:
@@ -1573,7 +1556,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
        DCHECK(!allow_cache ||
               out_tasks->front() == TaskType::SECURE_CACHE_LOOKUP);
        // Policy misconfiguration can put us in secure DNS mode without any DoH
-@@ -3849,6 +3889,7 @@ void HostResolverManager::PushDnsTasks(bool proc_task_allowed,
+@@ -3498,6 +3535,7 @@ void HostResolverManager::PushDnsTasks(bool system_task_allowed,
          out_tasks->push_back(TaskType::SECURE_DNS);
        break;
      case SecureDnsMode::kAutomatic:
@@ -1581,7 +1564,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
        DCHECK(!allow_cache || out_tasks->front() == TaskType::CACHE_LOOKUP);
        if (dns_client_->FallbackFromSecureTransactionPreferred(
                resolve_context)) {
-@@ -3880,6 +3921,7 @@ void HostResolverManager::PushDnsTasks(bool proc_task_allowed,
+@@ -3529,6 +3567,7 @@ void HostResolverManager::PushDnsTasks(bool system_task_allowed,
        }
        break;
      case SecureDnsMode::kOff:
@@ -1589,7 +1572,7 @@ index 066fd3fa9942e..78c26faf534cd 100644
        DCHECK(!allow_cache || IsLocalTask(out_tasks->front()));
        if (dns_tasks_allowed && insecure_tasks_allowed)
          out_tasks->push_back(TaskType::DNS);
-@@ -3906,10 +3948,13 @@ void HostResolverManager::CreateTaskSequence(
+@@ -3555,10 +3594,13 @@ void HostResolverManager::CreateTaskSequence(
      std::deque<TaskType>* out_tasks) {
    DCHECK(out_tasks->empty());
  
@@ -1603,32 +1586,11 @@ index 066fd3fa9942e..78c26faf534cd 100644
    if (secure_dns_policy == SecureDnsPolicy::kBootstrap) {
      DCHECK_EQ(SecureDnsMode::kOff, job_key.secure_dns_mode);
      if (allow_cache)
-@@ -3946,16 +3991,19 @@ void HostResolverManager::CreateTaskSequence(
-       } else if (!ResemblesMulticastDNSName(GetHostname(job_key.host))) {
-         bool proc_task_allowed = has_address_type && job_key.secure_dns_mode !=
-                                                          SecureDnsMode::kSecure;
--        if (dns_client_ && dns_client_->GetEffectiveConfig()) {
-+ 
-+	if (dns_client_ && dns_client_->GetEffectiveConfig()) {
-           bool insecure_allowed =
-               dns_client_->CanUseInsecureDnsTransactions() &&
-               !dns_client_->FallbackFromInsecureTransactionPreferred() &&
-               (has_address_type ||
-                dns_client_->CanQueryAdditionalTypesViaInsecureDns());
-+	  VLOG(1) << "[breakerspace] CreateTaskSequence(), PushDnsTasks about to run";
-           PushDnsTasks(proc_task_allowed, job_key.secure_dns_mode,
-                        insecure_allowed, allow_cache, prioritize_local_lookups,
-                        &*job_key.resolve_context, out_tasks);
-         } else if (proc_task_allowed) {
-+	  VLOG(1) << "[breakerspace] proc_task_allowed path";
-           out_tasks->push_back(TaskType::PROC);
-         }
-       } else if (has_address_type) {
 diff --git a/net/dns/host_resolver_manager.h b/net/dns/host_resolver_manager.h
-index b7de3675ba779..8e98b192e2f84 100644
+index 962e6e5291b64..5730548142120 100644
 --- a/net/dns/host_resolver_manager.h
 +++ b/net/dns/host_resolver_manager.h
-@@ -153,6 +153,10 @@ class NET_EXPORT HostResolverManager
+@@ -160,6 +160,10 @@ class NET_EXPORT HostResolverManager
        absl::optional<ResolveHostParameters> optional_parameters,
        ResolveContext* resolve_context,
        HostCache* host_cache);
@@ -1639,15 +1601,15 @@ index b7de3675ba779..8e98b192e2f84 100644
    // |resolve_context| is the context to use for the probes, and it is expected
    // to be the context of the calling ContextHostResolver.
    std::unique_ptr<HostResolver::ProbeRequest> CreateDohProbeRequest(
-@@ -546,6 +550,9 @@ class NET_EXPORT HostResolverManager
+@@ -548,6 +552,9 @@ class NET_EXPORT HostResolverManager
        registered_contexts_;
    bool invalidation_in_progress_ = false;
  
 +  // [breakerspace]
 +  unsigned int strategy = 0;
-+ 
-   // Helper for metrics associated with `features::kDnsHttpssvc`.
-   HttpssvcExperimentDomainCache httpssvc_domain_cache_;
++
+   // An experimental flag for features::kUseDnsHttpsSvcb.
+   HostResolver::HttpsSvcbOptions https_svcb_options_;
  
 diff --git a/net/url_request/url_request_context.cc b/net/url_request/url_request_context.cc
 index a3ce8f78bdcb9..ab443392fdcdd 100644

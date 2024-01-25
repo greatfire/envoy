@@ -17,7 +17,7 @@
  16 files changed, 123 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/BUILD.gn b/components/cronet/BUILD.gn
-index 06a938227f71b..8da038d769ea2 100644
+index c616b514868f5..92350cf3b4b77 100644
 --- a/components/cronet/BUILD.gn
 +++ b/components/cronet/BUILD.gn
 @@ -100,6 +100,27 @@ if (is_android) {
@@ -160,10 +160,10 @@ index 9538b5072539a..399b4b9be683e 100644
  
          mCronetEngine = myBuilder.build();
 diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
-index f5510b6120248..d1b759279174b 100644
+index 1597f77bcbd92..3ca9ebdd35fa7 100644
 --- a/components/cronet/cronet_context.cc
 +++ b/components/cronet/cronet_context.cc
-@@ -242,6 +242,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
+@@ -244,6 +244,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
      net::NetworkChangeNotifier::RemoveNetworkObserver(this);
  }
  
@@ -293,10 +293,10 @@ index f69f8e5d3cd49..ffdb1a37fd629 100644
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
 diff --git a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-index 7bccc6fdb561b..f8863ee8c02b6 100644
+index 630d1696c5322..d2b2f26be3311 100644
 --- a/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
 +++ b/components/external_intents/android/java/src/org/chromium/components/external_intents/ExternalNavigationHandler.java
-@@ -1048,6 +1048,8 @@ public class ExternalNavigationHandler {
+@@ -979,6 +979,8 @@ public class ExternalNavigationHandler {
      }
  
      private boolean externalIntentRequestsDisabledForUrl(ExternalNavigationParams params) {
@@ -305,7 +305,7 @@ index 7bccc6fdb561b..f8863ee8c02b6 100644
          // TODO(changwan): check if we need to handle URL even when external intent is off.
          if (CommandLine.getInstance().hasSwitch(
                      ExternalIntentsSwitches.DISABLE_EXTERNAL_INTENT_REQUESTS)) {
-@@ -1060,6 +1062,7 @@ public class ExternalNavigationHandler {
+@@ -991,6 +993,7 @@ public class ExternalNavigationHandler {
              return true;
          }
          return false;
