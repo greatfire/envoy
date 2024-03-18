@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -67,7 +68,13 @@ class ShadowsocksService : Service() {
             .setTicker("Shadowsocks service is running")
             .build()
 
-        startForeground(SystemClock.uptimeMillis().toInt(), notification)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            startForeground(SystemClock.uptimeMillis().toInt(), notification)
+        }
+        else {
+            startForeground(SystemClock.uptimeMillis().toInt(), notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        }
 
         val nativeLibraryDir = applicationInfo.nativeLibraryDir
         val executableFile = File(nativeLibraryDir, "libsslocal.so")
