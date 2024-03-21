@@ -1,0 +1,16 @@
+PODS:
+  - Envoy (0.1.0)
+
+DEPENDENCIES:
+  - Envoy (from `../`)
+
+EXTERNAL SOURCES:
+  Envoy:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  Envoy: 6f0b0859b80bba73bfd947b600028c06635af896
+
+PODFILE CHECKSUM: 6e86fbfef38878bbb9a413eb8f0a99a04c26f5b8
+
+COCOAPODS: 1.15.2
