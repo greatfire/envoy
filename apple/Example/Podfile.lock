@@ -1,16 +1,22 @@
 PODS:
-  - Envoy (0.1.0)
+  - Envoy (0.1.0):
+    - IEnvoyProxy (~> 2.0)
+  - IEnvoyProxy (2.0.0)
 
 DEPENDENCIES:
   - Envoy (from `../`)
+  - IEnvoyProxy (from `../../../IEnvoyProxy`)
 
 EXTERNAL SOURCES:
   Envoy:
     :path: "../"
+  IEnvoyProxy:
+    :path: "../../../IEnvoyProxy"
 
 SPEC CHECKSUMS:
-  Envoy: 6f0b0859b80bba73bfd947b600028c06635af896
+  Envoy: 0f42ca4f617dd98959743e0fcce1a8702daea988
+  IEnvoyProxy: d47f01dafc532f6c709df2ea8a23c04b29da0492
 
-PODFILE CHECKSUM: 6e86fbfef38878bbb9a413eb8f0a99a04c26f5b8
+PODFILE CHECKSUM: 63e3444101326cbb37d1e6449515135245c6af74
 
 COCOAPODS: 1.15.2

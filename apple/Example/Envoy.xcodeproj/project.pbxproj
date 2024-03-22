@@ -13,6 +13,11 @@
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
+		A028FE8A2BADB60900C2B954 /* NIOCore in Frameworks */ = {isa = PBXBuildFile; productRef = A028FE892BADB60900C2B954 /* NIOCore */; };
+		A028FE8C2BADB60900C2B954 /* NIOHTTP1 in Frameworks */ = {isa = PBXBuildFile; productRef = A028FE8B2BADB60900C2B954 /* NIOHTTP1 */; };
+		A028FE8E2BADB60900C2B954 /* NIOPosix in Frameworks */ = {isa = PBXBuildFile; productRef = A028FE8D2BADB60900C2B954 /* NIOPosix */; };
+		A028FE902BADB91400C2B954 /* ConnectHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A028FE8F2BADB91400C2B954 /* ConnectHandler.swift */; };
+		A028FE922BADCC0A00C2B954 /* GlueHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A028FE912BADCC0A00C2B954 /* GlueHandler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +34,8 @@
 		A018BCC92BAC761700EC6172 /* Podfile */ = {isa = PBXFileReference; lastKnownFileType = text; path = Podfile; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		A018BCCA2BAC761700EC6172 /* Podfile.lock */ = {isa = PBXFileReference; lastKnownFileType = text; path = Podfile.lock; sourceTree = "<group>"; };
 		A018BCCB2BAC767700EC6172 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; name = .gitignore; path = ../.gitignore; sourceTree = "<group>"; };
+		A028FE8F2BADB91400C2B954 /* ConnectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectHandler.swift; sourceTree = "<group>"; };
+		A028FE912BADCC0A00C2B954 /* GlueHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlueHandler.swift; sourceTree = "<group>"; };
 		B6E06D5D3A03A92B82B4D2FC /* Envoy.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = Envoy.podspec; path = ../Envoy.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		E613D66F9A0E5D47D6542ACD /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		F23CA4B1ED94B5809D3A3808 /* Pods-Envoy_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Envoy_Example.debug.xcconfig"; path = "Target Support Files/Pods-Envoy_Example/Pods-Envoy_Example.debug.xcconfig"; sourceTree = "<group>"; };
@@ -39,6 +46,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A028FE8C2BADB60900C2B954 /* NIOHTTP1 in Frameworks */,
+				A028FE8E2BADB60900C2B954 /* NIOPosix in Frameworks */,
+				A028FE8A2BADB60900C2B954 /* NIOCore in Frameworks */,
 				54A6D4CCFC3826ECBD36F486 /* Pods_Envoy_Example.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -83,6 +93,8 @@
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
 				607FACD31AFB9204008FA782 /* Supporting Files */,
+				A028FE8F2BADB91400C2B954 /* ConnectHandler.swift */,
+				A028FE912BADCC0A00C2B954 /* GlueHandler.swift */,
 			);
 			name = "Example for Envoy";
 			path = Envoy;
@@ -128,13 +140,17 @@
 				607FACCC1AFB9204008FA782 /* Sources */,
 				607FACCD1AFB9204008FA782 /* Frameworks */,
 				607FACCE1AFB9204008FA782 /* Resources */,
-				E225F2D6A656E1A5D3E9C151 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = Envoy_Example;
+			packageProductDependencies = (
+				A028FE892BADB60900C2B954 /* NIOCore */,
+				A028FE8B2BADB60900C2B954 /* NIOHTTP1 */,
+				A028FE8D2BADB60900C2B954 /* NIOPosix */,
+			);
 			productName = Envoy;
 			productReference = 607FACD01AFB9204008FA782 /* Envoy_Example.app */;
 			productType = "com.apple.product-type.application";
@@ -166,6 +182,9 @@
 				Base,
 			);
 			mainGroup = 607FACC71AFB9204008FA782;
+			packageReferences = (
+				A028FE882BADB60900C2B954 /* XCRemoteSwiftPackageReference "swift-nio" */,
+			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -211,24 +230,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E225F2D6A656E1A5D3E9C151 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Envoy_Example/Pods-Envoy_Example-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/Envoy/Envoy.framework",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Envoy.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Envoy_Example/Pods-Envoy_Example-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -236,8 +237,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A028FE902BADB91400C2B954 /* ConnectHandler.swift in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
+				A028FE922BADCC0A00C2B954 /* GlueHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,7 +316,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -364,7 +367,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -378,6 +381,8 @@
 			baseConfigurationReference = F23CA4B1ED94B5809D3A3808 /* Pods-Envoy_Example.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Envoy/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -386,6 +391,7 @@
 				MODULE_NAME = ExampleApp;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
 			};
@@ -396,6 +402,8 @@
 			baseConfigurationReference = 9CC2A9790CA6D9A897604485 /* Pods-Envoy_Example.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Envoy/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -404,6 +412,7 @@
 				MODULE_NAME = ExampleApp;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
 			};
@@ -431,6 +440,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A028FE882BADB60900C2B954 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.64.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A028FE892BADB60900C2B954 /* NIOCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A028FE882BADB60900C2B954 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOCore;
+		};
+		A028FE8B2BADB60900C2B954 /* NIOHTTP1 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A028FE882BADB60900C2B954 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOHTTP1;
+		};
+		A028FE8D2BADB60900C2B954 /* NIOPosix */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A028FE882BADB60900C2B954 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOPosix;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 607FACC81AFB9204008FA782 /* Project object */;
 }
