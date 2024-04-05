@@ -35,8 +35,8 @@ class GlueHandler: ChannelDuplexHandler {
 
     // MARK: ChannelDuplexHandler
 
-    typealias InboundIn = NIOAny
-    typealias OutboundIn = NIOAny
+    typealias InboundIn = ByteBuffer
+    typealias OutboundIn = ByteBuffer
 
     func handlerAdded(context: ChannelHandlerContext) {
         self.context = context
@@ -89,6 +89,10 @@ class GlueHandler: ChannelDuplexHandler {
     // MARK: Private Methods
 
     private func partnerWrite(_ data: NIOAny) {
+        let bytes = unwrapInboundIn(data)
+        let text = String(buffer: bytes)
+        print(text)
+
         context?.write(data, promise: nil)
     }
 

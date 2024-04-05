@@ -53,7 +53,7 @@ class ConnectHandler: ChannelInboundHandler, RemovableChannelHandler {
             }
 
         case .awaitingConnection(var pendingBytes):
-            // We've ssen end, this must not be HTTP anymore. Do not unwrap.
+            // We've seen end, this must not be HTTP anymore. Do not unwrap.
             upgradeState = .awaitingConnection(pendingBytes: [])
             pendingBytes.append(data)
             upgradeState = .awaitingConnection(pendingBytes: pendingBytes)
@@ -115,7 +115,7 @@ class ConnectHandler: ChannelInboundHandler, RemovableChannelHandler {
             return
         }
 
-        logger.info("\(head.method.rawValue) \(head.uri) \(head.version)")
+        logger.info("\(head.method.rawValue) \(head.uri) \(head.version) \(head.headers)")
 
         guard head.method == .CONNECT else {
             logger.error("Invalid HTTP method: \(head.method.rawValue)")

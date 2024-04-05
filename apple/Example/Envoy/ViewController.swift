@@ -23,7 +23,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addressTf.text = "https://www.wikipedia.org"
+        addressTf.text = "http://httpbin.org" //"https://www.wikipedia.org"
 
         let conf = WKWebViewConfiguration()
 
