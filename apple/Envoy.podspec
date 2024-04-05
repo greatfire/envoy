@@ -27,7 +27,7 @@ TODO: Add long description of the pod here.
   s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => s.version.to_s }
   s.social_media_url = 'https://twitter.com/tladesignz'
 
-  s.ios.deployment_target = '12.0'
+  s.ios.deployment_target = '13.0'
 
   s.static_framework = true
 

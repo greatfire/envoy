@@ -8,10 +8,8 @@
 
 import UIKit
 import WebKit
-import NIOPosix
-import NIOCore
-import NIOHTTP1
 import os
+import Envoy
 
 class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegate {
 
@@ -23,20 +21,16 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addressTf.text = "http://httpbin.org" //"https://www.wikipedia.org"
+        addressTf.text = "https://www.wikipedia.org"
+
+        Envoy.shared.initialize(urls: [])
 
         let conf = WKWebViewConfiguration()
 
         if #available(iOS 17.0, *) {
-            startProxy()
-
-            let host = NWEndpoint.Host.ipv4(.loopback)
-            let port = NWEndpoint.Port(rawValue: 8080)!
-            let endpoint = NWEndpoint.hostPort(host: host, port: port)
-
-            let pConf = ProxyConfiguration(httpCONNECTProxy: endpoint)
-
-            conf.websiteDataStore.proxyConfigurations.append(pConf)
+            if let proxy = Envoy.shared.getProxyConfig() {
+                conf.websiteDataStore.proxyConfigurations.append(proxy)
+            }
         }
 
         webView = WKWebView(frame: .zero, configuration: conf)
@@ -69,7 +63,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
                 addressTf.text = url.absoluteString
 
                 webView.stopLoading()
-                webView.load(URLRequest(url: url))
+                webView.load(Envoy.shared.maybeModify(URLRequest(url: url)))
             }
         }
     }
@@ -86,45 +80,6 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
         if let text = webView.url?.absoluteString, !text.isEmpty {
             addressTf.text = text
-        }
-    }
-
-
-    // MARK: Private Methods
-
-    private func startProxy() {
-        let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-
-        let bootstrap = ServerBootstrap(group: group)
-            .serverChannelOption(ChannelOptions.socket(SOL_SOCKET, SO_REUSEADDR), value: 1)
-            .childChannelOption(ChannelOptions.socket(SOL_SOCKET, SO_REUSEADDR), value: 1)
-            .childChannelInitializer { channel in
-                channel.pipeline.addHandler(ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .forwardBytes)))
-                    .flatMap { channel.pipeline.addHandler(HTTPResponseEncoder()) }
-                    .flatMap { 
-                        channel.pipeline.addHandler(ConnectHandler(
-                            logger: Logger(subsystem: Bundle.main.bundleIdentifier!, category: String(describing: ConnectHandler.self))))
-                    }
-            }
-
-        bootstrap.bind(to: try! SocketAddress(ipAddress: "127.0.0.1", port: 8080)).whenComplete { result in
-            switch result {
-            case .success(let channel):
-                print("Listening on \(channel.localAddress?.description ?? "(nil)")")
-
-            case .failure(let error):
-                print("Failed to bind 127.0.0.1:8080: \(error)")
-            }
-        }
-
-        bootstrap.bind(to: try! SocketAddress(ipAddress: "::1", port: 8080)).whenComplete { result in
-            switch result {
-            case .success(let channel):
-                print("Listening on \(channel.localAddress?.description ?? "(nil)")")
-
-            case .failure(let error):
-                print("Failed to bind [::1]:8080: \(error)")
-            }
         }
     }
 }

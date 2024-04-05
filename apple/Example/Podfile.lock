@@ -14,8 +14,8 @@ EXTERNAL SOURCES:
     :path: "../../../IEnvoyProxy"
 
 SPEC CHECKSUMS:
-  Envoy: 0f42ca4f617dd98959743e0fcce1a8702daea988
-  IEnvoyProxy: d47f01dafc532f6c709df2ea8a23c04b29da0492
+  Envoy: b42e53c0e6f0ecb49bd2ef57587a050ee3dd60f2
+  IEnvoyProxy: f85fd45a107c7e5319a0fe7cd4a26eaba8da5829
 
 PODFILE CHECKSUM: 63e3444101326cbb37d1e6449515135245c6af74
 
