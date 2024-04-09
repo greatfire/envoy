@@ -37,6 +37,10 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
         webView.navigationDelegate = self
         webView.translatesAutoresizingMaskIntoConstraints = false
 
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = true
+        }
+
         view.addSubview(webView)
 
         webView.topAnchor.constraint(equalTo: addressTf.bottomAnchor, constant: 8).isActive = true
@@ -77,9 +81,25 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
     // MARK: WKNavigationDelegate
 
-    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
-        if let text = webView.url?.absoluteString, !text.isEmpty {
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, 
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void)
+    {
+        let modified = Envoy.shared.maybeModify(navigationAction.request)
+
+        // This request doesn't need to get modified or already is. Allow.
+        if modified == navigationAction.request {
+            return decisionHandler(.allow)
+        }
+
+        if let text = navigationAction.request.url?.absoluteString, !text.isEmpty {
             addressTf.text = text
+        }
+
+        // This request needs to be modified. Cancel and re-issue.
+        decisionHandler(.cancel)
+
+        DispatchQueue.main.async {
+            webView.load(modified)
         }
     }
 }
