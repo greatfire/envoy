@@ -2,7 +2,7 @@
  1 file changed, 30 insertions(+)
 
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index f96c5dadbedc5..b5001734b351c 100644
+index f96c5dadbedc5..beda849071155 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -28,6 +28,7 @@
@@ -36,7 +36,7 @@ index f96c5dadbedc5..b5001734b351c 100644
 +  }
 +
 +  net::HostResolver::ManagerOptions host_resolver_manager_options;
-+  // host_resolver_manager_options.insecure_dns_client_enabled = true;
++  host_resolver_manager_options.insecure_dns_client_enabled = true;
 +  host_resolver_manager_options.dns_config_overrides = overrides;
 +  std::unique_ptr<net::HostResolver> host_resolver;
 +  host_resolver = net::HostResolver::CreateStandaloneResolver(
