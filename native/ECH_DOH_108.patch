@@ -1,90 +1,9 @@
- components/cronet/native/sample/main.cc         | 62 ++++++++++++-------------
- components/cronet/url_request_context_config.cc | 30 ++++++++++++
- net/base/features.cc                            |  2 +-
- 3 files changed, 62 insertions(+), 32 deletions(-)
+ components/cronet/url_request_context_config.cc | 30 +++++++++++++++++++++++++
+ net/base/features.cc                            |  4 ++--
+ 2 files changed, 32 insertions(+), 2 deletions(-)
 
-diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index 007d5bbab90d7..38d865040d5b7 100644
---- a/components/cronet/native/sample/main.cc
-+++ b/components/cronet/native/sample/main.cc
-@@ -13,36 +13,36 @@ Cronet_EnginePtr CreateCronetEngine() {
-   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
-   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
- 
--  Cronet_EngineParams_envoy_url_set(engine_params,
--                                    "https://example.com/enovy_path/");
--  Cronet_EngineParams_envoy_url_set(
--      engine_params,
--      "envoy://"
--      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
--      "subdomain.example.com&resolve=MAP%20example.com%201.2.3.4");
--  // only MAP url-host to address
--  Cronet_EngineParams_envoy_url_set(
--      engine_params,
--      "envoy://"
--      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
--      "subdomain.example.com&address=1.2.3.4");
--  Cronet_EngineParams_envoy_url_set(
--      engine_params,
--      "envoy://"
--      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
--      "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
--  Cronet_EngineParams_envoy_url_set(
--      engine_params,
--      "envoy://"
--      "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
--      "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
--  Cronet_EngineParams_envoy_url_set(engine_params, "socks5://127.0.0.1:1080");
--  // proxy URL and SOCKS5 together (for true PTs)
--  Cronet_EngineParams_envoy_url_set(
--      engine_params,
--      "envoy://"
--      "?url=https%3A%2F%2Frayon.example.com%2Fwikipedia%2F&address=142.65.13.41"
--      "&header_Host=abc.example.com&socks5=socks5%3A%2F%2Flocalhost%3A8192");
-+  // Cronet_EngineParams_envoy_url_set(engine_params,
-+  //                                   "https://example.com/enovy_path/");
-+  // Cronet_EngineParams_envoy_url_set(
-+  //     engine_params,
-+  //     "envoy://"
-+  //     "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
-+  //     "subdomain.example.com&resolve=MAP%20example.com%201.2.3.4");
-+  // // only MAP url-host to address
-+  // Cronet_EngineParams_envoy_url_set(
-+  //     engine_params,
-+  //     "envoy://"
-+  //     "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
-+  //     "subdomain.example.com&address=1.2.3.4");
-+  // Cronet_EngineParams_envoy_url_set(
-+  //     engine_params,
-+  //     "envoy://"
-+  //     "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
-+  //     "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
-+  // Cronet_EngineParams_envoy_url_set(
-+  //     engine_params,
-+  //     "envoy://"
-+  //     "?url=https%3A%2F%2Fexample.com%2Fenvoy_path%2F%3Fk1%3Dv1&header_Host="
-+  //     "subdomain.example.com&address=1.2.3.4&disabled_cipher_suites=0xc024,0xc02f");
-+  // Cronet_EngineParams_envoy_url_set(engine_params, "socks5://127.0.0.1:1080");
-+  // // proxy URL and SOCKS5 together (for true PTs)
-+  // Cronet_EngineParams_envoy_url_set(
-+  //     engine_params,
-+  //     "envoy://"
-+  //     "?url=https%3A%2F%2Frayon.example.com%2Fwikipedia%2F&address=142.65.13.41"
-+  //     "&header_Host=abc.example.com&socks5=socks5%3A%2F%2Flocalhost%3A8192");
-  
-   Cronet_EngineParams_enable_quic_set(engine_params, true);
- 
-@@ -80,7 +80,7 @@ int main(int argc, const char* argv[]) {
-   std::cout << "Cronet version: "
-             << Cronet_Engine_GetVersionString(cronet_engine) << std::endl;
- 
--  std::string url(argc > 1 ? argv[1] : "https://www.google.com/generate_204");
-+  std::string url(argc > 1 ? argv[1] : "https://crypto.cloudflare.com/cdn-cgi/trace");
-   std::cout << "URL: " << url << std::endl;
-   SampleExecutor executor;
-   PerformRequest(cronet_engine, url, executor.GetExecutor());
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 080cd057d8ed6..5bfb3af0e3463 100644
+index 6db7ba3482d4d..5abfc5a0a7f8e 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -29,6 +29,7 @@
@@ -95,7 +14,7 @@ index 080cd057d8ed6..5bfb3af0e3463 100644
  #include "net/http/http_network_session.h"
  #include "net/http/http_server_properties.h"
  #include "net/log/net_log.h"
-@@ -928,6 +929,35 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -886,6 +887,35 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    SetContextBuilderExperimentalOptions(context_builder, &session_params,
                                         quic_context->params(), bound_network);
  
@@ -118,7 +37,7 @@ index 080cd057d8ed6..5bfb3af0e3463 100644
 +  }
 +
 +  net::HostResolver::ManagerOptions host_resolver_manager_options;
-+  // host_resolver_manager_options.insecure_dns_client_enabled = true;
++  host_resolver_manager_options.insecure_dns_client_enabled = true;
 +  host_resolver_manager_options.dns_config_overrides = overrides;
 +  std::unique_ptr<net::HostResolver> host_resolver;
 +  host_resolver = net::HostResolver::CreateStandaloneResolver(
@@ -132,9 +51,15 @@ index 080cd057d8ed6..5bfb3af0e3463 100644
    context_builder->set_quic_context(std::move(quic_context));
  
 diff --git a/net/base/features.cc b/net/base/features.cc
-index 10e0f6848fa11..4ed6fdf9ad4a7 100644
+index 10e0f6848fa11..8b9c049bab18b 100644
 --- a/net/base/features.cc
 +++ b/net/base/features.cc
+@@ -1,4 +1,4 @@
+-// Copyright 2018 The Chromium Authors
++// Copyright 2017 The Chromium Authors
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
 @@ -71,7 +71,7 @@ BASE_FEATURE(kEnableTLS13EarlyData,
  
  BASE_FEATURE(kEncryptedClientHello,
