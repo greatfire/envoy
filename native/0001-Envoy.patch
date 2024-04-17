@@ -21,8 +21,8 @@
  net/url_request/url_request_context.h              |  4 ++
  net/url_request/url_request_context_builder.cc     | 55 ++++++++++++++++++++--
  net/url_request/url_request_context_builder.h      |  2 +
- net/url_request/url_request_http_job.cc            | 43 +++++++++++++++++
- 24 files changed, 284 insertions(+), 12 deletions(-)
+ net/url_request/url_request_http_job.cc            | 51 ++++++++++++++++++++
+ 24 files changed, 292 insertions(+), 12 deletions(-)
 
 diff --git a/chrome/browser/ssl/ssl_config_service_manager.cc b/chrome/browser/ssl/ssl_config_service_manager.cc
 index 6537a65ed4cd3..66cf928be46cb 100644
@@ -696,7 +696,7 @@ index c75a35e5dfb27..46f30dac12bcb 100644
  
    bool http_cache_enabled_ = true;
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index 0a622f7f9948d..d7c73e2af00a3 100644
+index 0a622f7f9948d..da6ee48808da0 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -18,6 +18,7 @@
@@ -715,49 +715,57 @@ index 0a622f7f9948d..d7c73e2af00a3 100644
  #include "net/base/features.h"
  #include "net/base/host_port_pair.h"
  #include "net/base/http_user_agent_settings.h"
-@@ -582,6 +584,47 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -582,6 +584,55 @@ void URLRequestHttpJob::StartTransactionInternal() {
  
        if (!throttling_entry_.get() ||
            !throttling_entry_->ShouldRejectRequest(*request_)) {
-+        if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
-+            request_->context()->envoy_url().rfind("https://", 0) == 0 ||
-+            request_->context()->envoy_url().rfind("envoy://", 0) == 0) {
-+          // https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID
-+          // default to random value, no cache at all
-+          auto salt = base::RandBytesAsString(16);
-+          auto envoy_url = GURL(request_->context()->envoy_url());
-+          if (envoy_url.SchemeIsHTTPOrHTTPS()) {
-+            request_info_.url = envoy_url; // TODO check is_vaid() before set
-+          } else if (envoy_url.scheme().compare("envoy") == 0) {
-+            std::string headerPrefix = "header_";
-+            auto headerPrefixLength = headerPrefix.size();
 +
-+            for (QueryIterator it(envoy_url); !it.IsAtEnd(); it.Advance()) {
-+              auto key = it.GetKey();
-+              auto value = it.GetUnescapedValue();
-+              if (key.compare("url") == 0) {
-+                // see GetUnescapedValue, TODO check is_valid() before set
-+                request_info_.url =
-+                    GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
-+             } else if (key.compare("salt") == 0) {
-+                     salt = value;
-+              } else if (key.rfind(headerPrefix, 0) == 0 &&
-+                         key.size() > headerPrefixLength) {
-+                request_info_.extra_headers.SetHeader(
-+                    key.substr(headerPrefixLength), value); // check for header Host, add :authority for http2; :path for http2
++        // Don't use the Envoy proxy when LOAD_BYPASS_PROXY is set
++        // Specifically, we don't want to use Envoy for DoH requests
++        if (!(request_info_.load_flags & LOAD_BYPASS_PROXY)) {
++
++          if (request_->context()->envoy_url().rfind("http://", 0) == 0 ||
++              request_->context()->envoy_url().rfind("https://", 0) == 0 ||
++              request_->context()->envoy_url().rfind("envoy://", 0) == 0) {
++            // https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID
++            // default to random value, no cache at all
++            auto salt = base::RandBytesAsString(16);
++            auto envoy_url = GURL(request_->context()->envoy_url());
++            if (envoy_url.SchemeIsHTTPOrHTTPS()) {
++              request_info_.url = envoy_url; // TODO check is_vaid() before set
++            } else if (envoy_url.scheme().compare("envoy") == 0) {
++              std::string headerPrefix = "header_";
++              auto headerPrefixLength = headerPrefix.size();
++
++              for (QueryIterator it(envoy_url); !it.IsAtEnd(); it.Advance()) {
++                auto key = it.GetKey();
++                auto value = it.GetUnescapedValue();
++                if (key.compare("url") == 0) {
++                  // see GetUnescapedValue, TODO check is_valid() before set
++                  request_info_.url =
++                      GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
++              } else if (key.compare("salt") == 0) {
++                      salt = value;
++                } else if (key.rfind(headerPrefix, 0) == 0 &&
++                          key.size() > headerPrefixLength) {
++                  request_info_.extra_headers.SetHeader(
++                      key.substr(headerPrefixLength), value); // check for header Host, add :authority for http2; :path for http2
++                }
 +              }
 +            }
-+          }
 +
-+          // count for cache key
-+          auto digest = crypto::SHA256HashString(request_->url().spec() + salt);
-+          request_info_.url =
-+              AppendQueryParameter(request_info_.url, "_digest", digest);
-+          // TODO encode field value
-+          request_info_.extra_headers.SetHeader("Url-Orig",
-+                                                request_->url().spec());
-+          request_info_.extra_headers.SetHeader("Host-Orig",
-+                                                request_->url().host());
++
++            // count for cache key
++            auto digest = crypto::SHA256HashString(request_->url().spec() + salt);
++            request_info_.url =
++                AppendQueryParameter(request_info_.url, "_digest", digest);
++            // TODO encode field value
++            request_info_.extra_headers.SetHeader("Url-Orig",
++                                                  request_->url().spec());
++            request_info_.extra_headers.SetHeader("Host-Orig",
++                                                  request_->url().host());
++          }
++        
 +        }
 +
          rv = transaction_->Start(
