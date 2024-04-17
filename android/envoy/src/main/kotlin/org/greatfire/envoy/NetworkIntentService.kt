@@ -872,6 +872,9 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val executor: Executor = Executors.newSingleThreadExecutor()
         val myBuilder = CronetEngine.Builder(applicationContext)
         val cronetEngine: CronetEngine = myBuilder
+            .enableBrotli(true)
+            .enableHttp2(true)
+            .enableQuic(true)
             .setUserAgent(DEFAULT_USER_AGENT).build()
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
