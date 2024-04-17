@@ -25,6 +25,8 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
         Envoy.shared.initialize(urls: [])
 
+        Envoy.shared.startProxy()
+
         let conf = WKWebViewConfiguration()
 
         if #available(iOS 17.0, *) {
@@ -49,6 +51,12 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
         webView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
 
         textFieldDidEndEditing(addressTf, reason: .committed)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+
+        Envoy.shared.stopProxy()
     }
 
 
