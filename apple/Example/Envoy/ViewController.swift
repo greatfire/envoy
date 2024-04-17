@@ -13,6 +13,8 @@ import Envoy
 
 class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegate {
 
+    @IBOutlet weak var busyView: UIView!
+
     @IBOutlet weak var addressTf: UITextField!
 
     private var webView: WKWebView!
@@ -23,19 +25,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
         addressTf.text = "https://www.wikipedia.org"
 
-        Envoy.shared.initialize(urls: [])
-
-        Envoy.shared.startProxy()
-
-        let conf = WKWebViewConfiguration()
-
-        if #available(iOS 17.0, *) {
-            if let proxy = Envoy.shared.getProxyConfig() {
-                conf.websiteDataStore.proxyConfigurations.append(proxy)
-            }
-        }
-
-        webView = WKWebView(frame: .zero, configuration: conf)
+        webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
         webView.navigationDelegate = self
         webView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -50,13 +40,27 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
         webView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
         webView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
 
-        textFieldDidEndEditing(addressTf, reason: .committed)
+        busyView.layer.zPosition = 1000
+
+        Task {
+            await Envoy.shared.start(urls: [])
+
+            if #available(iOS 17.0, *) {
+                if let proxy = Envoy.shared.getProxyConfig() {
+                    webView.configuration.websiteDataStore.proxyConfigurations.append(proxy)
+                }
+            }
+
+            busyView.isHidden = true
+
+            textFieldDidEndEditing(addressTf, reason: .committed)
+        }
     }
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
 
-        Envoy.shared.stopProxy()
+        Envoy.shared.stop()
     }
 
 

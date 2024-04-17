@@ -18,7 +18,7 @@ public class Envoy {
     /**
      The currently supported proxies.
      */
-    public enum Proxy: CustomStringConvertible {
+    public enum Proxy: Equatable, CustomStringConvertible {
 
         /**
          The different types of V2Ray transports.
@@ -397,21 +397,21 @@ public class Envoy {
     // MARK: Public Methods
 
     /**
-     Configures Envoy with a set of proxy configuration URLs.
+     Starts Envoy with a set of proxy configuration URLs.
 
      All valid URLs will be considered as candidates and tested against the provided ``testUrl``
      parameter one after the other until a working one is found.
 
      Make this the first thing you do on app start.
 
-     Afterwards, your app can make use of the  ``startProxy()``,  ``getProxyDict()``, ``getProxyConfig()``,
+     Afterwards, your app can make use of the ``getProxyDict()``, ``getProxyConfig()``,
      ``maybeModify(_:)`` and ``revertModification(_:)`` methods without needing to think about the used proxy type.
 
      - parameter urls: A list of proxy configuration URLs.
      - parameter testURL: An endpoint which should be used for testing, if the proxy works. ATTENTION: A HTTP 204 response is expected!
      - parameter testDirect: Flag, if the direct connection should be tested first.
      */
-    public func initialize(urls: [URL], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) {
+    public func start(urls: [URL], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) async {
         var candidates = [Proxy]()
 
         for url in urls {
@@ -495,71 +495,76 @@ public class Envoy {
             }
         }
 
-        initialize(proxies: candidates, testUrl: testUrl, testDirect: testDirect)
+        await start(proxies: candidates, testUrl: testUrl, testDirect: testDirect)
     }
 
     /**
-     Configures Envoy with a set of proxy configurations.
+     Starts Envoy with a set of proxy configurations.
 
      All given proxies will be considered as candidates and tested against the provided ``testUrl``
      parameter one after the other until a working one is found.
 
      Make this the first thing you do on app start.
 
-     Afterwards, your app can make use of the  ``startProxy()``,  ``getProxyDict()``, ``getProxyConfig()``,
+     Afterwards, your app can make use of the  ``getProxyDict()``, ``getProxyConfig()``,
      ``maybeModify(_:)`` and ``revertModification(_:)`` methods without needing to think about the used proxy type.
 
      - parameter urls: A list of proxy configurations.
      - parameter testURL: An endpoint which should be used for testing, if the proxy works. ATTENTION: A HTTP 204 response is expected!
      - parameter testDirect: Flag, if the direct connection should be tested first.
      */
-    public func initialize(proxies: [Proxy], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) {
+    public func start(proxies: [Proxy], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) async {
         var candidates = proxies
 
         if testDirect {
             candidates.insert(.direct, at: 0)
         }
 
-        // TODO: Test potential candidates and select first one working.
-//        let testRequest = URLRequest(url: testUrl)
-//
-//        for proxy in candidates {
-//            var conf = URLSessionConfiguration.ephemeral
-//            conf.connectionProxyDictionary = proxy.getProxyDict()
-//
-//            let session = URLSession(configuration: conf)
-//
-//            let task = Task {
-//                do {
-//                    let (_, response) = try await session.data(for: proxy.maybeModify(testRequest))
-//
-//                    if (response as? HTTPURLResponse)?.statusCode == 204 {
-//                        return true
-//                    }
-//
-//                    return false
-//                }
-//                catch {
-//                    return false
-//                }
-//            }
-//        }
+        let testRequest = URLRequest(url: testUrl)
 
-        proxy = candidates.first ?? .direct
+        await withTaskGroup(of: (Proxy, Bool).self) { group in
+            for proxy in candidates {
+                proxy.start()
+
+                group.addTask {
+                    let conf = URLSessionConfiguration.ephemeral
+                    conf.connectionProxyDictionary = proxy.getProxyDict()
+
+                    let session = URLSession(configuration: conf)
+
+                    do {
+                        let (_, response) = try await session.data(for: proxy.maybeModify(testRequest))
+
+                        return (proxy, (response as? HTTPURLResponse)?.statusCode == 204)
+                    }
+                    catch {
+                        return (proxy, false)
+                    }
+                }
+            }
+
+            while let item = await group.next() {
+                if item.1 {
+                    group.cancelAll()
+
+                    // Stop all proxies except the selected one.
+                    candidates
+                        .filter({ $0 != item.0 })
+                        .forEach { $0.stop() }
+
+                    self.proxy = item.0
+                    break
+                }
+            }
+        }
     }
 
     /**
-     Start the proxy/transport, if needed for the chosen type.
+     Stop any used proxies/transports. Reset to ``Proxy/direct``.
      */
-    public func startProxy() {
-        proxy.start()
-    }
-
-    /**
-     Stop the proxy/transport, if needed for the chosen type.
-     */
-    public func stopProxy() {
+    public func stop() {
         proxy.stop()
+        proxy = .direct
     }
 
     /**

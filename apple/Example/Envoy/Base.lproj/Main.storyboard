@@ -5,6 +5,7 @@
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22684"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -24,22 +25,45 @@
                                     <outlet property="delegate" destination="vXZ-lx-hvc" id="KLG-04-1Gc"/>
                                 </connections>
                             </textField>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Kts-vr-bqF">
+                                <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                                <subviews>
+                                    <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" animating="YES" style="large" translatesAutoresizingMaskIntoConstraints="NO" id="eoL-bA-dyh">
+                                        <rect key="frame" x="169" y="315" width="37" height="37"/>
+                                    </activityIndicatorView>
+                                </subviews>
+                                <color key="backgroundColor" systemColor="systemGray6Color"/>
+                                <constraints>
+                                    <constraint firstItem="eoL-bA-dyh" firstAttribute="centerX" secondItem="Kts-vr-bqF" secondAttribute="centerX" id="JTb-Lr-Pgg"/>
+                                    <constraint firstItem="eoL-bA-dyh" firstAttribute="centerY" secondItem="Kts-vr-bqF" secondAttribute="centerY" id="jTG-Hc-8Mt"/>
+                                </constraints>
+                            </view>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="HpG-rP-wlE"/>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="FWR-BW-8DS" firstAttribute="leading" secondItem="HpG-rP-wlE" secondAttribute="leading" constant="16" id="6qD-YP-zqV"/>
                             <constraint firstItem="HpG-rP-wlE" firstAttribute="trailing" secondItem="FWR-BW-8DS" secondAttribute="trailing" constant="16" id="A2X-BD-gbR"/>
+                            <constraint firstItem="Kts-vr-bqF" firstAttribute="leading" secondItem="kh9-bI-dsS" secondAttribute="leading" id="GaG-kt-uLs"/>
                             <constraint firstItem="FWR-BW-8DS" firstAttribute="top" secondItem="HpG-rP-wlE" secondAttribute="top" constant="8" id="Jru-h6-PYj"/>
+                            <constraint firstAttribute="bottom" secondItem="Kts-vr-bqF" secondAttribute="bottom" id="Lrq-aQ-uFe"/>
+                            <constraint firstAttribute="trailing" secondItem="Kts-vr-bqF" secondAttribute="trailing" id="Z3S-xA-1Rt"/>
+                            <constraint firstItem="Kts-vr-bqF" firstAttribute="top" secondItem="kh9-bI-dsS" secondAttribute="top" id="tso-ED-l89"/>
                         </constraints>
                     </view>
                     <connections>
                         <outlet property="addressTf" destination="FWR-BW-8DS" id="ue7-Mo-HP6"/>
+                        <outlet property="busyView" destination="Kts-vr-bqF" id="5m0-mR-ZSa"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="-105" y="-69"/>
+            <point key="canvasLocation" x="-106.40000000000001" y="-69.715142428785612"/>
         </scene>
     </scenes>
+    <resources>
+        <systemColor name="systemGray6Color">
+            <color red="0.94901960780000005" green="0.94901960780000005" blue="0.96862745100000003" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </systemColor>
+    </resources>
 </document>
