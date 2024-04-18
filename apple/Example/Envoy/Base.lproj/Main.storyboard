@@ -31,11 +31,20 @@
                                     <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" animating="YES" style="large" translatesAutoresizingMaskIntoConstraints="NO" id="eoL-bA-dyh">
                                         <rect key="frame" x="169" y="315" width="37" height="37"/>
                                     </activityIndicatorView>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Testing Connection…" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="98E-bT-81u">
+                                        <rect key="frame" x="20" y="360" width="335" height="21"/>
+                                        <fontDescription key="fontDescription" style="UICTFontTextStyleBody"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
                                 </subviews>
                                 <color key="backgroundColor" systemColor="systemGray6Color"/>
                                 <constraints>
+                                    <constraint firstItem="98E-bT-81u" firstAttribute="leading" secondItem="Kts-vr-bqF" secondAttribute="leading" constant="20" symbolic="YES" id="30q-CD-O7T"/>
                                     <constraint firstItem="eoL-bA-dyh" firstAttribute="centerX" secondItem="Kts-vr-bqF" secondAttribute="centerX" id="JTb-Lr-Pgg"/>
+                                    <constraint firstItem="98E-bT-81u" firstAttribute="top" secondItem="eoL-bA-dyh" secondAttribute="bottom" constant="8" symbolic="YES" id="W2F-hg-XmV"/>
                                     <constraint firstItem="eoL-bA-dyh" firstAttribute="centerY" secondItem="Kts-vr-bqF" secondAttribute="centerY" id="jTG-Hc-8Mt"/>
+                                    <constraint firstAttribute="trailing" secondItem="98E-bT-81u" secondAttribute="trailing" constant="20" symbolic="YES" id="y3T-ua-w6n"/>
                                 </constraints>
                             </view>
                         </subviews>
