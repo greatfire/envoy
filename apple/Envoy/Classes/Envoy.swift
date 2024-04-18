@@ -67,35 +67,25 @@ public class Envoy {
         case v2Ray(type: V2RayType, host: String, port: Int, id: String, path: String?)
 
         /**
-         Meek transport.
-
-         This will need another proxy where Meek is just the obfuscating transport.
-
-         Currently here more for reference and for future development than for actual use.
+         Meek transport which obfuscates another proxy.
 
          - parameter url: The URL to the meek server.
          - parameter front: The front domain to use instead of the Meek server's name in the TLS SNI.
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        case meek(url: URL, front: String)
+        indirect case meek(url: URL, front: String, tunnel: Proxy)
 
         /**
-         Obfs4 transport.
-
-         This will need another proxy where Obfs4 is just the obfuscating transport.
-
-         Currently here more for reference and for future development than for actual use.
+         Obfs4 transport which obfuscates another proxy.
 
          - parameter url: The URL to the meek server.
          - parameter front: The front domain to use instead of the Meek server's name in the TLS SNI.
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        case obfs4(url: URL, front: String)
+        indirect case obfs4(url: URL, front: String, tunnel: Proxy)
 
         /**
-         Snowflake transport.
-
-         This will need another proxy where Snowflake is just the obfuscating transport.
-
-         Currently here more for reference and for future development than for actual use.
+         Snowflake transport which obfuscates another proxy.
 
          - parameter ice: Comma-separated list of ICE servers.
          - parameter broker: URL of signaling broker.
@@ -103,8 +93,9 @@ public class Envoy {
          - parameter ampCache: URL of AMP cache to use as a proxy for signaling.
          - parameter sqsQueue: URL of SQS Queue to use as a proxy for signaling.
          - parameter sqsCreds: Credentials to access SQS Queue.
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        case snowflake(ice: String, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?)
+        indirect case snowflake(ice: String, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?, tunnel: Proxy)
 
         public var description: String {
             switch self {
@@ -117,16 +108,16 @@ public class Envoy {
             case .v2Ray(let type, let host, let port, let id, let path):
                 return "v2ray type=\(type.rawValue), host=\(host), port=\(port), id=\(id), path=\(path ?? "(nil)")"
 
-            case .meek(let url, let front):
-                return "meek url=\(url), front=\(front)"
+            case .meek(let url, let front, let tunnel):
+                return "meek url=\(url), front=\(front), tunnel=\(tunnel)"
 
-            case .obfs4(let url, let front):
-                return "obfs4 url=\(url), front=\(front)"
+            case .obfs4(let url, let front, let tunnel):
+                return "obfs4 url=\(url), front=\(front), tunnel=\(tunnel)"
 
-            case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds):
+            case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, let tunnel):
                 return "snowflake ice=\(ice), broker=\(broker), fronts=\(fronts), "
                     + "ampCache=\(ampCache ?? "(nil)"), sqsQueue=\(sqsQueue?.absoluteString ?? "(nil)"), "
-                    + "sqsCreds=\(sqsCreds ?? "(nil)")"
+                    + "sqsCreds=\(sqsCreds ?? "(nil)"), tunnel=\(tunnel)"
             }
         }
 
@@ -147,7 +138,7 @@ public class Envoy {
                     IEnvoyProxyStartV2raySrtp(host, String(port), id)
                 }
 
-            case .meek(let url, var front):
+            case .meek(let url, var front, _):
                 // If needed, generate randomized host name prefix.
                 if front.hasPrefix(".") {
                     front = randomPrefix().appending(front)
@@ -157,7 +148,7 @@ public class Envoy {
 
                 IEnvoyProxyStartMeek(user, "\0", nil, false, false)
 
-            case .obfs4(let url, var front):
+            case .obfs4(let url, var front, _):
                 // If needed, generate randomized host name prefix.
                 if front.hasPrefix(".") {
                     front = randomPrefix().appending(front)
@@ -167,7 +158,7 @@ public class Envoy {
 
                 IEnvoyProxyStartObfs4(user, "\0", nil, false, false)
 
-            case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds):
+            case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, _):
                 var fronts = fronts.split(separator: ",").map { String($0) }
 
                 for i in 0 ..< fronts.count {
@@ -227,9 +218,51 @@ public class Envoy {
          - returns: An eventualy modified ``URLRequest`` object instead of the original one.
          */
         public func maybeModify(_ request: URLRequest) -> URLRequest {
-            guard case .envoy(var url, let headers, let salt) = self,
-                  !(request.url?.absoluteString.hasPrefix(url.absoluteString) ?? false)
-            else {
+            var url: URL
+            let headers: [String: String]
+            let salt: String?
+
+            switch self {
+            case .envoy(let u, let h, let s):
+                url = u
+                headers = h
+                salt = s
+
+            case .meek(_, _, let tunnel):
+                if case .envoy(let u, let h, let s) = tunnel {
+                    url = u
+                    headers = h
+                    salt = s
+                }
+                else {
+                    return request
+                }
+
+            case .obfs4(_, _, let tunnel):
+                if case .envoy(let u, let h, let s) = tunnel {
+                    url = u
+                    headers = h
+                    salt = s
+                }
+                else {
+                    return request
+                }
+
+            case .snowflake(_, _, _, _, _, _, let tunnel):
+                if case .envoy(let u, let h, let s) = tunnel {
+                    url = u
+                    headers = h
+                    salt = s
+                }
+                else {
+                    return request
+                }
+
+            default:
+                return request
+            }
+
+            guard !(request.url?.absoluteString.hasPrefix(url.absoluteString) ?? false) else {
                 return request
             }
 
@@ -419,32 +452,10 @@ public class Envoy {
                 candidates.append(.envoy(url: url, headers: [:], salt: nil))
             }
             else if url.scheme == "envoy" {
-                var dest: URLComponents? = nil
-                var address: String? = nil
-                var headers = [String: String]()
-                var salt: String? = nil
-
-                for item in url.queryItems {
-                    if item.name == "url", let value = item.value, !value.isEmpty {
-                        dest = URLComponents(string: value)
-                    }
-                    else if item.name == "address" {
-                        address = item.value
-                    }
-                    else if item.name == "salt", let value = item.value, !value.isEmpty {
-                        salt = value
-                    }
-                    else if item.name.hasPrefix("header_") {
-                        headers[String(item.name.dropFirst(7))] = item.value
-                    }
-                }
-
-                if !(address?.isEmpty ?? true) {
-                    dest?.host = address
-                }
-
-                if let dest = dest?.url {
-                    candidates.append(.envoy(url: dest, headers: headers, salt: salt))
+                if let urlc = url.urlc,
+                   let proxy = Self.extractEnvoyConfig(from: urlc)
+                {
+                    candidates.append(proxy)
                 }
             }
             else if let type = Proxy.V2RayType(rawValue: url.scheme ?? "") {
@@ -463,18 +474,24 @@ public class Envoy {
                 if let urlc = url.urlc,
                    let url = urlc.firstQueryItem(of: "url"),
                    let url = URL(string: url),
-                   let front = urlc.firstQueryItem(of: "front")
+                   let front = urlc.firstQueryItem(of: "front"),
+                   let tunnel = urlc.firstQueryItem(of: "tunnel"),
+                   let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+                   let tunnel = Self.extractEnvoyConfig(from: tunnel)
                 {
-                    candidates.append(.meek(url: url, front: front))
+                    candidates.append(.meek(url: url, front: front, tunnel: tunnel))
                 }
             }
             else if url.scheme == "obfs4" {
                 if let urlc = url.urlc,
                    let url = urlc.firstQueryItem(of: "url"),
                    let url = URL(string: url),
-                   let front = urlc.firstQueryItem(of: "front")
+                   let front = urlc.firstQueryItem(of: "front"),
+                   let tunnel = urlc.firstQueryItem(of: "tunnel"),
+                   let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+                   let tunnel = Self.extractEnvoyConfig(from: tunnel)
                 {
-                    candidates.append(.obfs4(url: url, front: front))
+                    candidates.append(.obfs4(url: url, front: front, tunnel: tunnel))
                 }
             }
             else if url.scheme == "snowflake" {
@@ -482,7 +499,10 @@ public class Envoy {
                    let broker = urlc.firstQueryItem(of: "broker"),
                    let broker = URL(string: broker),
                    let fronts = urlc.firstQueryItem(of: "fronts") ?? urlc.firstQueryItem(of: "front"),
-                   let ice = urlc.firstQueryItem(of: "ice")
+                   let ice = urlc.firstQueryItem(of: "ice"),
+                   let tunnel = urlc.firstQueryItem(of: "tunnel"),
+                   let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+                   let tunnel = Self.extractEnvoyConfig(from: tunnel)
                 {
                     let ampCache = urlc.firstQueryItem(of: "ampCache")
                     let sqsQueue = URL(string: urlc.firstQueryItem(of: "sqsQueue") ?? "")
@@ -490,7 +510,7 @@ public class Envoy {
 
                     candidates.append(.snowflake(
                         ice: ice, broker: broker, fronts: fronts,
-                        ampCache: ampCache, sqsQueue: sqsQueue, sqsCreds: sqsCreds))
+                        ampCache: ampCache, sqsQueue: sqsQueue, sqsCreds: sqsCreds, tunnel: tunnel))
                 }
             }
         }
@@ -713,5 +733,45 @@ public class Envoy {
         }
 
         return string
+    }
+
+    /**
+     Extract an Envoy proxy config from a given URL, if it can be found.
+
+     Will ignore some arguments which are only available with Cronet in the Android version.
+
+     - parameter urlc: An Envoy proxy config URL as ``URLComponents``.
+     - returns: An ``Proxy/envoy(url:headers:salt:)`` if found, or `nil`.
+     */
+    private static func extractEnvoyConfig(from urlc: URLComponents) -> Proxy? {
+        var dest: URLComponents? = nil
+        var address: String? = nil
+        var headers = [String: String]()
+        var salt: String? = nil
+
+        for item in urlc.queryItems ?? [] {
+            if item.name == "url", let value = item.value, !value.isEmpty {
+                dest = URLComponents(string: value)
+            }
+            else if item.name == "address" {
+                address = item.value
+            }
+            else if item.name == "salt", let value = item.value, !value.isEmpty {
+                salt = value
+            }
+            else if item.name.hasPrefix("header_") {
+                headers[String(item.name.dropFirst(7))] = item.value
+            }
+        }
+
+        if !(address?.isEmpty ?? true) {
+            dest?.host = address
+        }
+
+        if let dest = dest?.url {
+            return .envoy(url: dest, headers: headers, salt: salt)
+        }
+
+        return nil
     }
 }
