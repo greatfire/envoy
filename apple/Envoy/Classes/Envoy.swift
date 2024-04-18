@@ -546,16 +546,18 @@ public class Envoy {
             while let item = await group.next() {
                 if item.1 {
                     group.cancelAll()
+                    proxy = item.0
 
-                    // Stop all proxies except the selected one.
-                    candidates
-                        .filter({ $0 != item.0 })
-                        .forEach { $0.stop() }
-
-                    self.proxy = item.0
                     break
                 }
             }
+
+            // Stop all proxies except the selected one.
+            candidates
+                .filter({ $0 != proxy })
+                .forEach { $0.stop() }
+
+//            print("[\(String(describing: type(of: self)))] selected proxy: \(proxy)")
         }
     }
 
