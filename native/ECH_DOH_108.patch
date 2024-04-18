@@ -1,9 +1,9 @@
- components/cronet/url_request_context_config.cc | 33 +++++++++++++++++++++++++
+ components/cronet/url_request_context_config.cc | 47 +++++++++++++++++++++++++
  net/base/features.cc                            |  2 +-
- 2 files changed, 34 insertions(+), 1 deletion(-)
+ 2 files changed, 48 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 6db7ba3482d4d..e479eb1c0d6e4 100644
+index 6db7ba3482d4d..463716e29fb7c 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -29,6 +29,7 @@
@@ -14,7 +14,7 @@ index 6db7ba3482d4d..e479eb1c0d6e4 100644
  #include "net/http/http_network_session.h"
  #include "net/http/http_server_properties.h"
  #include "net/log/net_log.h"
-@@ -886,6 +887,38 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -886,6 +887,52 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    SetContextBuilderExperimentalOptions(context_builder, &session_params,
                                         quic_context->params(), bound_network);
  
@@ -26,10 +26,24 @@ index 6db7ba3482d4d..e479eb1c0d6e4 100644
 +  // force secure DNS
 +  overrides.secure_dns_mode = net::SecureDnsMode::kSecure;
 +
-+  // set Cloudflare as the DoH server
++  // set DNS.sb, Quad9, and Cloudflare as DoH servers
 +  overrides.dns_over_https_config = net::DnsOverHttpsConfig::FromString(R"(
 +    {
 +      "servers": [{
++        "template": "https://doh.dns.sb/dns-query",
++        "endpoints": [{
++          "ips": ["45.11.45.11"]
++        }, {
++          "ips": ["185.222.222.222"]
++        }]
++      },{
++        "template": "https://dns.quad9.net/dns-query",
++        "endpoints": [{
++          "ips": ["9.9.9.9", "2620:fe::fe"]
++        }, {
++          "ips": ["149.112.112.112", "2620:fe::9"]
++        }]
++      },{
 +        "template": "https://chrome.cloudflare-dns.com/dns-query",
 +        "endpoints": [{
 +          "ips": ["1.1.1.1", "2606:4700:4700::1111"]
