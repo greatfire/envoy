@@ -126,6 +126,16 @@ public class Envoy {
          */
         public func start() {
             switch self {
+            case .meek, .obfs4, .snowflake:
+                if let path = Envoy.ptStateDir?.path {
+                    IEnvoyProxy.setStateLocation(path)
+                }
+
+            default:
+                break
+            }
+
+            switch self {
             case .v2Ray(let type, let host, let port, let id, let path):
                 switch type {
                 case .ws:
@@ -146,7 +156,7 @@ public class Envoy {
 
                 let user = "url=\(url.absoluteString);front=\(front)"
 
-                IEnvoyProxyStartMeek(user, "\0", nil, false, false)
+                IEnvoyProxyStartMeek(user, "\0", "INFO", Envoy.ptLogging, false)
 
             case .obfs4(let url, var front, _):
                 // If needed, generate randomized host name prefix.
@@ -156,7 +166,7 @@ public class Envoy {
 
                 let user = "url=\(url.absoluteString);front=\(front)"
 
-                IEnvoyProxyStartObfs4(user, "\0", nil, false, false)
+                IEnvoyProxyStartObfs4(user, "\0", "INFO", Envoy.ptLogging, false)
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, _):
                 var fronts = fronts.split(separator: ",").map { String($0) }
@@ -167,8 +177,10 @@ public class Envoy {
                     }
                 }
 
-                IEnvoyProxyStartSnowflake(ice, broker.absoluteString, fronts.joined(separator: ","), ampCache,
-                                          sqsQueue?.absoluteString, sqsCreds, nil, true, true, false, 1)
+                IEnvoyProxyStartSnowflake(
+                    ice, broker.absoluteString, fronts.joined(separator: ","), ampCache,
+                    sqsQueue?.absoluteString, sqsCreds, Envoy.ptLogging ? "snowflake.log" : nil,
+                    true, true, false, 1)
 
             default:
                 break
@@ -416,6 +428,29 @@ public class Envoy {
     // MARK: Public Properties
 
     public static let shared = Envoy()
+
+    /**
+     The Pluggble Transports State Directory.
+
+     This is needed for ``Proxy/meek(url:front:tunnel:)``, ``Proxy/obfs4(url:front:tunnel:)``
+     and ``Proxy/snowflake(ice:broker:fronts:ampCache:sqsQueue:sqsCreds:tunnel:)``
+     transports.
+
+     It will default to a directory named "pt_state" in the ``FileManager/SearchPathDirectory/cachesDirectory``
+     of the ``FileManager/SearchPathDomainMask/userDomainMask``.
+
+     Change this, if you want to e.g. move it to a shared directory.
+     */
+    public static var ptStateDir: URL? = FileManager.default
+        .urls(for: .cachesDirectory, in: .userDomainMask).first?
+        .appendingPathComponent("pt_state", isDirectory: true)
+
+    /**
+     Set to `true` to enable logging for Lyrebird (Meek and Obfs4) and Snowflake transports.
+
+     The logs can be found in the ``ptStateDir``.
+     */
+    public static var ptLogging = false
 
 
     // MARK: Private Properties
