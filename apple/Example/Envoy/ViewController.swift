@@ -103,15 +103,15 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
             return decisionHandler(.allow)
         }
 
-        if let text = navigationAction.request.url?.absoluteString, !text.isEmpty {
+        if let text = Envoy.shared.revertModification(navigationAction.request).url?.absoluteString,
+           !text.isEmpty
+        {
             addressTf.text = text
         }
 
         // This request needs to be modified. Cancel and re-issue.
         decisionHandler(.cancel)
 
-        DispatchQueue.main.async {
-            webView.load(modified)
-        }
+        webView.load(modified)
     }
 }

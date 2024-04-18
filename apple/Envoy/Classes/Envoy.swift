@@ -49,6 +49,13 @@ public class Envoy {
         /**
          The special Envoy HTTP proxy.
 
+         NOTE: Some headers are reserved and cannot be modified with the `URLSession` HTTP client.
+         Most notably, this includes the `Host` header. See
+         [Reserved Headers](https://developer.apple.com/documentation/foundation/nsurlrequest#1776617)
+         for details.
+
+         ALSO NOTE: The iOS version doesn't support some of the arguments which are handled by Cronet in the Android version.
+
          - parameter url: The URL to the Envoy proxy.
          - parameter headers: Additional headers to send.
          - parameter salt: A predefined salt for a cache-busting query parameter named `_digest`. Will be randomly generated on each request, if not given.
