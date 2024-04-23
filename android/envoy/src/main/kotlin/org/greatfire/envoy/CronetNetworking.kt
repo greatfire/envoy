@@ -27,6 +27,52 @@ object CronetNetworking {
 
     private const val TAG = "Envoy"
 
+    fun buildEngineForDirect(context: Context): CronetEngine {
+        val builder = CronetEngine.Builder(context)
+        return builder
+            .enableBrotli(true)
+            .enableHttp2(true)
+            .enableQuic(true)
+            .build()
+    }
+
+    fun buildEngineForTest(
+        context: Context,
+        cacheFolder: String,
+        envoyUrl: String?,
+        strategy: Int = 0
+    ): CronetEngine {
+        return buildEngine(
+            context,
+            cacheFolder,
+            envoyUrl,
+            strategy,
+            1  // 1 MB cache size for tests
+        )
+    }
+    fun buildEngine(
+        context: Context,
+        cacheFolder: String = "cronet-cache",
+        envoyUrl: String?,
+        strategy: Int = 0,
+        cacheSize: Long = 10
+    ): CronetEngine {
+        val cacheDir = File(context.cacheDir, cacheFolder)
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs()
+        }
+        val builder = CronetEngine.Builder(context)
+        return builder
+            .enableBrotli(true)
+            .enableHttp2(true)
+            .enableQuic(true)
+            .setEnvoyUrl(envoyUrl)
+            .SetStrategy(strategy)
+            .setStoragePath(cacheDir.absolutePath)
+            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
+            .build()
+    }
+
     @JvmStatic
     fun cronetEngine(): CronetEngine? {
         return mCronetEngine
@@ -49,17 +95,11 @@ object CronetNetworking {
         if (mCustomCronetBuilder != null) {
             mCronetEngine = mCustomCronetBuilder!!.build(context)
         } else {
-            val cacheDir = File(context.cacheDir, "cronet-cache")
-            cacheDir.mkdirs()
-            mCronetEngine = CronetEngine.Builder(context)
-                    .enableBrotli(true)
-                    .enableHttp2(true)
-                    .enableQuic(true)
-                    .setEnvoyUrl(envoyUrl)
-                    .SetStrategy(strategy)
-                    .setStoragePath(cacheDir.absolutePath)
-                    .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 10 * 1024 * 1024) // 10 MegaBytes
-                    .build()
+            mCronetEngine = buildEngine(
+                context = context,
+                envoyUrl = envoyUrl,
+                strategy = strategy
+            )
             if (mCronetEngine != null) {
                 Log.d(TAG, "engine version " + mCronetEngine!!.versionString)
                 val factory = mCronetEngine!!.createURLStreamHandlerFactory()
