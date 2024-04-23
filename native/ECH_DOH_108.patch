@@ -1,9 +1,9 @@
- components/cronet/url_request_context_config.cc | 47 +++++++++++++++++++++++++
+ components/cronet/url_request_context_config.cc | 54 +++++++++++++++++++++++++
  net/base/features.cc                            |  2 +-
- 2 files changed, 48 insertions(+), 1 deletion(-)
+ 2 files changed, 55 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 6db7ba3482d4d..463716e29fb7c 100644
+index 6db7ba3482d4d..db916fe2ee341 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -29,6 +29,7 @@
@@ -14,7 +14,7 @@ index 6db7ba3482d4d..463716e29fb7c 100644
  #include "net/http/http_network_session.h"
  #include "net/http/http_server_properties.h"
  #include "net/log/net_log.h"
-@@ -886,6 +887,52 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -886,6 +887,59 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    SetContextBuilderExperimentalOptions(context_builder, &session_params,
                                         quic_context->params(), bound_network);
  
@@ -26,7 +26,7 @@ index 6db7ba3482d4d..463716e29fb7c 100644
 +  // force secure DNS
 +  overrides.secure_dns_mode = net::SecureDnsMode::kSecure;
 +
-+  // set DNS.sb, Quad9, and Cloudflare as DoH servers
++  // set DNS.sb, Quad9, Cloudflare, and NextDNS as DoH servers
 +  overrides.dns_over_https_config = net::DnsOverHttpsConfig::FromString(R"(
 +    {
 +      "servers": [{
@@ -49,6 +49,13 @@ index 6db7ba3482d4d..463716e29fb7c 100644
 +          "ips": ["1.1.1.1", "2606:4700:4700::1111"]
 +        }, {
 +          "ips": ["1.0.0.1", "2606:4700:4700::1001"]
++        }]
++      },{
++        "template": "https://chromium.dns.nextdns.io",
++        "endpoints": [{
++          "ips": ["209.209.57.165", "2001:19f0:ac01:170:5400:2ff:fec8:72c8"]
++        },{
++          "ips": ["104.238.181.28", "2a0e:6901:410:25:5054:ff:fe1c:7c81"]
 +        }]
 +      }]
 +    }
