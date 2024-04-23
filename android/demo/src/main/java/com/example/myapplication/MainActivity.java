@@ -24,6 +24,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentManager;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
@@ -48,7 +49,7 @@ import java.util.List;
 
 public class MainActivity extends FragmentActivity {
 
-    private static final String TAG = "EnvoyDemoApp";
+    private static final String TAG = "FOO"; // "EnvoyDemoApp";
 
     private ViewPager2 viewPager;
 
@@ -57,10 +58,14 @@ public class MainActivity extends FragmentActivity {
     NetworkIntentService mService;
     boolean mBound = false;
 
+    MyFragmentStateAdapter pagerAdapter = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Log.d("FOO", "HELLO?");
 
         // register to receive test results
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(ENVOY_BROADCAST_VALIDATION_SUCCEEDED));
@@ -73,13 +78,15 @@ public class MainActivity extends FragmentActivity {
         ContextCompat.startForegroundService(getApplicationContext(), shadowsocksIntent);
 
         viewPager = findViewById(R.id.pager);
-        FragmentStateAdapter pagerAdapter = new MyFragmentStateAdapter(this);
+        pagerAdapter = new MyFragmentStateAdapter(this);
         viewPager.setAdapter(pagerAdapter);
 
+        /*
         TabLayout tabLayout = findViewById(R.id.tab_layout);
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> tab.setText(titles[position])
         ).attach();
+        */
 
         String envoyUrl = "socks5://127.0.0.1:1080"; // Keep this if no port conflicts
 
@@ -119,6 +126,12 @@ public class MainActivity extends FragmentActivity {
 
     static class MyFragmentStateAdapter extends FragmentStateAdapter {
 
+        private Fragment currentFragment = null;
+
+        public Fragment getCurrentFragment() {
+            return currentFragment;
+        }
+
         MyFragmentStateAdapter(FragmentActivity fa) {
             super(fa);
         }
@@ -129,20 +142,28 @@ public class MainActivity extends FragmentActivity {
             Log.d(TAG, "fragment at position " + position);
             switch (position) {
                 case 0:
-                    return new CronetFragment();
+                    currentFragment = new CronetFragment();
+                    break;
                 case 1:
-                    return new OkHttpFragment();
+                    currentFragment = new OkHttpFragment();
+                    break;
                 case 2:
-                    return new WebViewFragment();
+                    currentFragment = new WebViewFragment();
+                    break;
                 case 3:
-                    return new VolleyFragment();
+                    currentFragment = new VolleyFragment();
+                    break;
                 case 4:
-                    return new HttpURLConnectionFragment();
+                    currentFragment = new HttpURLConnectionFragment();
+                    break;
                 case 5:
-                    return new SimpleFragment();
+                    currentFragment = new SimpleFragment();
+                    break;
                 default:
-                    return BaseFragment.newInstance(position);
+                    currentFragment = BaseFragment.newInstance(position);
+                    break;
             }
+            return currentFragment;
         }
 
         @Override
@@ -211,6 +232,14 @@ public class MainActivity extends FragmentActivity {
 
         @Override
         public void onReceive(Context context, Intent intent) {
+
+            if (pagerAdapter.getCurrentFragment() instanceof CronetFragment) {
+                Log.d("FOO", "GOT CORRECT FRAGMENT");
+                ((CronetFragment)pagerAdapter.getCurrentFragment()).envoyResponse();
+            } else {
+                Log.d("FOO", "GOT UNEXPECTED FRAGMENT");
+            }
+
             if (intent != null) {
                 final String envoyUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED);
                 if (envoyUrl != null && !envoyUrl.isEmpty()) {
@@ -246,4 +275,8 @@ public class MainActivity extends FragmentActivity {
             }
         }
     };
+
+    public void startCronet() {
+        Log.d("FOO", "ACTIVITY METHOD!");
+    }
 }
