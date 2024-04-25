@@ -870,7 +870,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "create direct request to " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
 
         val executor: Executor = Executors.newSingleThreadExecutor()
-        val cronetEngine: CronetEngine = CronetNetworking.buildEngineForDirect(applicationContext)
+        val cronetEngine: CronetEngine = CronetNetworking.buildEngine(context = applicationContext)
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
             MyUrlRequestCallback(
@@ -907,11 +907,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
             try {
                 val executor: Executor = Executors.newSingleThreadExecutor()
-                val cronetEngine: CronetEngine = CronetNetworking.buildEngineForTest(
-                    applicationContext,
-                    cacheFolder,
-                    envoyUrl,
-                    strategy
+                val cronetEngine: CronetEngine = CronetNetworking.buildEngine(
+                    context = applicationContext,
+                    cacheFolder = cacheFolder,
+                    envoyUrl = envoyUrl,
+                    strategy = strategy,
+                    cacheSize = 1
                 )
                 val requestBuilder = cronetEngine.newUrlRequestBuilder(
                     captive_portal_url,
