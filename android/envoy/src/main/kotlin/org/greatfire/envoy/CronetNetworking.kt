@@ -27,50 +27,42 @@ object CronetNetworking {
 
     private const val TAG = "Envoy"
 
-    fun buildEngineForDirect(context: Context): CronetEngine {
-        val builder = CronetEngine.Builder(context)
-        return builder
-            .enableBrotli(true)
-            .enableHttp2(true)
-            .enableQuic(true)
-            .build()
-    }
-
-    fun buildEngineForTest(
-        context: Context,
-        cacheFolder: String,
-        envoyUrl: String?,
-        strategy: Int = 0
-    ): CronetEngine {
-        return buildEngine(
-            context,
-            cacheFolder,
-            envoyUrl,
-            strategy,
-            1  // 1 MB cache size for tests
-        )
-    }
     fun buildEngine(
         context: Context,
-        cacheFolder: String = "cronet-cache",
-        envoyUrl: String?,
+        cacheFolder: String? = null,
+        envoyUrl: String? = null,
         strategy: Int = 0,
-        cacheSize: Long = 10
+        cacheSize: Long = 0
     ): CronetEngine {
-        val cacheDir = File(context.cacheDir, cacheFolder)
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
-        }
-        val builder = CronetEngine.Builder(context)
-        return builder
+        var builder = CronetEngine.Builder(context)
             .enableBrotli(true)
             .enableHttp2(true)
             .enableQuic(true)
-            .setEnvoyUrl(envoyUrl)
-            .SetStrategy(strategy)
-            .setStoragePath(cacheDir.absolutePath)
-            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
-            .build()
+        if (!cacheFolder.isNullOrEmpty() && cacheSize > 0) {
+            Log.d("FOO", "FOUND CACHE SETTINGS FOR BUILDER: " + cacheFolder)
+            val cacheDir = File(context.cacheDir, cacheFolder)
+            if (!cacheDir.exists()) {
+                cacheDir.mkdirs()
+            }
+            builder = builder
+                .setStoragePath(cacheDir.absolutePath)
+                .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
+        } else {
+            Log.d("FOO", "FOUND NO CACHE SETTINGS FOR BUILDER")
+        }
+        if (!envoyUrl.isNullOrEmpty()) {
+            Log.d("FOO", "FOUND ENVOY SETTINGS FOR BUILDER: " + envoyUrl)
+            builder = builder.setEnvoyUrl(envoyUrl)
+        } else {
+            Log.d("FOO", "FOUND NO ENVOY SETTINGS FOR BUILDER")
+        }
+        if (strategy > 0) {
+            Log.d("FOO", "FOUND STRATEGY SETTINGS FOR BUILDER: " + strategy)
+            builder = builder.SetStrategy(strategy)
+        } else {
+            Log.d("FOO", "FOUND NO STRATEGY SETTINGS FOR BUILDER")
+        }
+        return builder.build()
     }
 
     @JvmStatic
@@ -97,8 +89,10 @@ object CronetNetworking {
         } else {
             mCronetEngine = buildEngine(
                 context = context,
+                cacheFolder = "cronet-cache",
                 envoyUrl = envoyUrl,
-                strategy = strategy
+                strategy = strategy,
+                cacheSize = 10
             )
             if (mCronetEngine != null) {
                 Log.d(TAG, "engine version " + mCronetEngine!!.versionString)
