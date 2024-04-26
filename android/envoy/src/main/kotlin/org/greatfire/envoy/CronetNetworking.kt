@@ -39,7 +39,6 @@ object CronetNetworking {
             .enableHttp2(true)
             .enableQuic(true)
         if (!cacheFolder.isNullOrEmpty() && cacheSize > 0) {
-            Log.d("FOO", "FOUND CACHE SETTINGS FOR BUILDER: " + cacheFolder)
             val cacheDir = File(context.cacheDir, cacheFolder)
             if (!cacheDir.exists()) {
                 cacheDir.mkdirs()
@@ -47,20 +46,12 @@ object CronetNetworking {
             builder = builder
                 .setStoragePath(cacheDir.absolutePath)
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
-        } else {
-            Log.d("FOO", "FOUND NO CACHE SETTINGS FOR BUILDER")
         }
         if (!envoyUrl.isNullOrEmpty()) {
-            Log.d("FOO", "FOUND ENVOY SETTINGS FOR BUILDER: " + envoyUrl)
             builder = builder.setEnvoyUrl(envoyUrl)
-        } else {
-            Log.d("FOO", "FOUND NO ENVOY SETTINGS FOR BUILDER")
         }
         if (strategy > 0) {
-            Log.d("FOO", "FOUND STRATEGY SETTINGS FOR BUILDER: " + strategy)
             builder = builder.SetStrategy(strategy)
-        } else {
-            Log.d("FOO", "FOUND NO STRATEGY SETTINGS FOR BUILDER")
         }
         return builder.build()
     }

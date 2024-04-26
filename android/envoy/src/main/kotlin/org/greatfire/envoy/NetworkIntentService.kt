@@ -899,17 +899,16 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "create request to " + captive_portal_url + " for url: " + UrlUtil.sanitizeUrl(envoyUrl, envoyService))
 
         val sanitizedOriginal = UrlUtil.sanitizeUrl(originalUrl, envoyService)
-        val cacheFolder = cacheMap.get(originalUrl)
 
-        if (!cacheFolder.isNullOrEmpty()) {
+        if (cacheMap.keys.contains(originalUrl)) {
 
-            Log.d(TAG, "cache setup, found cache directory for " + sanitizedOriginal + " -> " + cacheFolder)
+            Log.d(TAG, "cache setup, found cache directory for " + sanitizedOriginal + " -> " + cacheMap.get(originalUrl))
 
             try {
                 val executor: Executor = Executors.newSingleThreadExecutor()
                 val cronetEngine: CronetEngine = CronetNetworking.buildEngine(
                     context = applicationContext,
-                    cacheFolder = cacheFolder,
+                    cacheFolder = cacheMap.get(originalUrl),
                     envoyUrl = envoyUrl,
                     strategy = strategy,
                     cacheSize = 1
@@ -929,7 +928,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "cache setup, cache cronet engine for url " + sanitizedOriginal)
                 cronetMap.put(originalUrl, cronetEngine)
             } catch (ise: IllegalStateException) {
-                Log.e(TAG, "cache setup, cache directory " + cacheFolder + " could not be used")
+                Log.e(TAG, "cache setup, cache directory " + cacheMap.get(originalUrl) + " could not be used")
             }
         } else {
             Log.e(TAG, "cache setup, could not find cache directory for " + sanitizedOriginal)
