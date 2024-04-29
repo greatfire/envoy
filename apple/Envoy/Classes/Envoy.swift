@@ -85,11 +85,11 @@ public class Envoy {
         /**
          Obfs4 transport which obfuscates another proxy.
 
-         - parameter url: The URL to the meek server.
-         - parameter front: The front domain to use instead of the Meek server's name in the TLS SNI.
+         - parameter cert: The pulbic component of the Obfs4 server's Curve25519 key.
+         - parameter iatMode: The "Inter-Ariival Time" timing randomization mode.
          - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        indirect case obfs4(url: URL, front: String, tunnel: Proxy)
+        indirect case obfs4(cert: String, iatMode: Int, tunnel: Proxy)
 
         /**
          Snowflake transport which obfuscates another proxy.
@@ -118,8 +118,8 @@ public class Envoy {
             case .meek(let url, let front, let tunnel):
                 return "meek url=\(url), front=\(front), tunnel=\(tunnel)"
 
-            case .obfs4(let url, let front, let tunnel):
-                return "obfs4 url=\(url), front=\(front), tunnel=\(tunnel)"
+            case .obfs4(let cert, let iatMode, let tunnel):
+                return "obfs4 cert=\(cert), iatMode\(iatMode), tunnel=\(tunnel)"
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, let tunnel):
                 return "snowflake ice=\(ice), broker=\(broker), fronts=\(fronts), "
@@ -155,25 +155,8 @@ public class Envoy {
                     IEnvoyProxyStartV2raySrtp(host, String(port), id)
                 }
 
-            case .meek(let url, var front, _):
-                // If needed, generate randomized host name prefix.
-                if front.hasPrefix(".") {
-                    front = randomPrefix().appending(front)
-                }
-
-                let user = "url=\(url.absoluteString);front=\(front)"
-
-                IEnvoyProxyStartMeek(user, "\0", "INFO", Envoy.ptLogging, false)
-
-            case .obfs4(let url, var front, _):
-                // If needed, generate randomized host name prefix.
-                if front.hasPrefix(".") {
-                    front = randomPrefix().appending(front)
-                }
-
-                let user = "url=\(url.absoluteString);front=\(front)"
-
-                IEnvoyProxyStartObfs4(user, "\0", "INFO", Envoy.ptLogging, false)
+            case .meek, .obfs4:
+                IEnvoyProxyStartLyrebird("INFO", Envoy.ptLogging, false)
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, _):
                 var fronts = fronts.split(separator: ",").map { String($0) }
@@ -379,11 +362,16 @@ public class Envoy {
                     return getSocks5Dict(IEnvoyProxyV2raySrtpPort())
                 }
 
-            case .meek:
-                return getSocks5Dict(IEnvoyProxyMeekPort())
+            case .meek(let url, var front, _):
+                // If needed, generate randomized host name prefix.
+                if front.hasPrefix(".") {
+                    front = randomPrefix().appending(front)
+                }
 
-            case .obfs4:
-                return getSocks5Dict(IEnvoyProxyObfs4Port())
+                return getSocks5Dict(IEnvoyProxyMeekPort(), arguments: ["url": url.absoluteString, "front": front])
+
+            case .obfs4(let cert, let iatMode, _):
+                return getSocks5Dict(IEnvoyProxyObfs4Port(), arguments: ["cert": cert, "iat-mode": String(iatMode)])
 
             case .snowflake:
                 return getSocks5Dict(IEnvoyProxySnowflakePort())
@@ -416,11 +404,16 @@ public class Envoy {
                     return getSocks5Config(IEnvoyProxyV2raySrtpPort())
                 }
 
-            case .meek:
-                return getSocks5Config(IEnvoyProxyMeekPort())
+            case .meek(let url, var front, _):
+                // If needed, generate randomized host name prefix.
+                if front.hasPrefix(".") {
+                    front = randomPrefix().appending(front)
+                }
 
-            case .obfs4:
-                return getSocks5Config(IEnvoyProxyObfs4Port())
+                return getSocks5Config(IEnvoyProxyMeekPort(), arguments: ["url": url.absoluteString, "front": front])
+
+            case .obfs4(let cert, let iatMode, _):
+                return getSocks5Config(IEnvoyProxyObfs4Port(), arguments: ["cert": cert, "iat-mode": String(iatMode)])
 
             case .snowflake:
                 return getSocks5Config(IEnvoyProxySnowflakePort())
@@ -529,14 +522,14 @@ public class Envoy {
             }
             else if url.scheme == "obfs4" {
                 if let urlc = url.urlc,
-                   let url = urlc.firstQueryItem(of: "url"),
-                   let url = URL(string: url),
-                   let front = urlc.firstQueryItem(of: "front"),
+                   let cert = urlc.firstQueryItem(of: "cert"),
                    let tunnel = urlc.firstQueryItem(of: "tunnel"),
                    let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
                    let tunnel = Self.extractEnvoyConfig(from: tunnel)
                 {
-                    candidates.append(.obfs4(url: url, front: front, tunnel: tunnel))
+                    let iatMode = Int(urlc.firstQueryItem(of: "iat-mode") ?? "") ?? 0
+
+                    candidates.append(.obfs4(cert: cert, iatMode: iatMode, tunnel: tunnel))
                 }
             }
             else if url.scheme == "snowflake" {
@@ -735,31 +728,89 @@ public class Envoy {
      Create a valid SOCKS5 proxy configuration dictionary for a localhost server with the given port.
 
      - parameter port: The port number to use.
+     - parameter arguments: Pluggable Transport arguments to serialize into username/password. **ATTENTION**: Combined strings cannot be longer than 512 bytes!
      - returns: A proxy configuration dictionary.
      */
-    private static func getSocks5Dict(_ port: Int) -> [AnyHashable: Any] {
-        return [
+    private static func getSocks5Dict(_ port: Int, arguments: [String: String]? = nil) -> [AnyHashable: Any] {
+        var dict: [AnyHashable: Any] = [
             kCFProxyTypeKey: kCFProxyTypeSOCKS,
             kCFStreamPropertySOCKSVersion: kCFStreamSocketSOCKSVersion5,
             kCFStreamPropertySOCKSProxyHost: "127.0.0.1",
             kCFStreamPropertySOCKSProxyPort: port]
+
+        if let (user, password) = asPtArguments(arguments) {
+            dict[kCFStreamPropertySOCKSUser] = user
+            dict[kCFStreamPropertySOCKSPassword] = password
+        }
+
+        return dict
     }
 
     /**
      Create a valid SOCKS5 proxy configuration object for a localhost server with the given port.
 
      - parameter port: The port number to use.
+     - parameter arguments: Pluggable Transport arguments to serialize into username/password. **ATTENTION**: Combined strings cannot be longer than 512 bytes!
      - returns: A ``ProxyConfiguration`` object.
      */
     @available(iOS 17.0, *)
-    private static func getSocks5Config(_ port: Int) -> ProxyConfiguration? {
+    private static func getSocks5Config(_ port: Int, arguments: [String: String]? = nil) -> ProxyConfiguration? {
         guard port <= UInt16.max,
               let port = NWEndpoint.Port(rawValue: UInt16(port))
         else {
             return nil
         }
 
-        return ProxyConfiguration(socksv5Proxy: .hostPort(host: .ipv4(.loopback), port: port))
+        let conf = ProxyConfiguration(socksv5Proxy: .hostPort(host: .ipv4(.loopback), port: port))
+
+        if let (user, password) = asPtArguments(arguments) {
+            conf.applyCredential(username: user, password: password)
+        }
+
+        return conf
+    }
+
+    /**
+     Converts a dictionary of arguments to a valid Pluggable Transports v1 username/password argument string.
+
+     **ATTENTION**: As per the SOCKS5 specification, the combined returned argument string cannot be longer than 512 bytes!
+
+     See [Pluggable Transports v1 Spec](https://spec.torproject.org/pt-spec/per-connection-args.html).
+
+     - parameter arguments: A dictionary of arguments.
+     - returns: `nil` if the `arguments` parameter is `nil` or empty or 2 strings which need to be used as SOCKS5 username/password connection arguments.
+     */
+    private static func asPtArguments(_ arguments: [String: String]? = nil) -> (username: String, password: String)? {
+        guard let arguments = arguments, !arguments.isEmpty else {
+            return nil
+        }
+
+        let s = arguments.map { "\(escapePtArgument($0))=\(escapePtArgument($1))" }.joined(separator: ";")
+
+        let center = s.index(s.startIndex, offsetBy: s.count / 2)
+
+        // NOTE: The specification says, we should use a NUL character ("\0") as the
+        // password, if the argument string is shorter than 255 bytes, but
+        // for an unknown reason, that doesn't work with Swift/Apple libs.
+        // So, we just always split the string in half and send the first piece as the username
+        // and the second as the password.
+
+        return (String(s[s.startIndex ..< center]), String(s[center ..< s.endIndex]))
+    }
+
+    /**
+     In Pluggable Transports arguments, the characters "\\" (backslash), "=" (equal sign) and ";" (semicolon) need to be escaped.
+
+     See [Pluggable Transports v1 Spec](https://spec.torproject.org/pt-spec/per-connection-args.html).
+
+     - parameter string: An unescaped argument key or value which shall be used in a PT client argument string.
+     - returns: An escaped argument key or value.
+     */
+    private static func escapePtArgument(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "=", with: "\\=")
+            .replacingOccurrences(of: ";", with: "\\;")
     }
 
     /**
