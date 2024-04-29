@@ -462,7 +462,10 @@ public class Envoy {
 
     // MARK: Private Properties
 
-    private var proxy: Proxy = .direct
+    private static let defaultIceServers = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478,stun:stun.voipgate.com:3478,stun:stun.antisip.com:3478"
+
+
+    public private(set) var proxy: Proxy = .direct
 
 
     private init() {
@@ -541,11 +544,11 @@ public class Envoy {
                    let broker = urlc.firstQueryItem(of: "broker"),
                    let broker = URL(string: broker),
                    let fronts = urlc.firstQueryItem(of: "fronts") ?? urlc.firstQueryItem(of: "front"),
-                   let ice = urlc.firstQueryItem(of: "ice"),
                    let tunnel = urlc.firstQueryItem(of: "tunnel"),
                    let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
                    let tunnel = Self.extractEnvoyConfig(from: tunnel)
                 {
+                    let ice = urlc.firstQueryItem(of: "ice") ?? Self.defaultIceServers
                     let ampCache = urlc.firstQueryItem(of: "ampCache")
                     let sqsQueue = URL(string: urlc.firstQueryItem(of: "sqsQueue") ?? "")
                     let sqsCreds = urlc.firstQueryItem(of: "sqsCreds")
