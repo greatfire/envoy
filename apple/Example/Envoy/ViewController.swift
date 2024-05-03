@@ -43,7 +43,12 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
         busyView.layer.zPosition = 1000
 
         Task {
-            await Envoy.shared.start(urls: [])
+            Envoy.ptLogging = true
+            print("[\(String(describing: type(of: self)))] ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
+
+            await Envoy.shared.start(urls: [], testDirect: true)
+
+            print("[\(String(describing: type(of: self)))] selected proxy: \(Envoy.shared.proxy)")
 
             if #available(iOS 17.0, *) {
                 if let proxy = Envoy.shared.getProxyConfig() {

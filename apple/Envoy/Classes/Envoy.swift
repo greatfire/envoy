@@ -104,6 +104,8 @@ public class Envoy {
          */
         indirect case snowflake(ice: String, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?, tunnel: Proxy)
 
+        case hysteria2(url: URL)
+
         public var description: String {
             switch self {
             case .direct:
@@ -125,6 +127,9 @@ public class Envoy {
                 return "snowflake ice=\(ice), broker=\(broker), fronts=\(fronts), "
                     + "ampCache=\(ampCache ?? "(nil)"), sqsQueue=\(sqsQueue?.absoluteString ?? "(nil)"), "
                     + "sqsCreds=\(sqsCreds ?? "(nil)"), tunnel=\(tunnel)"
+
+            case .hysteria2(let url):
+                return "hysteria2 url=\(url)"
             }
         }
 
@@ -172,6 +177,9 @@ public class Envoy {
                     sqsQueue?.absoluteString, sqsCreds, Envoy.ptLogging ? "snowflake.log" : nil,
                     true, true, false, 1)
 
+            case .hysteria2(let url):
+                IEnvoyProxyStartHysteria2(url.absoluteString)
+
             default:
                 break
             }
@@ -199,6 +207,9 @@ public class Envoy {
 
             case .snowflake:
                 IEnvoyProxyStopSnowflake()
+
+            case .hysteria2:
+                IEnvoyProxyStopHysteria2()
 
             default:
                 break
@@ -376,6 +387,9 @@ public class Envoy {
             case .snowflake:
                 return getSocks5Dict(IEnvoyProxySnowflakePort())
 
+            case .hysteria2:
+                return getSocks5Dict(IEnvoyProxyHysteria2Port())
+
             default:
                 return nil
             }
@@ -418,10 +432,57 @@ public class Envoy {
             case .snowflake:
                 return getSocks5Config(IEnvoyProxySnowflakePort())
 
+            case .hysteria2:
+                return getSocks5Config(IEnvoyProxyHysteria2Port())
+
             default:
                 return nil
             }
         }
+
+        /**
+         Tells you, if you can run this proxy in parallel with another.
+
+         Some proxies cannot be run in parallel, because they would need a restart with the changed configuration.
+
+         - parameter proxy: Another proxy which you might want to run in parallel.
+         - returns: True, if this proxy can run with the other proxy in parallel, false, if not.
+         */
+        public func isParallelizable(with proxy: Proxy) -> Bool {
+            switch self {
+            case .v2Ray(let type, _, _, _, _):
+                switch proxy {
+                case .v2Ray(let type2, _, _, _, _):
+                    return type != type2
+
+                default:
+                    return true
+                }
+
+            case .snowflake:
+                switch proxy {
+                case .snowflake:
+                    return false
+
+                default:
+                    return true
+                }
+
+            case .hysteria2:
+                switch proxy {
+                case .hysteria2:
+                    return false
+
+                default:
+                    return true
+                }
+
+            default:
+                return true
+            }
+        }
+
+
     }
 
 
@@ -551,6 +612,9 @@ public class Envoy {
                         ampCache: ampCache, sqsQueue: sqsQueue, sqsCreds: sqsCreds, tunnel: tunnel))
                 }
             }
+            else if url.scheme == "hysteria2" || url.scheme == "hy2" {
+                candidates.append(.hysteria2(url: url))
+            }
         }
 
         await start(proxies: candidates, testUrl: testUrl, testDirect: testDirect)
@@ -580,42 +644,53 @@ public class Envoy {
 
         let testRequest = URLRequest(url: testUrl)
 
-        await withTaskGroup(of: (Proxy, Bool).self) { group in
-            for proxy in candidates {
-                proxy.start()
+        var parallel = true
 
-                group.addTask {
-                    let conf = URLSessionConfiguration.ephemeral
-                    conf.connectionProxyDictionary = proxy.getProxyDict()
-
-                    let session = URLSession(configuration: conf)
-
-                    do {
-                        let (_, response) = try await session.data(for: proxy.maybeModify(testRequest))
-
-                        return (proxy, (response as? HTTPURLResponse)?.statusCode == 204)
-                    }
-                    catch {
-                        return (proxy, false)
-                    }
-                }
-            }
-
-            while let item = await group.next() {
-                if item.1 {
-                    group.cancelAll()
-                    proxy = item.0
-
+        for proxy1 in candidates {
+            for proxy2 in candidates {
+                if proxy1 != proxy2 && !proxy1.isParallelizable(with: proxy2) {
+                    parallel = false
                     break
                 }
             }
+        }
 
-            // Stop all proxies except the selected one.
-            candidates
-                .filter({ $0 != proxy })
-                .forEach { $0.stop() }
+        if parallel {
+            await withTaskGroup(of: (Proxy, Bool).self) { group in
+                for proxy in candidates {
+                    proxy.start()
 
-//            print("[\(String(describing: type(of: self)))] selected proxy: \(proxy)")
+                    group.addTask {
+                        return (proxy, await Self.test(testRequest, with: proxy))
+                    }
+                }
+
+                while let item = await group.next() {
+                    if item.1 {
+                        group.cancelAll()
+                        proxy = item.0
+
+                        break
+                    }
+                }
+
+                // Stop all proxies except the selected one.
+                candidates
+                    .filter({ $0 != proxy })
+                    .forEach { $0.stop() }
+            }
+        }
+        else {
+            for proxy in candidates {
+                proxy.start()
+
+                if await Self.test(testRequest, with: proxy) {
+                    self.proxy = proxy
+                    break
+                }
+
+                proxy.stop()
+            }
         }
     }
 
@@ -869,5 +944,28 @@ public class Envoy {
         }
 
         return nil
+    }
+
+    /**
+     Test a given request with a given proxy.
+
+     - parameter request: The test URL which needs to return 204 on response to be considered valid.
+     - parameter proxy: The proxy to test.
+     - returns: `true`, if the test request returned HTTP status 204, else false.
+     */
+    private static func test(_ request: URLRequest, with proxy: Proxy) async -> Bool {
+        let conf = URLSessionConfiguration.ephemeral
+        conf.connectionProxyDictionary = proxy.getProxyDict()
+
+        let session = URLSession(configuration: conf)
+
+        do {
+            let (_, response) = try await session.data(for: proxy.maybeModify(request))
+
+            return (response as? HTTPURLResponse)?.statusCode == 204
+        }
+        catch {
+            return false
+        }
     }
 }
