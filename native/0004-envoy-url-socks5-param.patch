@@ -4,7 +4,7 @@
  3 files changed, 60 insertions(+), 16 deletions(-)
 
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index d3cf3bd77c417..9b3dc936714f5 100644
+index d3cf3bd77c417..51f5308a5e604 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 @@ -35,6 +35,7 @@ import org.chromium.net.urlconnection.CronetURLStreamHandlerFactory;
@@ -54,7 +54,7 @@ index d3cf3bd77c417..9b3dc936714f5 100644
              }
          });
 diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
-index a4e93b23c5b3f..cda95ba910509 100644
+index a4e93b23c5b3f..d1926b3360f68 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
 @@ -15,6 +15,7 @@
@@ -78,24 +78,24 @@ index a4e93b23c5b3f..cda95ba910509 100644
    // @VisibleForTesting (as the only external use will be in a test).
  
 +  // This supports a 'socks5' param to envoy:// URLs
-+  GURL envoy_socks;
++  std::string envoy_socks;
 +  GURL envoy_temp = GURL(params->envoy_url);
 +  for (net::QueryIterator it(envoy_temp); !it.IsAtEnd(); it.Advance()) {
 +    auto key = it.GetKey();
 +    auto value = it.GetUnescapedValue();
 +    if (key.compare("socks5") == 0) {
 +      envoy_socks =
-+          GURL(base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL));
++          base::UnescapeURLComponent(value, base::UnescapeRule::NORMAL);
 +    }
 +  }
    // Initialize context on the init thread.
 -  if (params->envoy_url.rfind("socks5://", 0) != 0) {
 -  cronet::PostTaskToInitThread(
-+  if (!envoy_socks.is_empty()) {
++  if (!envoy_socks.empty()) {
 +    cronet::PostTaskToInitThread(
 +      FROM_HERE,
 +      base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
-+                     base::Unretained(context_.get()), envoy_socks.spec()));
++                     base::Unretained(context_.get()), base::StringPiece(envoy_socks)));
 +  } else if (params->envoy_url.rfind("socks5://", 0) == 0) {
 +    // socks5:// URL
 +    cronet::PostTaskToInitThread(
