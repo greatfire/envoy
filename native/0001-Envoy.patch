@@ -1,10 +1,16 @@
  chrome/browser/ssl/ssl_config_service_manager.cc   | 11 +++++
+ components/cronet/android/api.txt                  |  4 +-
  .../api/src/org/chromium/net/CronetEngine.java     |  5 ++
+ ...entalOptionsTranslatingCronetEngineBuilder.java |  6 +++
  .../src/org/chromium/net/ICronetEngineBuilder.java |  2 +
  components/cronet/android/api_version.txt          |  2 +-
+ .../cronet/android/cronet_context_adapter.cc       |  1 +
+ components/cronet/android/dependencies.txt         |  3 ++
+ .../net/impl/AndroidHttpEngineBuilderWrapper.java  |  7 +++
  .../chromium/net/impl/CronetEngineBuilderImpl.java | 11 +++++
  .../android/proto/request_context_config.proto     |  1 +
  .../cronet_sample_apk/CronetSampleApplication.java |  1 +
+ .../ExperimentalOptionsTranslationTestUtil.java    |  5 ++
  components/cronet/native/cronet.idl                |  1 +
  components/cronet/native/engine.cc                 |  1 +
  components/cronet/native/generated/cronet.idl_c.h  |  6 +++
@@ -21,8 +27,8 @@
  net/url_request/url_request_context.h              |  5 ++
  net/url_request/url_request_context_builder.cc     | 55 ++++++++++++++++++++--
  net/url_request/url_request_context_builder.h      |  2 +
- net/url_request/url_request_http_job.cc            | 49 +++++++++++++++++++
- 24 files changed, 281 insertions(+), 7 deletions(-)
+ net/url_request/url_request_http_job.cc            | 48 +++++++++++++++++++
+ 30 files changed, 305 insertions(+), 8 deletions(-)
 
 diff --git a/chrome/browser/ssl/ssl_config_service_manager.cc b/chrome/browser/ssl/ssl_config_service_manager.cc
 index ef36e55b12f18..8136c5ae23337 100644
@@ -65,6 +71,32 @@ index ef36e55b12f18..8136c5ae23337 100644
 +    disabled_cipher_suites_ = ParseCipherSuites(cipher_strings);
 +  }
  }
+diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
+index 645d7c38bd6f7..1f723eb31a2f4 100644
+--- a/components/cronet/android/api.txt
++++ b/components/cronet/android/api.txt
+@@ -85,6 +85,7 @@ public class org.chromium.net.CronetEngine$Builder {
+   public static final int HTTP_CACHE_IN_MEMORY;
+   public static final int HTTP_CACHE_DISK_NO_HTTP;
+   public static final int HTTP_CACHE_DISK;
++  public org.chromium.net.CronetEngine$Builder setEnvoyUrl(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder(android.content.Context);
+   public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
+   public java.lang.String getDefaultUserAgent();
+@@ -328,6 +329,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+   public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
+   public abstract java.lang.String getDefaultUserAgent();
++  public abstract org.chromium.net.ICronetEngineBuilder setEnvoyUrl(java.lang.String);
+   public abstract org.chromium.net.ExperimentalCronetEngine build();
+   protected java.util.Set<java.lang.Integer> getSupportedConfigOptions();
+   public org.chromium.net.ICronetEngineBuilder enableNetworkQualityEstimator(boolean);
+@@ -634,4 +636,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
+   public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
+   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
+ }
+-Stamp: cfd272ad8510d246ce07e5f12c4caa92
++Stamp: 7a7d2d0ca863d61a2a5b855fb43ab67e
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 index cb398e6b271cc..3ebd0283bb73a 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
@@ -81,6 +113,23 @@ index cb398e6b271cc..3ebd0283bb73a 100644
          /**
           * Constructs a {@link Builder} object that facilitates creating a {@link CronetEngine}. The
           * default configuration enables HTTP/2 and QUIC, but disables the HTTP cache.
+diff --git a/components/cronet/android/api/src/org/chromium/net/ExperimentalOptionsTranslatingCronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ExperimentalOptionsTranslatingCronetEngineBuilder.java
+index 9e3b05eee7240..b6997dc5f5636 100644
+--- a/components/cronet/android/api/src/org/chromium/net/ExperimentalOptionsTranslatingCronetEngineBuilder.java
++++ b/components/cronet/android/api/src/org/chromium/net/ExperimentalOptionsTranslatingCronetEngineBuilder.java
+@@ -42,6 +42,12 @@ final class ExperimentalOptionsTranslatingCronetEngineBuilder extends ICronetEng
+         this.mDelegate = delegate;
+     }
+ 
++    @Override
++    public ICronetEngineBuilder setEnvoyUrl(String envoyUrl) {
++        mDelegate.setEnvoyUrl(envoyUrl);
++        return this;
++    }
++
+     @Override
+     public ICronetEngineBuilder setQuicOptions(QuicOptions options) {
+         // If the delegate builder supports enabling connection migration directly, just use it
 diff --git a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
 index f340a87dc2ee1..cf403fbde4413 100644
 --- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
@@ -95,12 +144,63 @@ index f340a87dc2ee1..cf403fbde4413 100644
  
      /**
 diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
-index e85087affded1..f5c89552bd3e6 100644
+index e85087affded1..bb95160cb6e07 100644
 --- a/components/cronet/android/api_version.txt
 +++ b/components/cronet/android/api_version.txt
 @@ -1 +1 @@
 -31
-+32
++33
+diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
+index 1a6a47afe1d4d..bcb738c5e34b8 100644
+--- a/components/cronet/android/cronet_context_adapter.cc
++++ b/components/cronet/android/cronet_context_adapter.cc
+@@ -241,6 +241,7 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
+           configOptions.http_cache_max_size(), configOptions.disable_cache(),
+           configOptions.storage_path(),
+           /* accept_languages */ std::string(), configOptions.user_agent(),
++          configOptions.envoy_url(),
+           configOptions.experimental_options(),
+           base::WrapUnique(reinterpret_cast<net::CertVerifier*>(
+               configOptions.mock_cert_verifier())),
+diff --git a/components/cronet/android/dependencies.txt b/components/cronet/android/dependencies.txt
+index f8ad5770becb3..6ec03273188fe 100644
+--- a/components/cronet/android/dependencies.txt
++++ b/components/cronet/android/dependencies.txt
+@@ -21,6 +21,7 @@
+ //components/grpc_support
+ //components/metrics
+ //components/miracle_parameter/common
++//components/nacl/common
+ //components/prefs
+ //components/prefs/android
+ //crypto
+@@ -31,6 +32,8 @@
+ //net/dns/public
+ //net/http
+ //net/third_party/quiche
++//net/tools/huffman_trie
++//net/tools/transport_security_state_generator
+ //net/traffic_annotation
+ //third_party/abseil-cpp
+ //third_party/android_deps
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java b/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
+index 53cf76ac5bafd..b477ce03108fb 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
+@@ -38,6 +38,13 @@ class AndroidHttpEngineBuilderWrapper extends ICronetEngineBuilder {
+         return mBackend.getDefaultUserAgent();
+     }
+ 
++    @Override
++    public ICronetEngineBuilder setEnvoyUrl(String envoyUrl) {
++        // I'm not sure what's going on here, but I don't think we need this for Envoy -steve
++        // mBackend.setEnvoyUrl(envoyUrl);
++        return this;
++    }
++
+     @Override
+     public ICronetEngineBuilder setUserAgent(String userAgent) {
+         mBackend.setUserAgent(userAgent);
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
 index c3f2fdc740c9a..b9df807143f3f 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
@@ -152,6 +252,22 @@ index 8a6b57aad749d..0275130dd0f55 100644
                  .enableQuic(true);
          mCronetEngine = myBuilder.build();
      }
+diff --git a/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java b/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
+index a070ec49d3959..f623f939a632e 100644
+--- a/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
++++ b/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
+@@ -133,6 +133,11 @@ public class ExperimentalOptionsTranslationTestUtil {
+             throw new UnsupportedOperationException();
+         }
+ 
++        @Override
++        public ICronetEngineBuilder setEnvoyUrl(String envoyUrl) {
++            throw new UnsupportedOperationException();
++        }
++
+         @Override
+         public ICronetEngineBuilder addQuicHint(String host, int port, int alternatePort) {
+             throw new UnsupportedOperationException();
 diff --git a/components/cronet/native/cronet.idl b/components/cronet/native/cronet.idl
 index 8e83cb0cf70a4..4e34a344694ea 100644
 --- a/components/cronet/native/cronet.idl
@@ -658,7 +774,7 @@ index d638aed9ff80b..1967a2f1588c4 100644
  
    std::optional<std::string> cookie_deprecation_label_;
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
-index b7bc620562e32..ef111195ba676 100644
+index b7bc620562e32..d348b1dab134e 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
 @@ -28,6 +28,7 @@
@@ -669,7 +785,7 @@ index b7bc620562e32..ef111195ba676 100644
  #include "base/strings/string_number_conversions.h"
  #include "base/strings/string_util.h"
  #include "base/strings/stringprintf.h"
-@@ -669,6 +670,54 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -669,6 +670,53 @@ void URLRequestHttpJob::StartTransactionInternal() {
              is_shared_dictionary_read_allowed_callback_);
        }
  
@@ -718,7 +834,6 @@ index b7bc620562e32..ef111195ba676 100644
 +          request_info_.extra_headers.SetHeader("Host-Orig",
 +                                                request_->url().host());
 +        }
-+      
 +      }
 +
        rv = transaction_->Start(

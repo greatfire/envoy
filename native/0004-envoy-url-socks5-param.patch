@@ -4,7 +4,7 @@
  3 files changed, 58 insertions(+), 19 deletions(-)
 
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index 52e487720202d..76451e25be2a4 100644
+index 52e487720202d..fcaef629d501f 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 @@ -35,6 +35,7 @@ import org.chromium.net.urlconnection.CronetURLStreamHandlerFactory;
@@ -41,17 +41,17 @@ index 52e487720202d..76451e25be2a4 100644
 +                            // Log.e(LOG_TAG, "Envoy URL: " + builder.getEnvoyUrl());
 +                            // Log.e(LOG_TAG, "Envoy SOCKS: " + socks_url);
 +
-+                            if (socks_url != "") {
-+                                CronetUrlRequestContextJni.get().initRequestContextOnInitThreadWithUri(
-+                                    mUrlRequestContextAdapter, CronetUrlRequestContext.this, socks_url);
++                            if (socks_url.equals("")) {
++                                CronetUrlRequestContextJni.get().initRequestContextOnInitThread(
++                                    mUrlRequestContextAdapter, CronetUrlRequestContext.this);
                              } else {
 -                                CronetUrlRequestContextJni.get()
 -                                        .initRequestContextOnInitThread(
 -                                                mUrlRequestContextAdapter,
 -                                                CronetUrlRequestContext.this);
 -                             }
-+                                    CronetUrlRequestContextJni.get().initRequestContextOnInitThread(
-+                                            mUrlRequestContextAdapter, CronetUrlRequestContext.this);
++                                CronetUrlRequestContextJni.get().initRequestContextOnInitThreadWithUri(
++                                    mUrlRequestContextAdapter, CronetUrlRequestContext.this, socks_url);
 +                            }
                          }
  

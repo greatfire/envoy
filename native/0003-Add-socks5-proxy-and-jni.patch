@@ -2,7 +2,7 @@
  components/cronet/android/cronet_context_adapter.h    |  8 ++++++++
  components/cronet/android/cronet_library_loader.cc    | 11 +++++++++++
  .../chromium/net/impl/CronetUrlRequestContext.java    | 19 +++++++++++++++----
- .../cronet_sample_apk/CronetSampleApplication.java    |  1 +
+ .../cronet_sample_apk/CronetSampleApplication.java    |  3 ++-
  components/cronet/cronet_context.cc                   | 13 +++++++++++++
  components/cronet/cronet_context.h                    |  2 ++
  components/cronet/cronet_global_state.h               |  4 ++++
@@ -12,10 +12,10 @@
  .../external_intents/ExternalNavigationHandler.java   |  3 +++
  net/proxy_resolution/proxy_config_service.cc          | 17 +++++++++++++++++
  net/proxy_resolution/proxy_config_service.h           |  4 ++++
- 14 files changed, 103 insertions(+), 4 deletions(-)
+ 14 files changed, 104 insertions(+), 5 deletions(-)
 
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index 1a6a47afe1d4d..f6e69804617a6 100644
+index bcb738c5e34b8..9a02bdd800bd6 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -78,6 +78,16 @@ void CronetContextAdapter::InitRequestContextOnInitThread(
@@ -121,14 +121,16 @@ index 940b5f09f276f..52e487720202d 100644
          void destroy(long nativePtr, CronetUrlRequestContext caller);
  
 diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-index 0275130dd0f55..aa2cd7cb91693 100644
+index 0275130dd0f55..3964c72dd9ccc 100644
 --- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
 +++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-@@ -25,6 +25,7 @@ public class CronetSampleApplication extends Application {
+@@ -24,7 +24,8 @@ public class CronetSampleApplication extends Application {
+         myBuilder
                  .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
                  .enableHttp2(true)
-                 .setEnvoyUrl("https://example.com/enovy_path/")
-+                .setEnvoyUrl("socks5://127.0.0.1:1080")
+-                .setEnvoyUrl("https://example.com/enovy_path/")
++                .setEnvoyUrl("https://wiki.epochbelt.com/gfd/")
++                // .setEnvoyUrl("socks5://127.0.0.1:1080")
                  .enableQuic(true);
          mCronetEngine = myBuilder.build();
      }
