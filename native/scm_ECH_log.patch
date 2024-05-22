@@ -1,0 +1,18 @@
+ net/socket/ssl_connect_job.cc | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/net/socket/ssl_connect_job.cc b/net/socket/ssl_connect_job.cc
+index 027f21c297d30..7a5a8aab5fc63 100644
+--- a/net/socket/ssl_connect_job.cc
++++ b/net/socket/ssl_connect_job.cc
+@@ -445,6 +445,10 @@ int SSLConnectJob::DoSSLConnectComplete(int result) {
+   const bool is_ech_capable =
+       endpoint_result_ && !endpoint_result_->metadata.ech_config_list.empty();
+ 
++  if (result == OK) {
++    std::cerr << "ENVOY server: " << server_address_ << " ECH? " << (is_ech_capable ? "YES" : "NO") << std::endl;
++  }
++
+   if (!ech_retry_configs_ && result == ERR_ECH_NOT_NEGOTIATED &&
+       ssl_client_context()->EncryptedClientHelloEnabled()) {
+     // We used ECH, and the server could not decrypt the ClientHello. However,
