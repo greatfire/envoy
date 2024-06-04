@@ -17,7 +17,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
     @IBOutlet weak var addressTf: UITextField!
 
-    private var webView: WKWebView!
+    private var webView: EnvoyWebView!
 
 
     override func viewDidLoad() {
@@ -83,7 +83,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 //                }
 
                 webView.stopLoading()
-                webView.load(EnvoySchemeHandler.modify(URLRequest(url: url)))
+                webView.load(URLRequest(url: url))
             }
         }
     }
@@ -100,25 +100,13 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, 
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void)
     {
-        if let text = EnvoySchemeHandler.revertModification(navigationAction.request).url?.absoluteString,
+        if let text = navigationAction.request.url?.absoluteString,
            !text.isEmpty
         {
             addressTf.text = text
         }
 
-        let modified = EnvoySchemeHandler.modify(navigationAction.request)
-
-        // This request doesn't need to get modified or already is. Allow.
-        if modified == navigationAction.request {
-            return decisionHandler(.allow)
-        }
-
-        // This request needs to be modified. Cancel and re-issue.
-        decisionHandler(.cancel)
-
-        DispatchQueue.main.async {
-            webView.load(modified)
-        }
+        decisionHandler(.allow)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
@@ -129,13 +117,9 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     // MARK: Private Methods
 
     private func initWebView() {
-        webView = WKWebView(frame: .zero, configuration: EnvoySchemeHandler.register())
+        webView = EnvoyWebView(frame: .zero)
         webView.navigationDelegate = self
         webView.translatesAutoresizingMaskIntoConstraints = false
-
-        if #available(iOS 16.4, *) {
-            webView.isInspectable = true
-        }
 
         view.addSubview(webView)
 
