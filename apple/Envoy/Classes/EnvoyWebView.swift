@@ -15,11 +15,15 @@ import WebKit
  - automatically sets `isInspectable = true` on newer iOS versions when in `DEBUG` mode,
  - replaces `http` and `https` request URL schemes with `envoy-http` and `envoy-https`, *if*  the Envoy custom HTTP proxy is used *or  if* the iOS version is below 17, to redirect processing to the `EnvoySchemeHandler`.
 
- **NOTES**:
+  **NOTES**:
 
- Run `Envoy.shared.start(urls:testUrl:testDirect:)` or `Envoy.shared.start(proxies:testUrl:testDirect:)` first, before initializing this web view!
+  1. Run `Envoy.shared.start(urls:testUrl:testDirect:)` or `Envoy.shared.start(proxies:testUrl:testDirect:)` first, before initializing this web view!
 
- `WKWebView` has severe limitations which make it difficult to run in certain circumstances:
+  2. **DO NOT USE** the `async` methods of the `WKNavigationDelegate`. `EnvoyWebView` needs to intercept that delegate,
+  and due to some limitations in the Swift compiler, calls to `async` implementations cannot be forwarded!
+  Use the classic callback methods instead!
+
+  3. `WKWebView` has severe limitations which make it difficult to run in certain circumstances:
 
  - Before iOS 17, it didn't support SOCKS and HTTP proxies.
  - Intercepting `http` and `https` schemes is not allowed.
@@ -50,7 +54,7 @@ import WebKit
  */
 open class EnvoyWebView: WKWebView, WKNavigationDelegate {
 
-    private var _navigationDelegate: WKNavigationDelegate?
+    private weak var _navigationDelegate: WKNavigationDelegate?
     open override var navigationDelegate: WKNavigationDelegate? {
         set {
             _navigationDelegate = newValue
@@ -127,7 +131,7 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
             }
         }
 
-        let action = EnvoyNavigationAction(from: navigationAction, with: EnvoySchemeHandler.revertModification(navigationAction.request))
+        let action = EnvoyNavigationAction(from: navigationAction)
 
         if _navigationDelegate?.webView?(webView, decidePolicyFor: action, preferences: preferences, decisionHandler: handler) != nil {
             return
@@ -270,7 +274,7 @@ class EnvoyNavigationAction: WKNavigationAction {
     }
 
     override var request: URLRequest {
-        modified
+        EnvoySchemeHandler.revertModification(original.request)
     }
 
     @available(iOS 14.5, *)
@@ -280,11 +284,8 @@ class EnvoyNavigationAction: WKNavigationAction {
 
     private let original: WKNavigationAction
 
-    private let modified: URLRequest
-
-    init(from action: WKNavigationAction, with modified: URLRequest) {
+    init(from action: WKNavigationAction) {
         original = action
-        self.modified = modified
 
         super.init()
     }
