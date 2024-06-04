@@ -5,18 +5,23 @@ PODS:
 
 DEPENDENCIES:
   - Envoy (from `../`)
-  - IEnvoyProxy (from `../../../IEnvoyProxy`)
+  - IEnvoyProxy (from `https://github.com/tladesignz/IEnvoyProxy.git`)
 
 EXTERNAL SOURCES:
   Envoy:
     :path: "../"
   IEnvoyProxy:
-    :path: "../../../IEnvoyProxy"
+    :git: https://github.com/tladesignz/IEnvoyProxy.git
+
+CHECKOUT OPTIONS:
+  IEnvoyProxy:
+    :commit: 0d35378cde76dbd42f5484b5b1bd113af2f517e5
+    :git: https://github.com/tladesignz/IEnvoyProxy.git
 
 SPEC CHECKSUMS:
   Envoy: b42e53c0e6f0ecb49bd2ef57587a050ee3dd60f2
-  IEnvoyProxy: f85fd45a107c7e5319a0fe7cd4a26eaba8da5829
+  IEnvoyProxy: 3c7512dc740c5c4260ec5b8ad30178a7cd4bd9b9
 
-PODFILE CHECKSUM: 63e3444101326cbb37d1e6449515135245c6af74
+PODFILE CHECKSUM: c10bfa1e37b165ad50334c00647dc682daf5e54e
 
 COCOAPODS: 1.15.2
