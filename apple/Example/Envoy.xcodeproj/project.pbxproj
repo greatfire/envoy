@@ -101,9 +101,9 @@
 			children = (
 				B6E06D5D3A03A92B82B4D2FC /* Envoy.podspec */,
 				E613D66F9A0E5D47D6542ACD /* README.md */,
-				747180B1950040CEBB90CA81 /* LICENSE */,
 				A018BCC92BAC761700EC6172 /* Podfile */,
 				A018BCCA2BAC761700EC6172 /* Podfile.lock */,
+				747180B1950040CEBB90CA81 /* LICENSE */,
 				A018BCCB2BAC767700EC6172 /* .gitignore */,
 			);
 			name = "Podspec Metadata";

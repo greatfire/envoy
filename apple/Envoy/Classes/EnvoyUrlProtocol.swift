@@ -22,10 +22,12 @@ import Foundation
 
  https://developer.apple.com/library/archive/samplecode/CustomHTTPProtocol/Listings/Read_Me_About_CustomHTTPProtocol_txt.html#//apple_ref/doc/uid/DTS40013653-Read_Me_About_CustomHTTPProtocol_txt-DontLinkElementID_23
  */
-class EnvoyUrlProtocolDoNotUse: URLProtocol,
+public class EnvoyUrlProtocol: URLProtocol,
                             URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate, URLSessionDownloadDelegate,
                             URLAuthenticationChallengeSender
 {
+
+    public static var conf = URLSessionConfiguration.default
 
     private static let loopDetection = "EnvoyUrlProtocolLoopDetection"
 
@@ -36,7 +38,7 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
     private var pendingAuthCompletion: ((URLSession.AuthChallengeDisposition, URLCredential?) -> Void)?
     private var pendingAuthChallenge: URLAuthenticationChallenge?
 
-    override class func canInit(with task: URLSessionTask) -> Bool {
+    override public class func canInit(with task: URLSessionTask) -> Bool {
         guard Envoy.shared.proxy != .direct,
               let request = task.originalRequest ?? task.currentRequest,
               Self.property(forKey: loopDetection, in: request) as? Bool != true
@@ -53,15 +55,14 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         }
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override public class func canonicalRequest(for request: URLRequest) -> URLRequest {
         Envoy.shared.maybeModify(request)
     }
 
-    override func startLoading() {
-        let conf = URLSessionConfiguration.default
-        conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
+    override public func startLoading() {
+        Self.conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
 
-        mySession = URLSession(configuration: conf, delegate: self, delegateQueue: nil)
+        mySession = URLSession(configuration: Self.conf, delegate: self, delegateQueue: nil)
 
         var request = Envoy.shared.maybeModify(request)
 
@@ -114,7 +115,7 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
 
     }
 
-    override func stopLoading() {
+    override public func stopLoading() {
         myTask?.cancel()
         myTask = nil
 
@@ -125,7 +126,7 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
 
     // MARK: URLSessionDelegate
 
-    func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {
+    public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {
         if let error = error {
             fail(error)
         }
@@ -134,30 +135,23 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         }
     }
 
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    public func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                           completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
-        switch challenge.protectionSpace.authenticationMethod {
-        case NSURLAuthenticationMethodDefault, NSURLAuthenticationMethodHTTPBasic, NSURLAuthenticationMethodHTTPDigest:
-            if let challenge = pendingAuthChallenge {
-                client?.urlProtocol(self, didCancel: challenge)
-                cancel(challenge)
-            }
-            pendingAuthCompletion = completionHandler
-            pendingAuthChallenge = challenge
-
-            client?.urlProtocol(self, didReceive: .init(authenticationChallenge: challenge, sender: self))
-
-        default:
-            // TODO: It is said, that we need to implement this ourselves.
-            break
+        if let challenge = pendingAuthChallenge {
+            client?.urlProtocol(self, didCancel: challenge)
+            cancel(challenge)
         }
+        pendingAuthCompletion = completionHandler
+        pendingAuthChallenge = .init(authenticationChallenge: challenge, sender: self)
+
+        client?.urlProtocol(self, didReceive: pendingAuthChallenge!)
     }
 
 
     // MARK: URLSessionTaskDelegate
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         if task == myTask {
             myTask = nil
             mySession?.invalidateAndCancel()
@@ -171,17 +165,17 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         }
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection 
-                    response: HTTPURLResponse, newRequest request: URLRequest, 
-                    completionHandler: @escaping (URLRequest?) -> Void
+    public func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection
+                           response: HTTPURLResponse, newRequest request: URLRequest,
+                           completionHandler: @escaping (URLRequest?) -> Void
     ) {
         client?.urlProtocol(self, wasRedirectedTo: Envoy.shared.revertModification(request), redirectResponse: response)
 
         completionHandler(Envoy.shared.maybeModify(request))
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, 
-                    totalBytesSent: Int64, totalBytesExpectedToSend: Int64
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,
+                           totalBytesSent: Int64, totalBytesExpectedToSend: Int64
     ) {
         guard #available(iOS 15.0, *),
               let originalTask = self.task
@@ -194,8 +188,8 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
             totalBytesExpectedToSend: totalBytesExpectedToSend)
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, 
-                    needNewBodyStream completionHandler: @escaping (InputStream?) -> Void
+    public func urlSession(_ session: URLSession, task: URLSessionTask, 
+                           needNewBodyStream completionHandler: @escaping (InputStream?) -> Void
     ) {
         guard #available(iOS 15.0, *),
               let originalTask = self.task
@@ -206,8 +200,8 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         originalTask.delegate?.urlSession?(session, task: originalTask, needNewBodyStream: completionHandler)
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, 
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, 
+                           completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
         if let challenge = pendingAuthChallenge {
             client?.urlProtocol(self, didCancel: challenge)
@@ -223,22 +217,22 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
 
     // MARK: URLSessionDataDelegate
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, 
-                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, 
+                           completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
     ) {
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .allowed)
 
         completionHandler(.allow)
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+    public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         client?.urlProtocol(self, didLoad: data)
     }
 
 
     // MARK: URLSessionDownloadDelegate
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         Task {
             do {
                 let data = try Data(contentsOf: location)
@@ -250,8 +244,8 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         }
     }
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, 
-                    didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64)
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, 
+                           didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64)
     {
         guard #available(iOS 15.0, *),
               let originalTask = task as? URLSessionDownloadTask
@@ -263,8 +257,8 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
             session, downloadTask: originalTask, didResumeAtOffset: fileOffset, expectedTotalBytes: expectedTotalBytes)
     }
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, 
-                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                           didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
     ) {
         guard #available(iOS 15.0, *),
               let originalTask = task as? URLSessionDownloadTask
@@ -280,7 +274,7 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
 
     // MARK: URLAuthenticationChallengeSender
 
-    func use(_ credential: URLCredential, for challenge: URLAuthenticationChallenge) {
+    public func use(_ credential: URLCredential, for challenge: URLAuthenticationChallenge) {
         if challenge == pendingAuthChallenge {
             pendingAuthCompletion?(.useCredential, credential)
             pendingAuthCompletion = nil
@@ -288,7 +282,7 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         }
     }
 
-    func continueWithoutCredential(for challenge: URLAuthenticationChallenge) {
+    public func continueWithoutCredential(for challenge: URLAuthenticationChallenge) {
         if challenge == pendingAuthChallenge {
             pendingAuthCompletion?(.performDefaultHandling, nil)
             pendingAuthCompletion = nil
@@ -296,9 +290,25 @@ class EnvoyUrlProtocolDoNotUse: URLProtocol,
         }
     }
 
-    func cancel(_ challenge: URLAuthenticationChallenge) {
+    public func cancel(_ challenge: URLAuthenticationChallenge) {
         if challenge == pendingAuthChallenge {
             pendingAuthCompletion?(.cancelAuthenticationChallenge, nil)
+            pendingAuthCompletion = nil
+            pendingAuthChallenge = nil
+        }
+    }
+
+    public func performDefaultHandling(for challenge: URLAuthenticationChallenge) {
+        if challenge == pendingAuthChallenge {
+            pendingAuthCompletion?(.performDefaultHandling, nil)
+            pendingAuthCompletion = nil
+            pendingAuthChallenge = nil
+        }
+    }
+
+    public func rejectProtectionSpaceAndContinue(with challenge: URLAuthenticationChallenge) {
+        if challenge == pendingAuthChallenge {
+            pendingAuthCompletion?(.rejectProtectionSpace, nil)
             pendingAuthCompletion = nil
             pendingAuthChallenge = nil
         }

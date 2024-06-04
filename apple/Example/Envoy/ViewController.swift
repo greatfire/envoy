@@ -25,21 +25,6 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
         addressTf.text = "https://www.wikipedia.org"
 
-        webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
-        webView.navigationDelegate = self
-        webView.translatesAutoresizingMaskIntoConstraints = false
-
-        if #available(iOS 16.4, *) {
-            webView.isInspectable = true
-        }
-
-        view.addSubview(webView)
-
-        webView.topAnchor.constraint(equalTo: addressTf.bottomAnchor, constant: 8).isActive = true
-        webView.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
-        webView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
-        webView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
-
         busyView.layer.zPosition = 1000
 
         Task {
@@ -50,11 +35,13 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
             print("[\(String(describing: type(of: self)))] selected proxy: \(Envoy.shared.proxy)")
 
-            if #available(iOS 17.0, *) {
-                if let proxy = Envoy.shared.getProxyConfig() {
-                    webView.configuration.websiteDataStore.proxyConfigurations.append(proxy)
-                }
-            }
+            initWebView()
+
+//            if #available(iOS 17.0, *) {
+//                if let proxy = Envoy.shared.getProxyConfig() {
+//                    webView.configuration.websiteDataStore.proxyConfigurations.append(proxy)
+//                }
+//            }
 
             busyView.isHidden = true
 
@@ -74,17 +61,29 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     func textFieldDidEndEditing(_ textField: UITextField, reason: UITextField.DidEndEditingReason) {
         if reason == .committed,
            let text = addressTf.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-           var urlc = URLComponents(string: text)
+           let urlc = URLComponents(string: text)
         {
-            if urlc.scheme?.isEmpty ?? true {
-                urlc.scheme = "https"
-            }
-
             if let url = urlc.url {
                 addressTf.text = url.absoluteString
 
+//                let conf = URLSessionConfiguration.default
+//                conf.protocolClasses = [EnvoyUrlProtocol.self]
+//
+//                let session = URLSession(configuration: conf)
+//
+//                Task {
+//                    do {
+//                        let (data, response) = try await session.data(for: URLRequest(url: url))
+//
+//                        print("[\(String(describing: type(of: self)))] response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
+//                    }
+//                    catch {
+//                        print("[\(String(describing: type(of: self)))] error=\(error)")
+//                    }
+//                }
+
                 webView.stopLoading()
-                webView.load(Envoy.shared.maybeModify(URLRequest(url: url)))
+                webView.load(EnvoySchemeHandler.modify(URLRequest(url: url)))
             }
         }
     }
@@ -101,22 +100,48 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, 
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void)
     {
-        let modified = Envoy.shared.maybeModify(navigationAction.request)
+        if let text = EnvoySchemeHandler.revertModification(navigationAction.request).url?.absoluteString,
+           !text.isEmpty
+        {
+            addressTf.text = text
+        }
+
+        let modified = EnvoySchemeHandler.modify(navigationAction.request)
 
         // This request doesn't need to get modified or already is. Allow.
         if modified == navigationAction.request {
             return decisionHandler(.allow)
         }
 
-        if let text = Envoy.shared.revertModification(navigationAction.request).url?.absoluteString,
-           !text.isEmpty
-        {
-            addressTf.text = text
-        }
-
         // This request needs to be modified. Cancel and re-issue.
         decisionHandler(.cancel)
 
-        webView.load(modified)
+        DispatchQueue.main.async {
+            webView.load(modified)
+        }
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+        print("[\(String(describing: type(of: self)))] error=\(error)")
+    }
+
+
+    // MARK: Private Methods
+
+    private func initWebView() {
+        webView = WKWebView(frame: .zero, configuration: EnvoySchemeHandler.register())
+        webView.navigationDelegate = self
+        webView.translatesAutoresizingMaskIntoConstraints = false
+
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = true
+        }
+
+        view.addSubview(webView)
+
+        webView.topAnchor.constraint(equalTo: addressTf.bottomAnchor, constant: 8).isActive = true
+        webView.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
+        webView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
+        webView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
     }
 }

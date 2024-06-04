@@ -113,4 +113,15 @@ extension URL {
 
         return urlc?.url ?? self
     }
+
+    /**
+     - parameter scheme: The new scheme to use.
+     - returns A copy of `self` with the scheme changed or `self` if that couldn't be constructed.
+     */
+    func settingScheme(_ scheme: String) -> URL {
+        var urlc = urlc
+        urlc?.scheme = scheme
+
+        return urlc?.url ?? self
+    }
 }
