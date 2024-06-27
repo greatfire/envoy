@@ -220,7 +220,7 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
     private class func needsModification(_ request: URLRequest) -> Bool {
         if #available(iOS 17.0, *) {
             switch Envoy.shared.proxy {
-            case .direct, .v2Ray, .hysteria2:
+            case .direct, .v2Ray, .hysteria2, .socks5:
                 return false
 
             case .envoy:
