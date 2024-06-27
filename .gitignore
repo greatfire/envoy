@@ -5,3 +5,8 @@
 # Vagrant setup
 .vagrant
 
+# JetBrains IDEs
+.idea
+
+# Android Studio
+local.properties
