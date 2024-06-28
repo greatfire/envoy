@@ -104,7 +104,19 @@ public class Envoy {
          */
         indirect case snowflake(ice: String, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?, tunnel: Proxy)
 
+        /**
+         Hysteria 2 proxy.
+
+         - parameter url: A Hysteria 2 connection URL. See [https://v2.hysteria.network/docs/developers/URI-Scheme/](Hysteria 2 URI-Scheme)
+         */
         case hysteria2(url: URL)
+
+        /**
+         A SOCKS 5 proxy.
+
+         This is only useful as a tunnel for the `obfs4`, `meek` and `snowflake` transports!
+         */
+        case socks5(host: String, port: Int)
 
         public var description: String {
             switch self {
@@ -130,6 +142,43 @@ public class Envoy {
 
             case .hysteria2(let url):
                 return "hysteria2 url=\(url)"
+
+            case .socks5(let host, let port):
+                return "SOCKS5 host=\(host), port=\(port)"
+            }
+        }
+
+        public var port: Int? {
+            switch self {
+            case .v2Ray(let type, _, _, _, _):
+                switch type {
+                case .ws:
+                    return IEnvoyProxyV2rayWsPort()
+
+                case .weChat:
+                    return IEnvoyProxyV2rayWechatPort()
+
+                case .srtp:
+                    return IEnvoyProxyV2raySrtpPort()
+                }
+
+            case .meek:
+                return IEnvoyProxyMeekPort()
+
+            case .obfs4:
+                return IEnvoyProxyObfs4Port()
+
+            case .snowflake:
+                return IEnvoyProxySnowflakePort()
+
+            case .hysteria2:
+                return IEnvoyProxyHysteria2Port()
+
+            case .socks5(_, let port):
+                return port
+
+            default:
+                return nil
             }
         }
 
@@ -357,38 +406,49 @@ public class Envoy {
          This proxy dictionary can be used with ``URLSessionConfiguration/connectionProxyDictionary``
          and ``CFReadStreamSetProperty(_:_:_:)``.
 
+         - parameter forceTransport: If set to true, will return the settings for the transport, despite a SOCKS5 tunnel is being used with the transport.
          - returns: A proxy dictionary or `nil` if none needed.
          */
-        public func getProxyDict() -> [AnyHashable: Any]? {
+        public func getProxyDict(forceTransport: Bool = false) -> [AnyHashable: Any]? {
+            guard let port = port else {
+                return nil
+            }
+
             switch self {
-            case .v2Ray(let type, _, _, _, _):
-                switch type {
-                case .ws:
-                    return getSocks5Dict(IEnvoyProxyV2rayWsPort())
+            case .v2Ray, .hysteria2:
+                return getSocks5Dict(port)
 
-                case .weChat:
-                    return getSocks5Dict(IEnvoyProxyV2rayWechatPort())
+            case .snowflake(_, _, _, _, _, _, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Dict(Int(EnvoySocksForwarder.port))
 
-                case .srtp:
-                    return getSocks5Dict(IEnvoyProxyV2raySrtpPort())
+                default:
+                    return getSocks5Dict(port)
                 }
 
-            case .meek(let url, var front, _):
-                // If needed, generate randomized host name prefix.
-                if front.hasPrefix(".") {
-                    front = randomPrefix().appending(front)
+            case .meek(let url, var front, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Dict(Int(EnvoySocksForwarder.port))
+
+                default:
+                    // If needed, generate randomized host name prefix.
+                    if front.hasPrefix(".") {
+                        front = randomPrefix().appending(front)
+                    }
+
+                    return getSocks5Dict(port, arguments: ["url": url.absoluteString, "front": front])
                 }
 
-                return getSocks5Dict(IEnvoyProxyMeekPort(), arguments: ["url": url.absoluteString, "front": front])
+            case .obfs4(let cert, let iatMode, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Dict(Int(EnvoySocksForwarder.port))
 
-            case .obfs4(let cert, let iatMode, _):
-                return getSocks5Dict(IEnvoyProxyObfs4Port(), arguments: ["cert": cert, "iat-mode": String(iatMode)])
-
-            case .snowflake:
-                return getSocks5Dict(IEnvoyProxySnowflakePort())
-
-            case .hysteria2:
-                return getSocks5Dict(IEnvoyProxyHysteria2Port())
+                default:
+                    return getSocks5Dict(port, arguments: ["cert": cert, "iat-mode": String(iatMode)])
+                }
 
             default:
                 return nil
@@ -401,22 +461,18 @@ public class Envoy {
          This proxy dictionary can be used with ``URLSessionConfiguration/proxyConfigurations``
          and ``WKWebViewConfiguration/websiteDataStore/proxyConfigurations``.
 
+         - parameter forceTransport: If set to true, will return the settings for the transport, despite a SOCKS5 tunnel is being used with the transport.
          - returns: A ``ProxyConfiguration`` object or `nil` if none needed.
          */
         @available(iOS 17.0, *)
-        public func getProxyConfig() -> ProxyConfiguration? {
+        public func getProxyConfig(forceTransport: Bool = false) -> ProxyConfiguration? {
+            guard let port = port else {
+                return nil
+            }
+
             switch self {
-            case .v2Ray(let type, _, _, _, _):
-                switch type {
-                case .ws:
-                    return getSocks5Config(IEnvoyProxyV2rayWsPort())
-
-                case .weChat:
-                    return getSocks5Config(IEnvoyProxyV2rayWechatPort())
-
-                case .srtp:
-                    return getSocks5Config(IEnvoyProxyV2raySrtpPort())
-                }
+            case .v2Ray, .snowflake, .hysteria2:
+                return getSocks5Config(port)
 
             case .meek(let url, var front, _):
                 // If needed, generate randomized host name prefix.
@@ -424,16 +480,16 @@ public class Envoy {
                     front = randomPrefix().appending(front)
                 }
 
-                return getSocks5Config(IEnvoyProxyMeekPort(), arguments: ["url": url.absoluteString, "front": front])
+                return getSocks5Config(port, arguments: ["url": url.absoluteString, "front": front])
 
-            case .obfs4(let cert, let iatMode, _):
-                return getSocks5Config(IEnvoyProxyObfs4Port(), arguments: ["cert": cert, "iat-mode": String(iatMode)])
+            case .obfs4(let cert, let iatMode, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Config(Int(EnvoySocksForwarder.port))
 
-            case .snowflake:
-                return getSocks5Config(IEnvoyProxySnowflakePort())
-
-            case .hysteria2:
-                return getSocks5Config(IEnvoyProxyHysteria2Port())
+                default:
+                    return getSocks5Config(port, arguments: ["cert": cert, "iat-mode": String(iatMode)])
+                }
 
             default:
                 return nil
@@ -520,6 +576,8 @@ public class Envoy {
 
 
     public private(set) var proxy: Proxy = .direct
+
+    private var forwarder: EnvoySocksForwarder?
 
 
     private init() {
@@ -660,6 +718,19 @@ public class Envoy {
                 for proxy in candidates {
                     proxy.start()
 
+                    if case .obfs4(_, _, let tunnel) = proxy, case .socks5 = tunnel {
+                        do {
+                            forwarder = try EnvoySocksForwarder(proxy).start()
+                        }
+                        catch {
+                            print("[\(String(describing: type(of: self)))] error=\(error)")
+
+                            proxy.stop()
+
+                            continue
+                        }
+                    }
+
                     group.addTask {
                         return (proxy, await Self.test(testRequest, with: proxy))
                     }
@@ -684,13 +755,37 @@ public class Envoy {
             for proxy in candidates {
                 proxy.start()
 
+                if case .obfs4(_, _, let tunnel) = proxy, case .socks5 = tunnel {
+                    do {
+                        forwarder = try EnvoySocksForwarder(proxy).start()
+                    }
+                    catch {
+                        print("[\(String(describing: type(of: self)))] error=\(error)")
+
+                        proxy.stop()
+
+                        continue
+                    }
+                }
+
                 if await Self.test(testRequest, with: proxy) {
                     self.proxy = proxy
                     break
                 }
 
                 proxy.stop()
+
+                forwarder?.stop()
+                forwarder = nil
             }
+        }
+
+
+        if case .obfs4(_, _, let tunnel) = proxy, case .socks5 = tunnel {
+        }
+        else {
+            forwarder?.stop()
+            forwarder = nil
         }
     }
 
@@ -698,6 +793,9 @@ public class Envoy {
      Stop any used proxies/transports. Reset to ``Proxy/direct``.
      */
     public func stop() {
+        forwarder?.stop()
+        forwarder = nil
+
         proxy.stop()
         proxy = .direct
     }
@@ -940,6 +1038,10 @@ public class Envoy {
         }
 
         if let dest = dest?.url {
+            if dest.scheme == "socks5", let host = dest.host, let port = dest.port {
+                return .socks5(host: host, port: port)
+            }
+
             return .envoy(url: dest, headers: headers, salt: salt)
         }
 
