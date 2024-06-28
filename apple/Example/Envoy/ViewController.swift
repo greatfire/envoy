@@ -37,12 +37,6 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
             initWebView()
 
-//            if #available(iOS 17.0, *) {
-//                if let proxy = Envoy.shared.getProxyConfig() {
-//                    webView.configuration.websiteDataStore.proxyConfigurations.append(proxy)
-//                }
-//            }
-
             busyView.isHidden = true
 
             textFieldDidEndEditing(addressTf, reason: .committed)
