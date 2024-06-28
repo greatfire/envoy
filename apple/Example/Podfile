@@ -6,7 +6,8 @@ platform :ios, '14.0'
 
 target 'Envoy_Example' do
   pod 'Envoy', :path => '../'
-  pod 'IEnvoyProxy', 
+#  pod 'IEnvoyProxy', 
 #    :path => '../../../IEnvoyProxy'
-    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
+#    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
+#    :podspec => 'https://raw.githubusercontent.com/tladesignz/IEnvoyProxy/main/IEnvoyProxy.podspec'
 end
