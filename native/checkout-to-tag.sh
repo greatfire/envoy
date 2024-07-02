@@ -20,7 +20,7 @@ COMMIT_DATE=$(git log -n 1 --pretty=format:%ci)
 # 2020-01-06 04:54:58 +0000
 
 cd "$DEPOT_TOOLS_ROOT" || exit 2
-git checkout master && git pull && git checkout "$(git rev-list -n 1 --before="$COMMIT_DATE" master)"
+git checkout main && git pull && git checkout "$(git rev-list -n 1 --before="$COMMIT_DATE" main)"
 
 cd "$CHROMIUM_SRC_ROOT" || exit 3
 git clean -ffd # --dry-run
