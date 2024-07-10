@@ -36,6 +36,11 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --for
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0005-fbproxy-cert.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0006-Enable-DNS-ECH.patch"
 
+# XXX hacky fix of build problem in M128
+if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]
+    ln -s "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/linux//chromium-browser-clang" "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang"
+fi
+
 # Build the linux version
 gn gen out/Cronet-Desktop
 autoninja -C out/Cronet-Desktop cronet # cronet_sample
@@ -51,6 +56,10 @@ for arch in arm arm64 x86 x64; do
     if [[ $BUILD_VARIANT == release ]]; then
         gn_args="$gn_args --release"
     fi
+    # arm64 is the default target
+    if [[ $arch == "arm" ]]; then
+        gn_args="$gn_args --arm"
+    fi
     if [[ $arch == "x86" ]]; then
         gn_args="$gn_args --x86"
     fi
@@ -59,14 +68,8 @@ for arch in arm arm64 x86 x64; do
     fi
     # shellcheck disable=SC2086
     "$PATCH_DIR/venv/bin/python3" "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
-    if ! grep "target_cpu = \"$arch\"" "$out_dir/args.gn"; then
-        #echo "target_cpu = \"$arch\"" >>"$out_dir/args.gn"
-        sed -i "s,target_cpu.*$,target_cpu = \"$arch\"," "$out_dir/args.gn"
-    fi
-    # Build system changes removed setting this by default for arm (32 bit), and it won't build without it set
-    if [[ $arch == 'arm' ]]; then
-        echo 'arm_use_neon = false' >> "$out_dir/args.gn"
-    fi
+    # XXX this default setting causes build problems, so disable it
+    echo "use_remoteexec = false" >>"$out/args.gn"
     autoninja -C "$out_dir" cronet_package
     if [[ $arch != "arm" ]]; then
         cp -a "$out_dir/cronet/libs/"* "$out_dir/../Cronet-arm-$BUILD_VARIANT/cronet/libs/"
