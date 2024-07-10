@@ -27,6 +27,35 @@ object CronetNetworking {
 
     private const val TAG = "Envoy"
 
+    fun buildEngine(
+        context: Context,
+        cacheFolder: String? = null,
+        envoyUrl: String? = null,
+        strategy: Int = 0,
+        cacheSize: Long = 0
+    ): CronetEngine {
+        var builder = CronetEngine.Builder(context)
+            .enableBrotli(true)
+            .enableHttp2(true)
+            .enableQuic(true)
+        if (!cacheFolder.isNullOrEmpty() && cacheSize > 0) {
+            val cacheDir = File(context.cacheDir, cacheFolder)
+            if (!cacheDir.exists()) {
+                cacheDir.mkdirs()
+            }
+            builder = builder
+                .setStoragePath(cacheDir.absolutePath)
+                .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
+        }
+        if (!envoyUrl.isNullOrEmpty()) {
+            builder = builder.setEnvoyUrl(envoyUrl)
+        }
+        if (strategy > 0) {
+            builder = builder.SetStrategy(strategy)
+        }
+        return builder.build()
+    }
+
     @JvmStatic
     fun cronetEngine(): CronetEngine? {
         return mCronetEngine
@@ -49,17 +78,13 @@ object CronetNetworking {
         if (mCustomCronetBuilder != null) {
             mCronetEngine = mCustomCronetBuilder!!.build(context)
         } else {
-            val cacheDir = File(context.cacheDir, "cronet-cache")
-            cacheDir.mkdirs()
-            mCronetEngine = CronetEngine.Builder(context)
-                    .enableBrotli(true)
-                    .enableHttp2(true)
-                    .enableQuic(true)
-                    .setEnvoyUrl(envoyUrl)
-                    .SetStrategy(strategy)
-                    .setStoragePath(cacheDir.absolutePath)
-                    .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 10 * 1024 * 1024) // 10 MegaBytes
-                    .build()
+            mCronetEngine = buildEngine(
+                context = context,
+                cacheFolder = "cronet-cache",
+                envoyUrl = envoyUrl,
+                strategy = strategy,
+                cacheSize = 10
+            )
             if (mCronetEngine != null) {
                 Log.d(TAG, "engine version " + mCronetEngine!!.versionString)
                 val factory = mCronetEngine!!.createURLStreamHandlerFactory()

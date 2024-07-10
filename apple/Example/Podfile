@@ -1,0 +1,12 @@
+source 'https://github.com/CocoaPods/Specs.git'
+
+use_frameworks!
+
+platform :ios, '14.0'
+
+target 'Envoy_Example' do
+  pod 'Envoy', :path => '../'
+  pod 'IEnvoyProxy', 
+#    :path => '../../../IEnvoyProxy'
+    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
+end
