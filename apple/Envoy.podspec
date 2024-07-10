@@ -28,6 +28,7 @@ TODO: Add long description of the pod here.
   s.social_media_url = 'https://twitter.com/tladesignz'
 
   s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '11'
 
   s.static_framework = true
 

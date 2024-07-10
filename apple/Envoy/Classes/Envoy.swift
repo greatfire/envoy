@@ -464,7 +464,7 @@ public class Envoy {
          - parameter forceTransport: If set to true, will return the settings for the transport, despite a SOCKS5 tunnel is being used with the transport.
          - returns: A ``ProxyConfiguration`` object or `nil` if none needed.
          */
-        @available(iOS 17.0, *)
+        @available(iOS 17.0, macOS 14.0, *)
         public func getProxyConfig(forceTransport: Bool = false) -> ProxyConfiguration? {
             guard let port = port else {
                 return nil
@@ -852,7 +852,7 @@ public class Envoy {
 
      - returns: A ``ProxyConfiguration`` object or `nil` if none needed.
      */
-    @available(iOS 17.0, *)
+    @available(iOS 17.0, macOS 14.0, *)
     public func getProxyConfig() -> ProxyConfiguration? {
         proxy.getProxyConfig()
     }
@@ -926,7 +926,7 @@ public class Envoy {
      - parameter arguments: Pluggable Transport arguments to serialize into username/password. **ATTENTION**: Combined strings cannot be longer than 512 bytes!
      - returns: A ``ProxyConfiguration`` object.
      */
-    @available(iOS 17.0, *)
+    @available(iOS 17.0, macOS 14.0, *)
     private static func getSocks5Config(_ port: Int, arguments: [String: String]? = nil) -> ProxyConfiguration? {
         guard port <= UInt16.max,
               let port = NWEndpoint.Port(rawValue: UInt16(port))

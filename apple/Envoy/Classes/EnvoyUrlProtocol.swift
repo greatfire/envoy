@@ -177,7 +177,7 @@ public class EnvoyUrlProtocol: URLProtocol,
     public func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,
                            totalBytesSent: Int64, totalBytesExpectedToSend: Int64
     ) {
-        guard #available(iOS 15.0, *),
+        guard #available(iOS 15.0, macOS 12.0, *),
               let originalTask = self.task
         else {
             return
@@ -191,7 +191,7 @@ public class EnvoyUrlProtocol: URLProtocol,
     public func urlSession(_ session: URLSession, task: URLSessionTask, 
                            needNewBodyStream completionHandler: @escaping (InputStream?) -> Void
     ) {
-        guard #available(iOS 15.0, *),
+        guard #available(iOS 15.0, macOS 12.0, *),
               let originalTask = self.task
         else {
             return
@@ -247,7 +247,7 @@ public class EnvoyUrlProtocol: URLProtocol,
     public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, 
                            didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64)
     {
-        guard #available(iOS 15.0, *),
+        guard #available(iOS 15.0, macOS 12.0, *),
               let originalTask = task as? URLSessionDownloadTask
         else {
             return
@@ -260,7 +260,7 @@ public class EnvoyUrlProtocol: URLProtocol,
     public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                            didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
     ) {
-        guard #available(iOS 15.0, *),
+        guard #available(iOS 15.0, macOS 12.0, *),
               let originalTask = task as? URLSessionDownloadTask
         else {
             return

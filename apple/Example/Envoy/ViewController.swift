@@ -55,30 +55,29 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     func textFieldDidEndEditing(_ textField: UITextField, reason: UITextField.DidEndEditingReason) {
         if reason == .committed,
            let text = addressTf.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-           let urlc = URLComponents(string: text)
+           let urlc = URLComponents(string: text),
+           let url = urlc.url
         {
-            if let url = urlc.url {
-                addressTf.text = url.absoluteString
+            addressTf.text = url.absoluteString
 
-//                let conf = URLSessionConfiguration.default
-//                conf.protocolClasses = [EnvoyUrlProtocol.self]
+//            let conf = URLSessionConfiguration.default
+//            conf.protocolClasses = [EnvoyUrlProtocol.self]
 //
-//                let session = URLSession(configuration: conf)
+//            let session = URLSession(configuration: conf)
 //
-//                Task {
-//                    do {
-//                        let (data, response) = try await session.data(for: URLRequest(url: url))
+//            Task {
+//                do {
+//                    let (data, response) = try await session.data(for: URLRequest(url: url))
 //
-//                        print("[\(String(describing: type(of: self)))] response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
-//                    }
-//                    catch {
-//                        print("[\(String(describing: type(of: self)))] error=\(error)")
-//                    }
+//                    print("[\(String(describing: type(of: self)))] response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
 //                }
+//                catch {
+//                    print("[\(String(describing: type(of: self)))] error=\(error)")
+//                }
+//            }
 
-                webView.stopLoading()
-                webView.load(URLRequest(url: url))
-            }
+            webView.stopLoading()
+            webView.load(URLRequest(url: url))
         }
     }
 
