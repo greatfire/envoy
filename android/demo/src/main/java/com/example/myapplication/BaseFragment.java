@@ -20,8 +20,6 @@ public class BaseFragment extends Fragment {
 
     public static BaseFragment newInstance(int param1) {
 
-        Log.d("FOO", "WTF? (1)");
-
         BaseFragment fragment = new BaseFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_POS, param1);
@@ -32,8 +30,6 @@ public class BaseFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        Log.d("FOO", "WTF? (2)");
 
         if (getArguments() != null) {
             mPos = getArguments().getInt(ARG_POS);
