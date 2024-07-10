@@ -18,6 +18,7 @@
 		A0258CE62C3EB74F00B3A9E7 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0258CE52C3EB74F00B3A9E7 /* ViewController.swift */; };
 		A0258CE82C3EB75000B3A9E7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0258CE72C3EB75000B3A9E7 /* Assets.xcassets */; };
 		A0258CEB2C3EB75000B3A9E7 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = A0258CEA2C3EB75000B3A9E7 /* Base */; };
+		A0258D082C3ECB3A00B3A9E7 /* ObjcViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,9 @@
 		A0258CE72C3EB75000B3A9E7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A0258CEA2C3EB75000B3A9E7 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		A0258CEC2C3EB75000B3A9E7 /* Example_for_MacOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Example_for_MacOS.entitlements; sourceTree = "<group>"; };
+		A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Envoy_Example-Bridging-Header.h"; sourceTree = "<group>"; };
+		A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjcViewController.h; sourceTree = "<group>"; };
+		A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjcViewController.m; sourceTree = "<group>"; };
 		B6E06D5D3A03A92B82B4D2FC /* Envoy.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = Envoy.podspec; path = ../Envoy.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		D8C5EC9BC94045C321655445 /* Pods-Example for MacOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example for MacOS.release.xcconfig"; path = "Target Support Files/Pods-Example for MacOS/Pods-Example for MacOS.release.xcconfig"; sourceTree = "<group>"; };
 		DD7379308FB4B10EECA1F2D1 /* Pods_Example_for_MacOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Example_for_MacOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -109,6 +113,9 @@
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
 				607FACD31AFB9204008FA782 /* Supporting Files */,
+				A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */,
+				A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */,
+				A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */,
 			);
 			name = "Example for Envoy";
 			path = Envoy;
@@ -208,7 +215,7 @@
 				TargetAttributes = {
 					607FACCF1AFB9204008FA782 = {
 						CreatedOnToolsVersion = 6.3.1;
-						LastSwiftMigration = 1530;
+						LastSwiftMigration = 1540;
 					};
 					A0258CE02C3EB74F00B3A9E7 = {
 						CreatedOnToolsVersion = 15.4;
@@ -308,6 +315,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0258D082C3ECB3A00B3A9E7 /* ObjcViewController.m in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
 			);
@@ -467,6 +475,7 @@
 			baseConfigurationReference = F23CA4B1ED94B5809D3A3808 /* Pods-Envoy_Example.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Envoy/Info.plist;
@@ -478,6 +487,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Envoy/Envoy_Example-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
 			};
@@ -488,6 +499,7 @@
 			baseConfigurationReference = 9CC2A9790CA6D9A897604485 /* Pods-Envoy_Example.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Envoy/Info.plist;
@@ -499,6 +511,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Envoy/Envoy_Example-Bridging-Header.h";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
 			};

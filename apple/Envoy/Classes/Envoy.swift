@@ -13,7 +13,9 @@ import IEnvoyProxy
 /**
  Envoy is its own proxy method as well as a collection of other proxies.
  */
-public class Envoy {
+@objc
+@objcMembers
+public class Envoy: NSObject {
 
     /**
      The currently supported proxies.
@@ -571,16 +573,23 @@ public class Envoy {
 
     public static let defaultIceServers = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478,stun:stun.voipgate.com:3478,stun:stun.antisip.com:3478"
 
+    public private(set) var proxy: Proxy = .direct
+
+    /**
+     For Objective-C, as the ``Proxy`` enum cannot be represented in Objective-C.
+     */
+    public var proxyDescription: String {
+        proxy.description
+    }
+
 
     // MARK: Private Properties
-
-
-    public private(set) var proxy: Proxy = .direct
 
     private var forwarder: EnvoySocksForwarder?
 
 
-    private init() {
+    private override init() {
+        super.init()
     }
 
 
