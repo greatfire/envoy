@@ -94,7 +94,7 @@ public class Envoy {
         /**
          Snowflake transport which obfuscates another proxy.
 
-         - parameter ice: Comma-separated list of ICE servers.
+         - parameter ice: Comma-separated list of ICE servers. If `nil` defaults to ``Envoy.defaultIceServers``.
          - parameter broker: URL of signaling broker.
          - parameter fronts: Comma-separated list of front domains.
          - parameter ampCache: URL of AMP cache to use as a proxy for signaling.
@@ -102,7 +102,7 @@ public class Envoy {
          - parameter sqsCreds: Credentials to access SQS Queue.
          - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        indirect case snowflake(ice: String, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?, tunnel: Proxy)
+        indirect case snowflake(ice: String?, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?, tunnel: Proxy)
 
         /**
          Hysteria 2 proxy.
@@ -136,7 +136,7 @@ public class Envoy {
                 return "obfs4 cert=\(cert), iatMode\(iatMode), tunnel=\(tunnel)"
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, let tunnel):
-                return "snowflake ice=\(ice), broker=\(broker), fronts=\(fronts), "
+                return "snowflake ice=\(ice ?? Envoy.defaultIceServers), broker=\(broker), fronts=\(fronts), "
                     + "ampCache=\(ampCache ?? "(nil)"), sqsQueue=\(sqsQueue?.absoluteString ?? "(nil)"), "
                     + "sqsCreds=\(sqsCreds ?? "(nil)"), tunnel=\(tunnel)"
 
@@ -222,7 +222,7 @@ public class Envoy {
                 }
 
                 IEnvoyProxyStartSnowflake(
-                    ice, broker.absoluteString, fronts.joined(separator: ","), ampCache,
+                    ice ?? Envoy.defaultIceServers, broker.absoluteString, fronts.joined(separator: ","), ampCache,
                     sqsQueue?.absoluteString, sqsCreds, Envoy.ptLogging ? "snowflake.log" : nil,
                     true, true, false, 1)
 
@@ -569,10 +569,10 @@ public class Envoy {
      */
     public static var ptLogging = false
 
+    public static let defaultIceServers = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478,stun:stun.voipgate.com:3478,stun:stun.antisip.com:3478"
+
 
     // MARK: Private Properties
-
-    private static let defaultIceServers = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478,stun:stun.voipgate.com:3478,stun:stun.antisip.com:3478"
 
 
     public private(set) var proxy: Proxy = .direct
