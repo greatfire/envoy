@@ -17,8 +17,9 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_gravity="start"
-            android:padding="0dp"
-            android:visibility="visible" />
+            android:entries="@array/http_method"
+            android:visibility="gone"
+            android:padding="0dp" />
 
         <EditText
             android:id="@+id/urlEditText"
@@ -28,8 +29,7 @@
             android:hint="@string/url_hint"
             android:importantForAutofill="no"
             android:inputType="textUri"
-            android:text="@string/url"
-            android:visibility="gone" />
+            android:text="@string/url" />
 
         <Button
             android:id="@+id/loadButton"

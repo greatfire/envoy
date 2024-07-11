@@ -1,15 +1,11 @@
 package com.example.myapplication;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -25,49 +21,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class CronetFragment extends BaseFragment implements AdapterView.OnItemSelectedListener {
+public class CronetFragment extends BaseFragment {
     private TextView mResultTextView;
     private TextView mMsgTextView;
     private String mUrl;
-
-    private final String envoyUrl = "envoy://";
-    private final String ssUrl = "ss://";
-    private final String v2srtpUrl = "v2srtp://";
-    private final String v2wechatUrl = "v2wechat://";
-    private final String snowflakeUrl = "snowflake://";
-    private final String meekUrl = "meek://";
-
-    final List<String> testUrls = Arrays.asList(
-            envoyUrl,
-            ssUrl,
-            v2srtpUrl,
-            v2wechatUrl,
-            snowflakeUrl,
-            meekUrl
-    );
-
-    final List<String> shortUrls = Arrays.asList(
-            envoyUrl.substring(0, 30) + "...",
-            ssUrl.substring(0, 30) + "...",
-            v2srtpUrl.substring(0, 30) + "...",
-            v2wechatUrl.substring(0, 30) + "...",
-            snowflakeUrl.substring(0, 30) + "...",
-            meekUrl.substring(0, 30) + "..."
-    );
-
-    private String selectedUrl = null;
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
@@ -81,17 +42,7 @@ public class CronetFragment extends BaseFragment implements AdapterView.OnItemSe
         mResultTextView = view.findViewById(R.id.resultTextView);
         mMsgTextView = view.findViewById(R.id.msgTextView);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(view.getContext(), android.R.layout.simple_spinner_item, shortUrls);
-        httpMethodSpinner.setOnItemSelectedListener(this);
-        httpMethodSpinner.setAdapter(adapter);
-
         loadButton.setOnClickListener(v -> {
-
-            Activity a = getActivity();
-            if (a instanceof MainActivity) {
-                ((MainActivity)a).startCronet();
-            }
-
             mMsgTextView.setText(getString(R.string.begin_request_msg, urlEditText.getText().toString()));
             mUrl = urlEditText.getText().toString();
             String envoyUrl = envoyUrlEditText.getText().toString();
@@ -116,16 +67,6 @@ public class CronetFragment extends BaseFragment implements AdapterView.OnItemSe
             //    new CronetURLStreamHandlerFactory((ExperimentalCronetEngine)engine);
             //URL.setURLStreamHandlerFactory(cronetURLStreamHandlerFactory);
         });
-    }
-
-    @Override
-    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-        selectedUrl = testUrls.get(i);
-    }
-
-    @Override
-    public void onNothingSelected(AdapterView<?> adapterView) {
-        selectedUrl = null;
     }
 
     // Example UrlRequest.Callback
