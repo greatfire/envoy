@@ -1,7 +1,28 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'com.klaxit.hiddensecrets'
+
+buildscript {
+    repositories {
+        google()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "com.klaxit.hiddensecrets:HiddenSecretsPlugin:0.2.1"
+    }
+}
 
 android {
     ndkVersion '21.0.6113669'
+
+    // Enable NDK build
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
 
     defaultConfig {
         compileSdk 34
@@ -25,6 +46,9 @@ android {
     compileOptions {
         sourceCompatibility = 1.8
         targetCompatibility = 1.8
+    }
+    kotlinOptions {
+        jvmTarget = 1.8
     }
     namespace 'com.example.myapplication'
     lint {

@@ -45,16 +45,10 @@ import okhttp3.OkHttpClient;
 
 public class MainActivity extends FragmentActivity {
 
-    private static final String DIRECT_URL = "https://www.wikipedia.org/";
-    private static final String ENVOY_URL = "envoy://";
-    private static final String SHADOWSOCKS_URL = "ss://";
-    private static final String V2SRTP_URL = "v2srtp://";
-    private static final String V2WECHAT_URL = "v2wechat://";
-    private static final String SNOWFLAKE_URL = "snowflake://";
-    private static final String MEEK_URL = "meek://";
-
+    private static final String WIKI_URL = "https://www.wikipedia.org/";
     private static final String TAG = "EnvoyDemoApp";
 
+    Secrets mSecrets;
     NetworkIntentService mService;
     boolean mBound = false;
     TextView mMsgTextView;
@@ -66,6 +60,8 @@ public class MainActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mSecrets = new Secrets();
+
         // register to receive test results
         IntentFilter filter = new IntentFilter();
         filter.addAction(ENVOY_BROADCAST_VALIDATION_SUCCEEDED);
@@ -76,49 +72,49 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.directButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitDirectUrl(DIRECT_URL);
+                submitDirectUrl(WIKI_URL);
             }
         });
 
         findViewById(R.id.envoyButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitTestUrl(ENVOY_URL);
+                submitTestUrl(mSecrets.getenvoyUrl(getPackageName()));
             }
         });
 
         findViewById(R.id.ssButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitTestUrl(SHADOWSOCKS_URL);
+                submitTestUrl(mSecrets.getshadowsocksUrl(getPackageName()));
             }
         });
 
         findViewById(R.id.v2sButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitTestUrl(V2SRTP_URL);
+                submitTestUrl(mSecrets.getv2srtpUrl(getPackageName()));
             }
         });
 
         findViewById(R.id.v2wButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitTestUrl(V2WECHAT_URL);
+                submitTestUrl(mSecrets.getv2wechatUrl(getPackageName()));
             }
         });
 
         findViewById(R.id.snowflakeButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitTestUrl(SNOWFLAKE_URL);
+                submitTestUrl(mSecrets.getsnowflakeUrl(getPackageName()));
             }
         });
 
         findViewById(R.id.meekButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitTestUrl(MEEK_URL);
+                submitTestUrl(mSecrets.getmeekUrl(getPackageName()));
             }
         });
 
@@ -265,7 +261,7 @@ public class MainActivity extends FragmentActivity {
                         return;
                     }
 
-                    if (validUrl.equals(DIRECT_URL)) {
+                    if (validUrl.equals(WIKI_URL)) {
                         Log.e(TAG, "success status for the direct connection url, don't continue");
                         return;
                     }
@@ -283,7 +279,7 @@ public class MainActivity extends FragmentActivity {
                             OkHttpClient client = new OkHttpClient.Builder()
                                     .addInterceptor(new CronetInterceptor(engine))
                                     .build();
-                            okhttp3.Request request = new okhttp3.Request.Builder().url(DIRECT_URL).build();
+                            okhttp3.Request request = new okhttp3.Request.Builder().url(WIKI_URL).build();
                             try (okhttp3.Response response = client.newCall(request).execute()) {
                                 String responseString = Objects.requireNonNull(response.body()).string();
                                 Log.d(TAG, "proxied request returns " + responseString);
