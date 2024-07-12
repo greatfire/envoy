@@ -96,10 +96,10 @@ class EnvoyTests: XCTestCase {
     }
 
     func testProxyDict() {
-        let proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
+        var proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
                                       iatMode: 2, tunnel: .direct)
 
-        let dict = proxy.getProxyDict()
+        var dict = proxy.getProxyDict()
 
         XCTAssertNotNil(dict)
         XCTAssertEqual(dict?[kCFProxyTypeKey] as! CFString, kCFProxyTypeSOCKS)
@@ -114,6 +114,39 @@ class EnvoyTests: XCTestCase {
         XCTAssertTrue(arguments.contains("iat-mode=2"))
         XCTAssertTrue(arguments.contains(";"))
         XCTAssertTrue(arguments.contains("cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr"))
+
+
+        proxy = .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345))
+
+        dict = proxy.getProxyDict()
+
+        XCTAssertNotNil(dict)
+        XCTAssertEqual(dict?[kCFProxyTypeKey] as! CFString, kCFProxyTypeSOCKS)
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSVersion] as! CFString, kCFStreamSocketSOCKSVersion5)
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyHost] as! String, "127.0.0.1")
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyPort] as! Int, Int(EnvoySocksForwarder.port))
+        XCTAssertNil(dict?[kCFStreamPropertySOCKSUser])
+        XCTAssertNil(dict?[kCFStreamPropertySOCKSPassword])
+    }
+
+    @available(iOS 17.0, *)
+    func testProxyConf() {
+        var proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
+                                      iatMode: 2, tunnel: .direct)
+
+        var conf = proxy.getProxyConfig()
+
+        XCTAssertNotNil(conf)
+        XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:47300")
+
+
+        proxy = .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345))
+
+        conf = proxy.getProxyConfig()
+
+        XCTAssertNotNil(conf)
+        XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:\(EnvoySocksForwarder.port)")
+
     }
 
     private func assertProxy(_ url: String) -> Envoy.Proxy {
