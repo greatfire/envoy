@@ -11,12 +11,10 @@
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACD81AFB9204008FA782 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD71AFB9204008FA782 /* ViewController.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
-		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		98E3C6AB953784B76C43AA18 /* Pods_Example_for_MacOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD7379308FB4B10EECA1F2D1 /* Pods_Example_for_MacOS.framework */; };
 		A0258CE42C3EB74F00B3A9E7 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0258CE32C3EB74F00B3A9E7 /* AppDelegate.swift */; };
 		A0258CE62C3EB74F00B3A9E7 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0258CE52C3EB74F00B3A9E7 /* ViewController.swift */; };
-		A0258CE82C3EB75000B3A9E7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0258CE72C3EB75000B3A9E7 /* Assets.xcassets */; };
 		A0258CEB2C3EB75000B3A9E7 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = A0258CEA2C3EB75000B3A9E7 /* Base */; };
 		A0258D082C3ECB3A00B3A9E7 /* ObjcViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */; };
 /* End PBXBuildFile section */
@@ -29,7 +27,6 @@
 		607FACD51AFB9204008FA782 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		607FACD71AFB9204008FA782 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		607FACDA1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
-		607FACDC1AFB9204008FA782 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		607FACDF1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
 		747180B1950040CEBB90CA81 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
 		9CC2A9790CA6D9A897604485 /* Pods-Envoy_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Envoy_Example.release.xcconfig"; path = "Target Support Files/Pods-Envoy_Example/Pods-Envoy_Example.release.xcconfig"; sourceTree = "<group>"; };
@@ -39,7 +36,6 @@
 		A0258CE12C3EB74F00B3A9E7 /* Example for MacOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Example for MacOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0258CE32C3EB74F00B3A9E7 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A0258CE52C3EB74F00B3A9E7 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
-		A0258CE72C3EB75000B3A9E7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A0258CEA2C3EB75000B3A9E7 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		A0258CEC2C3EB75000B3A9E7 /* Example_for_MacOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Example_for_MacOS.entitlements; sourceTree = "<group>"; };
 		A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Envoy_Example-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -110,23 +106,14 @@
 				607FACD51AFB9204008FA782 /* AppDelegate.swift */,
 				607FACD71AFB9204008FA782 /* ViewController.swift */,
 				607FACD91AFB9204008FA782 /* Main.storyboard */,
-				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
-				607FACD31AFB9204008FA782 /* Supporting Files */,
 				A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */,
 				A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */,
 				A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */,
+				607FACD41AFB9204008FA782 /* Info.plist */,
 			);
 			name = "Example for Envoy";
 			path = Envoy;
-			sourceTree = "<group>";
-		};
-		607FACD31AFB9204008FA782 /* Supporting Files */ = {
-			isa = PBXGroup;
-			children = (
-				607FACD41AFB9204008FA782 /* Info.plist */,
-			);
-			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
 		607FACF51AFB993E008FA782 /* Podspec Metadata */ = {
@@ -147,7 +134,6 @@
 			children = (
 				A0258CE32C3EB74F00B3A9E7 /* AppDelegate.swift */,
 				A0258CE52C3EB74F00B3A9E7 /* ViewController.swift */,
-				A0258CE72C3EB75000B3A9E7 /* Assets.xcassets */,
 				A0258CE92C3EB75000B3A9E7 /* Main.storyboard */,
 				A0258CEC2C3EB75000B3A9E7 /* Example_for_MacOS.entitlements */,
 			);
@@ -248,7 +234,6 @@
 			files = (
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
-				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,7 +241,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A0258CE82C3EB75000B3A9E7 /* Assets.xcassets in Resources */,
 				A0258CEB2C3EB75000B3A9E7 /* Base in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
