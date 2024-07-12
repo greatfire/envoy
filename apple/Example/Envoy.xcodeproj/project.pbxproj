@@ -17,6 +17,10 @@
 		A0258CE62C3EB74F00B3A9E7 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0258CE52C3EB74F00B3A9E7 /* ViewController.swift */; };
 		A0258CEB2C3EB75000B3A9E7 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = A0258CEA2C3EB75000B3A9E7 /* Base */; };
 		A0258D082C3ECB3A00B3A9E7 /* ObjcViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */; };
+		A04B51932C414E940050CA0A /* proxies.plist in Resources */ = {isa = PBXBuildFile; fileRef = A04B51922C414E940050CA0A /* proxies.plist */; };
+		A04B51942C414E940050CA0A /* proxies.plist in Resources */ = {isa = PBXBuildFile; fileRef = A04B51922C414E940050CA0A /* proxies.plist */; };
+		A04B51972C41500F0050CA0A /* Proxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04B51962C41500F0050CA0A /* Proxy.swift */; };
+		A04B51982C41500F0050CA0A /* Proxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04B51962C41500F0050CA0A /* Proxy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +45,8 @@
 		A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Envoy_Example-Bridging-Header.h"; sourceTree = "<group>"; };
 		A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjcViewController.h; sourceTree = "<group>"; };
 		A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjcViewController.m; sourceTree = "<group>"; };
+		A04B51922C414E940050CA0A /* proxies.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = proxies.plist; sourceTree = "<group>"; };
+		A04B51962C41500F0050CA0A /* Proxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Proxy.swift; sourceTree = "<group>"; };
 		B6E06D5D3A03A92B82B4D2FC /* Envoy.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = Envoy.podspec; path = ../Envoy.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		D8C5EC9BC94045C321655445 /* Pods-Example for MacOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example for MacOS.release.xcconfig"; path = "Target Support Files/Pods-Example for MacOS/Pods-Example for MacOS.release.xcconfig"; sourceTree = "<group>"; };
 		DD7379308FB4B10EECA1F2D1 /* Pods_Example_for_MacOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Example_for_MacOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -85,6 +91,7 @@
 				607FACF51AFB993E008FA782 /* Podspec Metadata */,
 				607FACD21AFB9204008FA782 /* Example for Envoy */,
 				A0258CE22C3EB74F00B3A9E7 /* Example for MacOS */,
+				A04B51952C414FD90050CA0A /* Shared */,
 				607FACD11AFB9204008FA782 /* Products */,
 				38BC4635BEDDDA2AFCAA409A /* Pods */,
 				E4A78C337D3B0CD5B8B8399D /* Frameworks */,
@@ -138,6 +145,15 @@
 				A0258CEC2C3EB75000B3A9E7 /* Example_for_MacOS.entitlements */,
 			);
 			path = "Example for MacOS";
+			sourceTree = "<group>";
+		};
+		A04B51952C414FD90050CA0A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A04B51962C41500F0050CA0A /* Proxy.swift */,
+				A04B51922C414E940050CA0A /* proxies.plist */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		E4A78C337D3B0CD5B8B8399D /* Frameworks */ = {
@@ -233,6 +249,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
+				A04B51932C414E940050CA0A /* proxies.plist in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -242,6 +259,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A0258CEB2C3EB75000B3A9E7 /* Base in Resources */,
+				A04B51942C414E940050CA0A /* proxies.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +317,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A04B51972C41500F0050CA0A /* Proxy.swift in Sources */,
 				A0258D082C3ECB3A00B3A9E7 /* ObjcViewController.m in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
@@ -310,6 +329,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A0258CE62C3EB74F00B3A9E7 /* ViewController.swift in Sources */,
+				A04B51982C41500F0050CA0A /* Proxy.swift in Sources */,
 				A0258CE42C3EB74F00B3A9E7 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -28,10 +28,19 @@
     Envoy.ptLogging = YES;
     NSLog(@"[%@] ptStateDir=%@", self.class, Envoy.ptStateDir.path);
 
+    NSArray<Proxy *>* proxies = [Proxy fetch];
+    NSLog(@"[%@] proxies=%@", self.class, proxies);
+
+    NSMutableArray<NSURL *>* urls = [NSMutableArray new];
+
+    for (Proxy* proxy in proxies) {
+        [urls addObject:proxy.url];
+    }
+
     [Envoy.shared
-     startWithUrls:@[]
+     startWithUrls:urls
      testUrl:[[NSURL alloc] initWithString:@"https://www.google.com/generate_204"]
-     testDirect:YES
+     testDirect:urls.count == 0
      completionHandler:^{
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"[%@] selected proxy: %@", self.class, Envoy.shared.proxyDescription);

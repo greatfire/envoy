@@ -31,7 +31,10 @@ class ViewController: NSViewController, WKNavigationDelegate {
             Envoy.ptLogging = true
             print("[\(String(describing: type(of: self)))] ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
 
-            await Envoy.shared.start(urls: [], testDirect: true)
+            let proxies = Proxy.fetch()
+            print("[\(String(describing: type(of: self)))] proxies=\(proxies)")
+
+            await Envoy.shared.start(urls: proxies.map({ $0.url }), testDirect: proxies.isEmpty)
 
             print("[\(String(describing: type(of: self)))] selected proxy: \(Envoy.shared.proxy)")
 
