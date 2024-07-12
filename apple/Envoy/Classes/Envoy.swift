@@ -473,16 +473,31 @@ public class Envoy: NSObject {
             }
 
             switch self {
-            case .v2Ray, .snowflake, .hysteria2:
+            case .v2Ray, .hysteria2:
                 return getSocks5Config(port)
 
-            case .meek(let url, var front, _):
-                // If needed, generate randomized host name prefix.
-                if front.hasPrefix(".") {
-                    front = randomPrefix().appending(front)
+            case .snowflake(_, _, _, _, _, _, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Config(Int(EnvoySocksForwarder.port))
+
+                default:
+                    return getSocks5Config(port)
                 }
 
-                return getSocks5Config(port, arguments: ["url": url.absoluteString, "front": front])
+            case .meek(let url, var front, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Config(Int(EnvoySocksForwarder.port))
+
+                default:
+                    // If needed, generate randomized host name prefix.
+                    if front.hasPrefix(".") {
+                        front = randomPrefix().appending(front)
+                    }
+
+                    return getSocks5Config(port, arguments: ["url": url.absoluteString, "front": front])
+                }
 
             case .obfs4(let cert, let iatMode, let tunnel):
                 switch forceTransport ? .direct : tunnel {
