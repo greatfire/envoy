@@ -11,19 +11,7 @@ import XCTest
 class EnvoyTests: XCTestCase {
 
     func testParsing() {
-        var urlo = URL(string: "https://proxy.example.com/proxy/")!
-
-        var proxy = Envoy.shared.parse(urlo)
-        XCTAssertNotNil(proxy)
-
-        if case .envoy(let url, let headers, let salt) = proxy {
-            XCTAssertEqual(url, urlo)
-            XCTAssertTrue(headers.isEmpty)
-            XCTAssertNil(salt)
-        }
-        else {
-            XCTFail("This URL should have parsed to an Envoy HTTP proxy, but didn't!")
-        }
+        assertEnvoy("https://proxy.example.com/proxy/")
 
         assertEnvoy("https://proxy.example.com/proxy/")
 
@@ -66,7 +54,7 @@ class EnvoyTests: XCTestCase {
         assertMeek("meek://?url=https://cdn.example.com/&front=.wellknown.org&tunnel=https://proxy.example.com/proxy/",
                    proxyUrl: "https://cdn.example.com/",
                    front: ".wellknown.org",
-                   tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: [:], salt: nil))
+                   tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!))
 
         assertObfs4("obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=socks5://127.0.0.1:12345",
                     cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
@@ -76,7 +64,7 @@ class EnvoyTests: XCTestCase {
         assertObfs4("obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=https://proxy.example.com/proxy/",
                     cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
                     iatMode: 0,
-                    tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: [:], salt: nil))
+                    tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!))
 
         assertSnowflake("snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345",
                         broker: "https://broker.example.com/",
@@ -86,7 +74,46 @@ class EnvoyTests: XCTestCase {
         assertSnowflake("snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=https://proxy.example.com/proxy/",
                         broker: "https://broker.example.com/",
                         fronts: ".wellknown.org",
-                        tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: [:], salt: nil))
+                        tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!))
+    }
+
+    func testRequestModification() {
+        let proxy = Envoy.Proxy.envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"])
+
+        let request = URLRequest(url: URL(string: "https://example.com/")!)
+
+        let modified = proxy.maybeModify(request)
+
+        XCTAssertEqual(modified.url?.scheme, "https")
+        XCTAssertEqual(modified.url?.host, "proxy.example.com")
+        XCTAssertEqual(modified.url?.path, "/proxy")
+        XCTAssertTrue(modified.url?.queryItems.contains(where: { $0.name == "_digest" }) == true)
+        XCTAssertEqual(modified.allHTTPHeaderFields, ["Host-Orig": "example.com", "Url-Orig": "https://example.com/", "X-foobar": "abcdefg"])
+
+        let reverted = proxy.revertModification(modified)
+
+        XCTAssertEqual(request.url, reverted.url)
+    }
+
+    func testProxyDict() {
+        let proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
+                                      iatMode: 2, tunnel: .direct)
+
+        let dict = proxy.getProxyDict()
+
+        XCTAssertNotNil(dict)
+        XCTAssertEqual(dict?[kCFProxyTypeKey] as! CFString, kCFProxyTypeSOCKS)
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSVersion] as! CFString, kCFStreamSocketSOCKSVersion5)
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyHost] as! String, "127.0.0.1")
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyPort] as! Int, 47300)
+
+        // Dictionaries don't have order, so the order of the arguments changes randomly on reruns.
+        let arguments = (dict?[kCFStreamPropertySOCKSUser] as! String) + (dict?[kCFStreamPropertySOCKSPassword] as! String)
+
+        // Hence we cannot test for a complete string, but just if the arguments are contained
+        XCTAssertTrue(arguments.contains("iat-mode=2"))
+        XCTAssertTrue(arguments.contains(";"))
+        XCTAssertTrue(arguments.contains("cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr"))
     }
 
     private func assertProxy(_ url: String) -> Envoy.Proxy {

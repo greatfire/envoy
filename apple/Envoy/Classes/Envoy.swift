@@ -62,7 +62,7 @@ public class Envoy: NSObject {
          - parameter headers: Additional headers to send.
          - parameter salt: A predefined salt for a cache-busting query parameter named `_digest`. Will be randomly generated on each request, if not given.
          */
-        case envoy(url: URL, headers: [String: String], salt: String?)
+        case envoy(url: URL, headers: [String: String] = [:], salt: String? = nil)
 
         /**
          V2Ray proxy.
@@ -73,7 +73,7 @@ public class Envoy: NSObject {
          - parameter id: The shared secret UUID for authentication.
          - parameter path: The WebSocket path. Only used with the ``V2RayType/ws`` type.
          */
-        case v2Ray(type: V2RayType, host: String, port: Int, id: String, path: String?)
+        case v2Ray(type: V2RayType, host: String, port: Int, id: String, path: String? = nil)
 
         /**
          Meek transport which obfuscates another proxy.
@@ -91,7 +91,7 @@ public class Envoy: NSObject {
          - parameter iatMode: The "Inter-Ariival Time" timing randomization mode.
          - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        indirect case obfs4(cert: String, iatMode: Int, tunnel: Proxy)
+        indirect case obfs4(cert: String, iatMode: Int = 0, tunnel: Proxy)
 
         /**
          Snowflake transport which obfuscates another proxy.
@@ -104,7 +104,7 @@ public class Envoy: NSObject {
          - parameter sqsCreds: Credentials to access SQS Queue.
          - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
          */
-        indirect case snowflake(ice: String?, broker: URL, fronts: String, ampCache: String?, sqsQueue: URL?, sqsCreds: String?, tunnel: Proxy)
+        indirect case snowflake(ice: String? = nil, broker: URL, fronts: String, ampCache: String? = nil, sqsQueue: URL? = nil, sqsCreds: String? = nil, tunnel: Proxy)
 
         /**
          Hysteria 2 proxy.
