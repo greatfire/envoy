@@ -5,7 +5,7 @@ use_frameworks!
 target 'Envoy_Example' do
   platform :ios, '14.0'
 
-  pod 'Envoy', :path => '../'
+  pod 'Envoy', :path => '../', :testspecs => ['Tests']
 #  pod 'IEnvoyProxy',
 #    :path => '../../../IEnvoyProxy'
 #    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
@@ -15,5 +15,5 @@ end
 target 'Example for MacOS' do
   platform :osx, '11'
 
-  pod 'Envoy', :path => '../'
+  pod 'Envoy', :path => '../', :testspecs => ['Tests']
 end

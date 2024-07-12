@@ -1,10 +1,13 @@
 PODS:
   - Envoy (0.1.0):
     - IEnvoyProxy (~> 2.0)
+  - Envoy/Tests (0.1.0):
+    - IEnvoyProxy (~> 2.0)
   - IEnvoyProxy (2.0.1)
 
 DEPENDENCIES:
   - Envoy (from `../`)
+  - Envoy/Tests (from `../`)
 
 SPEC REPOS:
   https://github.com/CocoaPods/Specs.git:
@@ -15,9 +18,9 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  Envoy: e97eb4904478a52f6787493e9b295a6d058974c4
+  Envoy: a58c44917efd2095efc14262fa76bd0ed72249bb
   IEnvoyProxy: 51bc3a4909edcc0eea86841072a1ea2fd49e7b5c
 
-PODFILE CHECKSUM: eba80f401f8c9858a00f565b7909c02c841043a8
+PODFILE CHECKSUM: 4eeb14cca2618ee66e077adc2f54964503df3dcf
 
 COCOAPODS: 1.15.2

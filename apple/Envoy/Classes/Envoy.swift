@@ -611,80 +611,7 @@ public class Envoy: NSObject {
      - parameter testDirect: Flag, if the direct connection should be tested first.
      */
     public func start(urls: [URL], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) async {
-        var candidates = [Proxy]()
-
-        for url in urls {
-            if url.scheme == "http" || url.scheme == "https" {
-                candidates.append(.envoy(url: url, headers: [:], salt: nil))
-            }
-            else if url.scheme == "envoy" {
-                if let urlc = url.urlc,
-                   let proxy = Self.extractEnvoyConfig(from: urlc)
-                {
-                    candidates.append(proxy)
-                }
-            }
-            else if let type = Proxy.V2RayType(rawValue: url.scheme ?? "") {
-                if let host = url.host,
-                   !host.isEmpty,
-                   let port = url.port,
-                   let urlc = url.urlc,
-                   let id = urlc.firstQueryItem(of: "id")
-                {
-                    let path = urlc.firstQueryItem(of: "path")
-
-                    candidates.append(.v2Ray(type: type, host: host, port: port, id: id, path: path))
-                }
-            }
-            else if url.scheme == "meek" {
-                if let urlc = url.urlc,
-                   let url = urlc.firstQueryItem(of: "url"),
-                   let url = URL(string: url),
-                   let front = urlc.firstQueryItem(of: "front"),
-                   let tunnel = urlc.firstQueryItem(of: "tunnel"),
-                   let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
-                   let tunnel = Self.extractEnvoyConfig(from: tunnel)
-                {
-                    candidates.append(.meek(url: url, front: front, tunnel: tunnel))
-                }
-            }
-            else if url.scheme == "obfs4" {
-                if let urlc = url.urlc,
-                   let cert = urlc.firstQueryItem(of: "cert"),
-                   let tunnel = urlc.firstQueryItem(of: "tunnel"),
-                   let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
-                   let tunnel = Self.extractEnvoyConfig(from: tunnel)
-                {
-                    let iatMode = Int(urlc.firstQueryItem(of: "iat-mode") ?? "") ?? 0
-
-                    candidates.append(.obfs4(cert: cert, iatMode: iatMode, tunnel: tunnel))
-                }
-            }
-            else if url.scheme == "snowflake" {
-                if let urlc = url.urlc,
-                   let broker = urlc.firstQueryItem(of: "broker"),
-                   let broker = URL(string: broker),
-                   let fronts = urlc.firstQueryItem(of: "fronts") ?? urlc.firstQueryItem(of: "front"),
-                   let tunnel = urlc.firstQueryItem(of: "tunnel"),
-                   let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
-                   let tunnel = Self.extractEnvoyConfig(from: tunnel)
-                {
-                    let ice = urlc.firstQueryItem(of: "ice") ?? Self.defaultIceServers
-                    let ampCache = urlc.firstQueryItem(of: "ampCache")
-                    let sqsQueue = URL(string: urlc.firstQueryItem(of: "sqsQueue") ?? "")
-                    let sqsCreds = urlc.firstQueryItem(of: "sqsCreds")
-
-                    candidates.append(.snowflake(
-                        ice: ice, broker: broker, fronts: fronts,
-                        ampCache: ampCache, sqsQueue: sqsQueue, sqsCreds: sqsCreds, tunnel: tunnel))
-                }
-            }
-            else if url.scheme == "hysteria2" || url.scheme == "hy2" {
-                candidates.append(.hysteria2(url: url))
-            }
-        }
-
-        await start(proxies: candidates, testUrl: testUrl, testDirect: testDirect)
+        await start(proxies: urls.compactMap { parse($0) }, testUrl: testUrl, testDirect: testDirect)
     }
 
     /**
@@ -868,6 +795,85 @@ public class Envoy: NSObject {
 
 
     // MARK: Private Methods
+
+    /**
+     Parses a proxy URL.
+
+     - parameter url: The URL describing a proxy with its parameters.
+     - returns: A proxy, if one could be identified.
+     */
+    func parse(_ url: URL) -> Proxy? {
+        if url.scheme == "http" || url.scheme == "https" {
+            return .envoy(url: url, headers: [:], salt: nil)
+        }
+        else if url.scheme == "envoy" {
+            if let urlc = url.urlc,
+               let proxy = Self.extractEnvoyConfig(from: urlc)
+            {
+                return proxy
+            }
+        }
+        else if let type = Proxy.V2RayType(rawValue: url.scheme ?? "") {
+            if let host = url.host,
+               !host.isEmpty,
+               let port = url.port,
+               let urlc = url.urlc,
+               let id = urlc.firstQueryItem(of: "id")
+            {
+                let path = urlc.firstQueryItem(of: "path")
+
+                return .v2Ray(type: type, host: host, port: port, id: id, path: path)
+            }
+        }
+        else if url.scheme == "meek" {
+            if let urlc = url.urlc,
+               let url = urlc.firstQueryItem(of: "url"),
+               let url = URL(string: url),
+               let front = urlc.firstQueryItem(of: "front"),
+               let tunnel = urlc.firstQueryItem(of: "tunnel"),
+               let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+               let tunnel = Self.extractEnvoyConfig(from: tunnel)
+            {
+                return .meek(url: url, front: front, tunnel: tunnel)
+            }
+        }
+        else if url.scheme == "obfs4" {
+            if let urlc = url.urlc,
+               let cert = urlc.firstQueryItem(of: "cert"),
+               let tunnel = urlc.firstQueryItem(of: "tunnel"),
+               let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+               let tunnel = Self.extractEnvoyConfig(from: tunnel)
+            {
+                let iatMode = Int(urlc.firstQueryItem(of: "iat-mode") ?? "") ?? 0
+
+                return .obfs4(cert: cert, iatMode: iatMode, tunnel: tunnel)
+            }
+        }
+        else if url.scheme == "snowflake" {
+            if let urlc = url.urlc,
+               let broker = urlc.firstQueryItem(of: "broker"),
+               let broker = URL(string: broker),
+               let fronts = urlc.firstQueryItem(of: "fronts") ?? urlc.firstQueryItem(of: "front"),
+               let tunnel = urlc.firstQueryItem(of: "tunnel"),
+               let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+               let tunnel = Self.extractEnvoyConfig(from: tunnel)
+            {
+                let ice = urlc.firstQueryItem(of: "ice") ?? Self.defaultIceServers
+                let ampCache = urlc.firstQueryItem(of: "ampCache")
+                let sqsQueue = URL(string: urlc.firstQueryItem(of: "sqsQueue") ?? "")
+                let sqsCreds = urlc.firstQueryItem(of: "sqsCreds")
+
+                return .snowflake(
+                    ice: ice, broker: broker, fronts: fronts,
+                    ampCache: ampCache, sqsQueue: sqsQueue, sqsCreds: sqsCreds, tunnel: tunnel)
+            }
+        }
+        else if url.scheme == "hysteria2" || url.scheme == "hy2" {
+            return .hysteria2(url: url)
+        }
+
+        return nil
+    }
 
     /**
      Creates a SHA256 digest for the given URL plus a salt.

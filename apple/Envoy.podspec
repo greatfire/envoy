@@ -34,11 +34,9 @@ TODO: Add long description of the pod here.
 
   s.source_files = 'Envoy/Classes/**/*'
   
-  # s.resource_bundles = {
-  #   'Envoy' => ['Envoy/Assets/*.png']
-  # }
-
-  # s.public_header_files = 'Pod/Classes/**/*.h'
-  # s.frameworks = 'UIKit', 'MapKit'
   s.dependency 'IEnvoyProxy', '~> 2.0'
+
+  s.test_spec 'Tests' do |t|
+      t.source_files = 'Envoy/Tests/**/*'
+  end
 end
