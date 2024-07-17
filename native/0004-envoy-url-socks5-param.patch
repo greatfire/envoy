@@ -4,10 +4,10 @@
  3 files changed, 58 insertions(+), 19 deletions(-)
 
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index 52e487720202d..fcaef629d501f 100644
+index c8f43ce7b5470..b65ea463f907f 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-@@ -35,6 +35,7 @@ import org.chromium.net.urlconnection.CronetURLStreamHandlerFactory;
+@@ -37,6 +37,7 @@ import org.chromium.net.urlconnection.CronetURLStreamHandlerFactory;
  import java.net.Proxy;
  import java.net.URL;
  import java.net.URLConnection;
@@ -15,7 +15,7 @@ index 52e487720202d..fcaef629d501f 100644
  import java.net.URLStreamHandlerFactory;
  import java.util.ArrayList;
  import java.util.Collection;
-@@ -296,18 +297,30 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+@@ -298,18 +299,30 @@ public class CronetUrlRequestContext extends CronetEngineBase {
                              // mUrlRequestContextAdapter is guaranteed to exist until
                              // initialization on init and network threads completes and
                              // initNetworkThread is called back on network thread.
