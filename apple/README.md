@@ -6,6 +6,21 @@
 
 This is the implementation for Apple platforms of the original [Envoy for Android](https://github.com/greatfire/envoy).
 
+Envoy is a manager for various proxy implementations.
+
+It will automatically find the best working proxy and provide the necessary configuration
+via helper methods.
+
+Supported Proxies are:
+- Envoy HTTP proxy (partial support on Apple platforms)
+- V2Ray
+- Hysteria2
+- Pluggable Transports together with an Envoy HTTP proxy or a SOCKS5 proxy:
+  - Meek
+  - Obfs4
+  - WebTunnel
+  - Snowflake
+
 Since Apple platforms come with some limitations, Envoy for Apple Platforms has some 
 
 ## Differences compared to Envoy for Android:

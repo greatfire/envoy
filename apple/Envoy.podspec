@@ -9,16 +9,21 @@
 Pod::Spec.new do |s|
   s.name             = 'Envoy'
   s.version          = '0.1.0'
-  s.summary          = 'A short description of Envoy.'
-
-# This description is used to generate tags and improve search results.
-#   * Think: What does it do? Why did you write it? What is the focus?
-#   * Try to keep it short, snappy and to the point.
-#   * Write the description between the DESC delimiters below.
-#   * Finally, don't worry about the indent, CocoaPods strips it!
+  s.summary          = 'Envoy is a manager for various proxy implementations.'
 
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+  It will automatically find the best working proxy and provide the necessary configuration
+  via helper methods.
+
+  Supported Proxies are:
+  - Envoy HTTP proxy (partial support on Apple platforms)
+  - V2Ray
+  - Hysteria2
+  - Pluggable Transports together with an Envoy HTTP proxy or a SOCKS5 proxy:
+    - Meek
+    - Obfs4
+    - WebTunnel
+    - Snowflake
                        DESC
 
   s.homepage         = 'https://github.com/greatfire/envoy'
