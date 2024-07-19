@@ -32,11 +32,11 @@ TODO: Add long description of the pod here.
 
   s.static_framework = true
 
-  s.source_files = 'Envoy/Classes/**/*'
-  
+  s.source_files = 'Sources/Envoy/**/*'
+
   s.dependency 'IEnvoyProxy', '~> 2.0'
 
   s.test_spec 'Tests' do |t|
-      t.source_files = 'Envoy/Tests/**/*'
+      t.source_files = 'Tests/EnvoyTests/**/*'
   end
 end

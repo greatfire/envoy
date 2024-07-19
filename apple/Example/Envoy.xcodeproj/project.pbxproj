@@ -45,6 +45,7 @@
 		A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Envoy_Example-Bridging-Header.h"; sourceTree = "<group>"; };
 		A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjcViewController.h; sourceTree = "<group>"; };
 		A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjcViewController.m; sourceTree = "<group>"; };
+		A041A2072C4A8EB8008353F8 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Package.swift; path = ../Package.swift; sourceTree = "<group>"; };
 		A04B51922C414E940050CA0A /* proxies.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = proxies.plist; sourceTree = "<group>"; };
 		A04B51962C41500F0050CA0A /* Proxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Proxy.swift; sourceTree = "<group>"; };
 		B6E06D5D3A03A92B82B4D2FC /* Envoy.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = Envoy.podspec; path = ../Envoy.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
@@ -127,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				B6E06D5D3A03A92B82B4D2FC /* Envoy.podspec */,
+				A041A2072C4A8EB8008353F8 /* Package.swift */,
 				E613D66F9A0E5D47D6542ACD /* README.md */,
 				A018BCC92BAC761700EC6172 /* Podfile */,
 				A018BCCA2BAC761700EC6172 /* Podfile.lock */,

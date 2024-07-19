@@ -5,6 +5,7 @@
 //  Created by Benjamin Erhart on 11.06.24.
 //
 
+import Foundation
 import Network
 
 extension NWEndpoint.Host {

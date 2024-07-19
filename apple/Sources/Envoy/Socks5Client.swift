@@ -5,6 +5,7 @@
 //  Created by Benjamin Erhart on 19.06.24.
 //
 
+import Foundation
 import Network
 
 /**
