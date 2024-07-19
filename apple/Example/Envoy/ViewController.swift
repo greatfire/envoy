@@ -3,7 +3,7 @@
 //  Envoy
 //
 //  Created by Benjamin Erhart on 03/21/2024.
-//  Copyright (c) 2024 Benjamin Erhart. All rights reserved.
+//  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
 import UIKit
@@ -31,17 +31,14 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
             Envoy.ptLogging = true
             print("[\(String(describing: type(of: self)))] ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
 
-            await Envoy.shared.start(urls: [], testDirect: true)
+            let proxies = Proxy.fetch()
+            print("[\(String(describing: type(of: self)))] proxies=\(proxies)")
+
+            await Envoy.shared.start(urls: proxies.map({ $0.url }), testDirect: proxies.isEmpty)
 
             print("[\(String(describing: type(of: self)))] selected proxy: \(Envoy.shared.proxy)")
 
             initWebView()
-
-//            if #available(iOS 17.0, *) {
-//                if let proxy = Envoy.shared.getProxyConfig() {
-//                    webView.configuration.websiteDataStore.proxyConfigurations.append(proxy)
-//                }
-//            }
 
             busyView.isHidden = true
 
@@ -61,30 +58,29 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     func textFieldDidEndEditing(_ textField: UITextField, reason: UITextField.DidEndEditingReason) {
         if reason == .committed,
            let text = addressTf.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-           let urlc = URLComponents(string: text)
+           let urlc = URLComponents(string: text),
+           let url = urlc.url
         {
-            if let url = urlc.url {
-                addressTf.text = url.absoluteString
+            addressTf.text = url.absoluteString
 
-//                let conf = URLSessionConfiguration.default
-//                conf.protocolClasses = [EnvoyUrlProtocol.self]
+//            let conf = URLSessionConfiguration.default
+//            conf.protocolClasses = [EnvoyUrlProtocol.self]
 //
-//                let session = URLSession(configuration: conf)
+//            let session = URLSession(configuration: conf)
 //
-//                Task {
-//                    do {
-//                        let (data, response) = try await session.data(for: URLRequest(url: url))
+//            Task {
+//                do {
+//                    let (data, response) = try await session.data(for: URLRequest(url: url))
 //
-//                        print("[\(String(describing: type(of: self)))] response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
-//                    }
-//                    catch {
-//                        print("[\(String(describing: type(of: self)))] error=\(error)")
-//                    }
+//                    print("[\(String(describing: type(of: self)))] response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
 //                }
+//                catch {
+//                    print("[\(String(describing: type(of: self)))] error=\(error)")
+//                }
+//            }
 
-                webView.stopLoading()
-                webView.load(URLRequest(url: url))
-            }
+            webView.stopLoading()
+            webView.load(URLRequest(url: url))
         }
     }
 

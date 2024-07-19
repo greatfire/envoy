@@ -9,16 +9,21 @@
 Pod::Spec.new do |s|
   s.name             = 'Envoy'
   s.version          = '0.1.0'
-  s.summary          = 'A short description of Envoy.'
-
-# This description is used to generate tags and improve search results.
-#   * Think: What does it do? Why did you write it? What is the focus?
-#   * Try to keep it short, snappy and to the point.
-#   * Write the description between the DESC delimiters below.
-#   * Finally, don't worry about the indent, CocoaPods strips it!
+  s.summary          = 'Envoy is a manager for various proxy implementations.'
 
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+  It will automatically find the best working proxy and provide the necessary configuration
+  via helper methods.
+
+  Supported Proxies are:
+  - Envoy HTTP proxy (partial support on Apple platforms)
+  - V2Ray
+  - Hysteria2
+  - Pluggable Transports together with an Envoy HTTP proxy or a SOCKS5 proxy:
+    - Meek
+    - Obfs4
+    - WebTunnel
+    - Snowflake
                        DESC
 
   s.homepage         = 'https://github.com/greatfire/envoy'
@@ -28,16 +33,15 @@ TODO: Add long description of the pod here.
   s.social_media_url = 'https://twitter.com/tladesignz'
 
   s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '11'
 
   s.static_framework = true
 
-  s.source_files = 'Envoy/Classes/**/*'
-  
-  # s.resource_bundles = {
-  #   'Envoy' => ['Envoy/Assets/*.png']
-  # }
+  s.source_files = 'Sources/Envoy/**/*'
 
-  # s.public_header_files = 'Pod/Classes/**/*.h'
-  # s.frameworks = 'UIKit', 'MapKit'
   s.dependency 'IEnvoyProxy', '~> 2.0'
+
+  s.test_spec 'Tests' do |t|
+      t.source_files = 'Tests/EnvoyTests/**/*'
+  end
 end

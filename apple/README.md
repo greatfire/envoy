@@ -1,8 +1,255 @@
-# Envoy
+# Envoy for Apple Platforms
 
 [![Version](https://img.shields.io/cocoapods/v/Envoy.svg?style=flat)](https://cocoapods.org/pods/Envoy)
 [![License](https://img.shields.io/cocoapods/l/Envoy.svg?style=flat)](https://cocoapods.org/pods/Envoy)
 [![Platform](https://img.shields.io/cocoapods/p/Envoy.svg?style=flat)](https://cocoapods.org/pods/Envoy)
+
+This is the implementation for Apple platforms of the original [Envoy for Android](https://github.com/greatfire/envoy).
+
+Envoy is a manager for various proxy implementations.
+
+It will automatically find the best working proxy and provide the necessary configuration
+via helper methods.
+
+Supported Proxies are:
+- Envoy HTTP proxy (partial support on Apple platforms)
+- V2Ray
+- Hysteria2
+- Pluggable Transports together with an Envoy HTTP proxy or a SOCKS5 proxy:
+  - Meek
+  - Obfs4
+  - WebTunnel
+  - Snowflake
+
+Since Apple platforms come with some limitations, Envoy for Apple Platforms has some 
+
+## Differences compared to Envoy for Android:
+
+- It is *not* based on [Cronet](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/components/cronet/README.md),
+  since Google discontinued Cronet support for iOS a while ago.
+  Obviously, because of Apple's lack of evolvement of the [`NSURLProtocol`](https://developer.apple.com/documentation/foundation/nsurlprotocol))
+  interface, which Cronet used, and a lack of any viable replacements.
+  
+- The custom Envoy HTTP proxy is only partially supported with `WKWebView`, due to a lack of usable hooks
+  to modify requests properly. In an environment, where you can afford to send some requests over the
+  clearnet, this does not pose a problem. However, if you need to keep your users safe from observation
+  and blocking, **do not use it**!
+  
+- Hence, Envoy for Apple Platforms supports a replacement: SOCKS5 proxies.
+  This should be used in conjunction with all Pluggable Transports (Obfs4, Meek, WebTunnel, Snowflake), which
+  need an additional protocol as their payload, since they're about obfuscation only, and don't handle
+  traffic routing. On Linux servers, we recommend to use [Dante](https://www.inet.no/dante/)
+  as the counterpart behind a Pluggable Transport.
+  
+- Hysteria: Envoy for Apple Platforms only supports Hysteria 2. Hysteria 2 is a complete rewrite and is
+  totally incompatible with Hysteria 1. Hysteria 1 is discontinued. Currently Envoy for Android stays
+  on Hysteria 1, but is bound to update to Hysteria 2, eventually.
+  
+
+## Apple Platforms Limitations:
+
+- Most notably, [`WKWebView`](https://developer.apple.com/documentation/webkit/wkwebview) only [supports 
+  SOCKS5 (and HTTP) proxies beginning with iOS 17/macOS 14](https://developer.apple.com/documentation/webkit/wkwebsitedatastore/4264546-proxyconfigurations).
+  If you need to keep your users safe and secure, and not only provide proxying on a best-effort basis,
+  *and* if you use `WKWebView`, then **do not support iOS below version 17 and macOS below version 14**!
+
+- If you're still allowed to use [`UIWebView`](https://developer.apple.com/documentation/uikit/uiwebview),
+  although it's highly deprecated and Apple doesn't allow new submissions with it, 
+  you can use the `EnvoyUrlProtocol`.
+  
+- If you want to use [`URLSession`](https://developer.apple.com/documentation/foundation/nsurlsession) or the legacy
+  [`NSURLConnection`](https://developer.apple.com/documentation/foundation/nsurlconnection/), 
+  it is highly recommended, though, that you directly use `Envoy.shared.getProxyDict()` and `Envoy.shared.maybeModify(:)`,
+  instead of leveraging the `EnvoyUrlProtocol`!
+  
+- `WKWebView` configurations cannot be changed after initialization. So you will need to wait with that, until
+  `Envoy.shared.start()` was run.
+  
+
+## Supported Proxies
+
+### Custom Envoy HTTP Proxy
+
+Example config URLs:
+
+`https://proxy.example.com/proxy/`
+`envoy://?url=https://proxy.example.com/proxy/&salt=abcdefghijklmnop&header_foobar=abcdefg&address=127.0.0.1`
+
+- Works with `URLSession` and `URLConnection` requests by using `Envoy.shared.maybeModify(:)` with the
+  `URLRequest` object.
+- Works with `UIWebView` by using `EnvoyUrlProtocol`.
+- Works partially with `WKWebView` by using `EnvoyWebView` which leverages `EnvoySchemeHandler`.
+  **ATTENTION**: This works by rewriting the `https` scheme to `envoy-https` and then let the request
+  be treated by the `EnvoySchemeHandler`. This works for all requests, which are directly issued by
+  the user, for requests which were started by a navigation event (i.e. where the user clicked on a link)
+  and for all *relative* URLs used in the requested document.
+  **It will not work** for fully qualified URLs which are referenced in any requested documents, stylesheets,
+  SVG files, JavaScript files and others!
+  Hence, use of the custom Envoy HTTP proxy is not recommended with `WKWebView` and can only be supported
+  on a best-effort basis, where the user isn't concerned about having some requests go over the clearnet
+  which might potentially be recorded or blocked! 
+- There is also no support for changing the `Host` header or fixing a name to an IP address (in other words:
+  meddling with the DNS resolution), since there is no way on Apple platforms to do that.
+  *Note*: The `address` config option is supported in Envoy config URLs for compatibility reasons, but it will only 
+  replace the host part in the provided `url`, and hence the request will fail, if your server needs a properly set 
+  TLS client hello host for certificate disambiguation and/or a properly set `Host` header for virtual host disambiguation.
+  As said, with the provided libraries on Apple platforms, this cannot be achieved.  
+  
+### V2Ray
+
+Example config URLs:
+
+`v2ws://127.0.0.1:12345?id=00000000-0000-0000-0000-00000000000&path=/websocket/`
+`v2wechat://127.0.0.1:12346?id=00000000-0000-0000-0000-00000000000`
+`v2srtp://127.0.0.1:12347?id=00000000-0000-0000-0000-00000000000`
+
+- All V2Ray proxy modes are fully supported.
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+### Hysteria 2
+
+- Fully supported by using the defined [Hysteria 2 URI Scheme](https://v2.hysteria.network/docs/developers/URI-Scheme/).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+### Pluggable Transport: Meek
+
+Example config URLs:
+
+`meek://?url=https://cdn.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345`
+`meek://?url=https://cdn.example.com/&front=.wellknown.org&tunnel=https://proxy.example.com/proxy/`
+
+- Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
+  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+### Pluggable Transport: Obfs4
+
+Example config URLs:
+
+`obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=socks5://127.0.0.1:12345`
+`obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=https://proxy.example.com/proxy/`
+
+- Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
+  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+### Pluggable Transport: WebTunnel
+
+Example config URLs:
+
+`webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=socks5://127.0.0.1:12345`
+`webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=https://proxy.example.com/proxy/`
+
+- Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
+  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+### Pluggable Transport: Snowflake
+
+Example config URLs:
+
+`snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345`
+`snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=https://proxy.example.com/proxy/`
+
+- Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
+  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+
+## Usage
+
+```Swift
+
+import Envoy
+
+Task {
+    await Envoy.shared.start(
+        // Your proxy URLs. Order is important!
+        urls: [
+            URL(string: "v2ws://127.0.0.1:12345?id=00000000-0000-0000-0000-00000000000&path=/websocket/")!,
+            URL(string: "v2wechat://127.0.0.1:12346?id=00000000-0000-0000-0000-00000000000")!,
+            URL(string: "v2srtp://127.0.0.1:12347?id=00000000-0000-0000-0000-00000000000")!,
+            URL(string: "hysteria2://abcdefghijklmnopqrstuvwxyzabcdef@example.com:12345/")!,
+            URL(string: "meek://?url=https://cdn.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345")!,
+            URL(string: "obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=socks5://127.0.0.1:12345")!,
+            URL(string: "webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=socks5://127.0.0.1:12345")!,
+            URL(string: "snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345")!,
+            URL(string: "envoy://?url=https://proxy.example.com/proxy/&salt=abcdefghijklmnop&header_foobar=abcdefg&address=127.0.0.1")!,
+        ],
+
+        // The test URL which determines success. Needs to return HTTP status code 204, to be counted as success.
+        // The example given here is the default, so just provide this argument, if you want to use another test endpoint.
+        testUrl: URL(string: "https://www.google.com/generate_204")!,
+        
+        // Will test a clearnet connection first, if set to `true`!
+        testDirect: true)
+        
+        
+    // Alternatively, you can use this, if you don't need to rely on proxy URL strings:
+    
+    await Envoy.shared.start(
+        // Your proxies. Order is important!
+        proxies: [
+            .v2Ray(type: .ws, host: "127.0.0.1", port: 12345, id: "00000000-0000-0000-0000-00000000000", path: "/websocket/"),
+            .v2Ray(type: .weChat, host: "127.0.0.1", port: 12346, id: "00000000-0000-0000-0000-00000000000", path: nil),
+            .v2Ray(type: .srtp, host: "127.0.0.1", port: 12347, id: "00000000-0000-0000-0000-00000000000", path: nil),
+            .hysteria2(url: URL(string: "hysteria2://abcdefghijklmnopqrstuvwxyzabcdef@example.com:12345/")!),
+            .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345)),
+            .obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr", iatMode: 0, tunnel: .socks5(host: "127.0.0.1", port: 12345)),
+            .webTunnel(url: URL(string: "https://example.com/abcdefghijklm")!, ver: "0.0.1", tunnel: .socks5(host: "127.0.0.1", port: 12345)),
+            .snowflake(ice: nil, broker: URL(string: "https://broker.example.com/")!, fronts: ".wellknown.org", ampCache: nil, sqsQueue: nil, sqsCreds: nil, tunnel: .socks5(host: "127.0.0.1", port: 12345)),
+            .envoy(url: URL(string: "https://127.0.0.1/proxy/")!, headers: ["foobar": "abcdefg"], salt: "abcdefghijklmnop"),
+        ],
+
+        // The test URL which determines success. Needs to return HTTP status code 204, to be counted as success.
+        // The example given here is the default, so just provide this argument, if you want to use another test endpoint.
+        testUrl: URL(string: "https://www.google.com/generate_204")!,
+
+        // Will test a clearnet connection first, if set to `true`!
+        testDirect: true)
+
+        
+    // NOTE: Start your requests only **after** `Envoy.shared.start()`` was run!
+        
+    let conf = URLSessionConfiguration.ephemeral
+    conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
+
+    let session = URLSession(configuration: conf)
+    
+    let request = URLRequest(url: URL(string: "https://www.wikipedia.org/")!)
+    
+    do {
+        let (data, response) = try await session.data(for: Envoy.shared.maybeModify(request))
+
+        print(response)
+        print(String(data: data, encoding: .utf8))
+    }
+    catch {
+        print(error)
+    }
+
+
+    // NOTE: Only initialize `EnvoyWebView` **after** `Envoy.shared.start()`` was run!
+    // (This is a limitation of Apple platforms!)
+    
+    let webView = EnvoyWebView(frame: .zero)
+    view.addSubview(webView)
+
+    webView.load(request)
+}
+
+```
+
 
 ## Example
 

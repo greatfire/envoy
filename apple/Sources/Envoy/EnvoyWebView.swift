@@ -3,6 +3,7 @@
 //  Envoy
 //
 //  Created by Benjamin Erhart on 04.06.24.
+//  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
 import WebKit
@@ -65,7 +66,7 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
     }
 
     public override init(frame: CGRect, configuration: WKWebViewConfiguration = .init()) {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 17.0, macOS 14.0, *) {
             if let proxy = Envoy.shared.getProxyConfig() {
                 configuration.websiteDataStore.proxyConfigurations.append(proxy)
             }
@@ -74,7 +75,7 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
         super.init(frame: frame, configuration: EnvoySchemeHandler.register(configuration))
 
 #if DEBUG
-        if #available(iOS 16.4, *) {
+        if #available(iOS 16.4, macOS 13.3, *) {
             isInspectable = true
         }
 #endif
@@ -204,12 +205,12 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
         }
     }
 
-    @available(iOS 14.5, *)
+    @available(iOS 14.5, macOS 11.3, *)
     public func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
         _navigationDelegate?.webView?(webView, navigationAction: navigationAction, didBecome: download)
     }
 
-    @available(iOS 14.5, *)
+    @available(iOS 14.5, macOS 11.3, *)
     public func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
         _navigationDelegate?.webView?(webView, navigationResponse: navigationResponse, didBecome: download)
     }
@@ -220,31 +221,16 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
     private class func needsModification(_ request: URLRequest) -> Bool {
         if #available(iOS 17.0, *) {
             switch Envoy.shared.proxy {
-            case .direct, .v2Ray, .hysteria2:
+            case .direct, .v2Ray, .hysteria2, .socks5:
                 return false
 
             case .envoy:
                 break
 
-            case .meek(_, _, let tunnel):
-                switch tunnel {
-                case .envoy:
-                    break
-
-                default:
-                    return false
-                }
-
-            case .obfs4(_, _, let tunnel):
-                switch tunnel {
-                case .envoy:
-                    break
-
-                default:
-                    return false
-                }
-
-            case .snowflake(_, _, _, _, _, _, let tunnel):
+            case .meek(_, _, let tunnel),
+                    .obfs4(_, _, let tunnel),
+                    .webTunnel(_, _, let tunnel),
+                    .snowflake(_, _, _, _, _, _, let tunnel):
                 switch tunnel {
                 case .envoy:
                     break
@@ -277,7 +263,7 @@ class EnvoyNavigationAction: WKNavigationAction {
         EnvoySchemeHandler.revertModification(original.request)
     }
 
-    @available(iOS 14.5, *)
+    @available(iOS 14.5, macOS 11.3, *)
     override var shouldPerformDownload: Bool {
         original.shouldPerformDownload
     }
