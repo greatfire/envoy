@@ -52,12 +52,12 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
     //implementation 'org.greatfire.envoy:cronet:107.0.5304.150-1'
-    //implementation 'org.greatfire:IEnvoyProxy:1.5.0'
+    implementation 'org.greatfire:IEnvoyProxy:1.5.0'
 
-     debugApi(name: 'cronet-debug', ext: 'aar')
-     releaseApi(name: 'cronet-release', ext: 'aar')
-     debugApi(name: 'IEnvoyProxy', ext: 'aar')
-     releaseApi(name: 'IEnvoyProxy', ext: 'aar')
+    debugApi(name: 'cronet-debug', ext: 'aar')
+    releaseApi(name: 'cronet-release', ext: 'aar')
+    // debugApi(name: 'IEnvoyProxy', ext: 'aar')
+    // releaseApi(name: 'IEnvoyProxy', ext: 'aar')
 }
 
 def stdout = new ByteArrayOutputStream()
