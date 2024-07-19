@@ -156,7 +156,7 @@ class EnvoyTests: XCTestCase {
         XCTAssertNil(dict?[kCFStreamPropertySOCKSPassword])
     }
 
-    @available(iOS 17.0, *)
+    @available(iOS 17.0, macOS 14.0, *)
     func testProxyConf() {
         var proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
                                       iatMode: 2, tunnel: .direct)
