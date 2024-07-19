@@ -215,7 +215,7 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 1540;
 				LastUpgradeCheck = 1540;
-				ORGANIZATIONNAME = CocoaPods;
+				ORGANIZATIONNAME = GreatFire;
 				TargetAttributes = {
 					607FACCF1AFB9204008FA782 = {
 						CreatedOnToolsVersion = 6.3.1;

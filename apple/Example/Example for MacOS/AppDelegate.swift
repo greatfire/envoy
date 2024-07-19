@@ -1,9 +1,9 @@
 //
 //  AppDelegate.swift
-//  Example for MacOS
+//  Envoy
 //
 //  Created by Benjamin Erhart on 10.07.24.
-//  Copyright © 2024 CocoaPods. All rights reserved.
+//  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
 import Cocoa

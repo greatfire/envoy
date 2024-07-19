@@ -3,6 +3,7 @@
 //  Envoy
 //
 //  Created by Benjamin Erhart on 10.06.24.
+//  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
 import Foundation

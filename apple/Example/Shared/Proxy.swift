@@ -3,7 +3,7 @@
 //  Envoy
 //
 //  Created by Benjamin Erhart on 12.07.24.
-//  Copyright © 2024 CocoaPods. All rights reserved.
+//  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
 import Foundation
