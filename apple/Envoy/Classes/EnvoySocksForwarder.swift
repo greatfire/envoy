@@ -46,13 +46,10 @@ class EnvoySocksForwarder {
             let tunnel: Envoy.Proxy
 
             switch proxy {
-            case .meek(_, _, let t):
-                tunnel = t
-
-            case .obfs4(_, _, let t):
-                tunnel = t
-
-            case .snowflake(_, _, _, _, _, _, let t):
+            case .meek(_, _, let t),
+                    .obfs4(_, _, let t),
+                    .webTunnel(_, _, let t),
+                    .snowflake(_, _, _, _, _, _, let t):
                 tunnel = t
 
             default:

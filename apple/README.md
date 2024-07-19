@@ -21,7 +21,7 @@ Since Apple platforms come with some limitations, Envoy for Apple Platforms has 
   and blocking, **do not use it**!
   
 - Hence, Envoy for Apple Platforms supports a replacement: SOCKS5 proxies.
-  This should be used in conjunction with all Pluggable Transports (Obfs4, Meek, Webtunnel, Snowflake), which
+  This should be used in conjunction with all Pluggable Transports (Obfs4, Meek, WebTunnel, Snowflake), which
   need an additional protocol as their payload, since they're about obfuscation only, and don't handle
   traffic routing. On Linux servers, we recommend to use [Dante](https://www.inet.no/dante/)
   as the counterpart behind a Pluggable Transport.
@@ -109,7 +109,7 @@ Example config URLs:
 - The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
   See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
 - Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a socks5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 ### Pluggable Transport: Obfs4
 
@@ -122,7 +122,20 @@ Example config URLs:
 - The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
   See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
 - Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a socks5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+
+### Pluggable Transport: WebTunnel
+
+Example config URLs:
+
+`webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=socks5://127.0.0.1:12345`
+`webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=https://proxy.example.com/proxy/`
+
+- Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
+  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 ### Pluggable Transport: Snowflake
 
@@ -135,7 +148,7 @@ Example config URLs:
 - The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
   See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
 - Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a socks5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 
 ## Usage
@@ -154,6 +167,7 @@ Task {
             URL(string: "hysteria2://abcdefghijklmnopqrstuvwxyzabcdef@example.com:12345/")!,
             URL(string: "meek://?url=https://cdn.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345")!,
             URL(string: "obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=socks5://127.0.0.1:12345")!,
+            URL(string: "webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=socks5://127.0.0.1:12345")!,
             URL(string: "snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345")!,
             URL(string: "envoy://?url=https://proxy.example.com/proxy/&salt=abcdefghijklmnop&header_foobar=abcdefg&address=127.0.0.1")!,
         ],
@@ -177,6 +191,7 @@ Task {
             .hysteria2(url: URL(string: "hysteria2://abcdefghijklmnopqrstuvwxyzabcdef@example.com:12345/")!),
             .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345)),
             .obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr", iatMode: 0, tunnel: .socks5(host: "127.0.0.1", port: 12345)),
+            .webTunnel(url: URL(string: "https://example.com/abcdefghijklm")!, ver: "0.0.1", tunnel: .socks5(host: "127.0.0.1", port: 12345)),
             .snowflake(ice: nil, broker: URL(string: "https://broker.example.com/")!, fronts: ".wellknown.org", ampCache: nil, sqsQueue: nil, sqsCreds: nil, tunnel: .socks5(host: "127.0.0.1", port: 12345)),
             .envoy(url: URL(string: "https://127.0.0.1/proxy/")!, headers: ["foobar": "abcdefg"], salt: "abcdefghijklmnop"),
         ],

@@ -80,7 +80,7 @@ public class Envoy: NSObject {
 
          - parameter url: The URL to the meek server.
          - parameter front: The front domain to use instead of the Meek server's name in the TLS SNI.
-         - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` and ``socks5(host:port:)`` proxies are supported, currently.
          */
         indirect case meek(url: URL, front: String, tunnel: Proxy)
 
@@ -89,9 +89,18 @@ public class Envoy: NSObject {
 
          - parameter cert: The pulbic component of the Obfs4 server's Curve25519 key.
          - parameter iatMode: The "Inter-Ariival Time" timing randomization mode.
-         - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` and ``socks5(host:port:)`` proxies are supported, currently.
          */
         indirect case obfs4(cert: String, iatMode: Int = 0, tunnel: Proxy)
+
+        /**
+         WebTunnel transport which obfuscates another proxy.
+
+         - parameter url: WebTunnel HTTPS URL containing the secret path to the WebTunnel server.
+         - parameter ver: WebTunnel version. (E.g. '0.0.1').
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` and ``socks5(host:port:)`` proxies are supported, currently.
+         */
+        indirect case webTunnel(url: URL, ver: String, tunnel: Proxy)
 
         /**
          Snowflake transport which obfuscates another proxy.
@@ -102,7 +111,7 @@ public class Envoy: NSObject {
          - parameter ampCache: URL of AMP cache to use as a proxy for signaling.
          - parameter sqsQueue: URL of SQS Queue to use as a proxy for signaling.
          - parameter sqsCreds: Credentials to access SQS Queue.
-         - parameter tunnel: Only ``envoy(url:headers:salt:)`` proxies are supported, currently.
+         - parameter tunnel: Only ``envoy(url:headers:salt:)`` and ``socks5(host:port:)`` proxies are supported, currently.
          */
         indirect case snowflake(ice: String? = nil, broker: URL, fronts: String, ampCache: String? = nil, sqsQueue: URL? = nil, sqsCreds: String? = nil, tunnel: Proxy)
 
@@ -137,6 +146,9 @@ public class Envoy: NSObject {
             case .obfs4(let cert, let iatMode, let tunnel):
                 return "obfs4 cert=\(cert), iatMode\(iatMode), tunnel=\(tunnel)"
 
+            case .webTunnel(let url, let ver, let tunnel):
+                return "WebTunnel url=\(url), ver=\(ver), tunnel=\(tunnel)"
+
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, let tunnel):
                 return "snowflake ice=\(ice ?? Envoy.defaultIceServers), broker=\(broker), fronts=\(fronts), "
                     + "ampCache=\(ampCache ?? "(nil)"), sqsQueue=\(sqsQueue?.absoluteString ?? "(nil)"), "
@@ -170,6 +182,9 @@ public class Envoy: NSObject {
             case .obfs4:
                 return IEnvoyProxyObfs4Port()
 
+            case .webTunnel:
+                return IEnvoyProxyWebtunnelPort()
+
             case .snowflake:
                 return IEnvoyProxySnowflakePort()
 
@@ -189,7 +204,7 @@ public class Envoy: NSObject {
          */
         public func start() {
             switch self {
-            case .meek, .obfs4, .snowflake:
+            case .meek, .obfs4, .webTunnel, .snowflake:
                 if let path = Envoy.ptStateDir?.path {
                     IEnvoyProxy.setStateLocation(path)
                 }
@@ -211,7 +226,7 @@ public class Envoy: NSObject {
                     IEnvoyProxyStartV2raySrtp(host, String(port), id)
                 }
 
-            case .meek, .obfs4:
+            case .meek, .obfs4, .webTunnel:
                 IEnvoyProxyStartLyrebird("INFO", Envoy.ptLogging, false)
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, _):
@@ -253,7 +268,7 @@ public class Envoy: NSObject {
                     IEnvoyProxyStopV2RaySrtp()
                 }
 
-            case .meek, .obfs4:
+            case .meek, .obfs4, .webTunnel:
                 IEnvoyProxyStopLyrebird()
 
             case .snowflake:
@@ -292,27 +307,10 @@ public class Envoy: NSObject {
                 headers = h
                 salt = s
 
-            case .meek(_, _, let tunnel):
-                if case .envoy(let u, let h, let s) = tunnel {
-                    url = u
-                    headers = h
-                    salt = s
-                }
-                else {
-                    return request
-                }
-
-            case .obfs4(_, _, let tunnel):
-                if case .envoy(let u, let h, let s) = tunnel {
-                    url = u
-                    headers = h
-                    salt = s
-                }
-                else {
-                    return request
-                }
-
-            case .snowflake(_, _, _, _, _, _, let tunnel):
+            case .meek(_, _, let tunnel),
+                    .obfs4(_, _, let tunnel),
+                    .webTunnel(_, _, let tunnel),
+                    .snowflake(_, _, _, _, _, _, let tunnel):
                 if case .envoy(let u, let h, let s) = tunnel {
                     url = u
                     headers = h
@@ -371,7 +369,24 @@ public class Envoy: NSObject {
          - returns: An umodfied version of the request object, if this is the Envoy proxy type.
          */
         public func revertModification(_ request: URLRequest) -> URLRequest {
-            guard case .envoy(_, let headers, _) = self else {
+            let headers: [String: String]
+
+            switch self {
+            case .envoy(_, let h, _):
+                headers = h
+
+            case .meek(_, _, let tunnel),
+                    .obfs4(_, _, let tunnel), 
+                    .webTunnel(_, _, let tunnel),
+                    .snowflake(_, _, _, _, _, _, let tunnel):
+                if case .envoy(_, let h, _) = tunnel {
+                    headers = h
+                }
+                else {
+                    return request
+                }
+
+            default:
                 return request
             }
 
@@ -420,15 +435,6 @@ public class Envoy: NSObject {
             case .v2Ray, .hysteria2:
                 return getSocks5Dict(port)
 
-            case .snowflake(_, _, _, _, _, _, let tunnel):
-                switch forceTransport ? .direct : tunnel {
-                case .socks5:
-                    return getSocks5Dict(Int(EnvoySocksForwarder.port))
-
-                default:
-                    return getSocks5Dict(port)
-                }
-
             case .meek(let url, var front, let tunnel):
                 switch forceTransport ? .direct : tunnel {
                 case .socks5:
@@ -450,6 +456,24 @@ public class Envoy: NSObject {
 
                 default:
                     return getSocks5Dict(port, arguments: ["cert": cert, "iat-mode": String(iatMode)])
+                }
+
+            case .webTunnel(let url, let ver, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Dict(Int(EnvoySocksForwarder.port))
+
+                default:
+                    return getSocks5Dict(port, arguments: ["url": url.absoluteString, "ver": ver])
+                }
+
+            case .snowflake(_, _, _, _, _, _, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Dict(Int(EnvoySocksForwarder.port))
+
+                default:
+                    return getSocks5Dict(port)
                 }
 
             default:
@@ -476,15 +500,6 @@ public class Envoy: NSObject {
             case .v2Ray, .hysteria2:
                 return getSocks5Config(port)
 
-            case .snowflake(_, _, _, _, _, _, let tunnel):
-                switch forceTransport ? .direct : tunnel {
-                case .socks5:
-                    return getSocks5Config(Int(EnvoySocksForwarder.port))
-
-                default:
-                    return getSocks5Config(port)
-                }
-
             case .meek(let url, var front, let tunnel):
                 switch forceTransport ? .direct : tunnel {
                 case .socks5:
@@ -506,6 +521,24 @@ public class Envoy: NSObject {
 
                 default:
                     return getSocks5Config(port, arguments: ["cert": cert, "iat-mode": String(iatMode)])
+                }
+
+            case .webTunnel(let url, let ver, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Config(Int(EnvoySocksForwarder.port))
+
+                default:
+                    return getSocks5Config(port, arguments: ["url": url.absoluteString, "ver": ver])
+                }
+
+            case .snowflake(_, _, _, _, _, _, let tunnel):
+                switch forceTransport ? .direct : tunnel {
+                case .socks5:
+                    return getSocks5Config(Int(EnvoySocksForwarder.port))
+
+                default:
+                    return getSocks5Config(port)
                 }
 
             default:
@@ -669,17 +702,26 @@ public class Envoy: NSObject {
                 for proxy in candidates {
                     proxy.start()
 
-                    if case .obfs4(_, _, let tunnel) = proxy, case .socks5 = tunnel {
-                        do {
-                            forwarder = try EnvoySocksForwarder(proxy).start()
-                        }
-                        catch {
-                            print("[\(String(describing: type(of: self)))] error=\(error)")
+                    switch proxy {
+                    case .meek(_, _, let tunnel),
+                            .obfs4(_, _, let tunnel),
+                            .webTunnel(_, _, let tunnel),
+                            .snowflake(_, _, _, _, _, _, let tunnel):
+                        if case .socks5 = tunnel {
+                            do {
+                                forwarder = try EnvoySocksForwarder(proxy).start()
+                            }
+                            catch {
+                                print("[\(String(describing: type(of: self)))] error=\(error)")
 
-                            proxy.stop()
+                                proxy.stop()
 
-                            continue
+                                continue
+                            }
                         }
+
+                    default:
+                        break
                     }
 
                     group.addTask {
@@ -706,17 +748,26 @@ public class Envoy: NSObject {
             for proxy in candidates {
                 proxy.start()
 
-                if case .obfs4(_, _, let tunnel) = proxy, case .socks5 = tunnel {
-                    do {
-                        forwarder = try EnvoySocksForwarder(proxy).start()
-                    }
-                    catch {
-                        print("[\(String(describing: type(of: self)))] error=\(error)")
+                switch proxy {
+                case .meek(_, _, let tunnel),
+                        .obfs4(_, _, let tunnel),
+                        .webTunnel(_, _, let tunnel),
+                        .snowflake(_, _, _, _, _, _, let tunnel):
+                    if case .socks5 = tunnel {
+                        do {
+                            forwarder = try EnvoySocksForwarder(proxy).start()
+                        }
+                        catch {
+                            print("[\(String(describing: type(of: self)))] error=\(error)")
 
-                        proxy.stop()
+                            proxy.stop()
 
-                        continue
+                            continue
+                        }
                     }
+
+                default:
+                    break
                 }
 
                 if await Self.test(testRequest, with: proxy) {
@@ -731,10 +782,19 @@ public class Envoy: NSObject {
             }
         }
 
+        switch proxy {
+        case .meek(_, _, let tunnel),
+                .obfs4(_, _, let tunnel),
+                .webTunnel(_, _, let tunnel),
+                .snowflake(_, _, _, _, _, _, let tunnel):
+            if case .socks5 = tunnel {
+            }
+            else {
+                forwarder?.stop()
+                forwarder = nil
+            }
 
-        if case .obfs4(_, _, let tunnel) = proxy, case .socks5 = tunnel {
-        }
-        else {
+        default:
             forwarder?.stop()
             forwarder = nil
         }
@@ -862,6 +922,18 @@ public class Envoy: NSObject {
                 let iatMode = Int(urlc.firstQueryItem(of: "iat-mode") ?? "") ?? 0
 
                 return .obfs4(cert: cert, iatMode: iatMode, tunnel: tunnel)
+            }
+        }
+        else if url.scheme == "webtunnel" {
+            if let urlc = url.urlc,
+               let url = urlc.firstQueryItem(of: "url"),
+               let url = URL(string: url),
+               let ver = urlc.firstQueryItem(of: "ver"),
+               let tunnel = urlc.firstQueryItem(of: "tunnel"),
+               let tunnel = URLComponents(string: "envoy://?url=\(tunnel)"),
+               let tunnel = Self.extractEnvoyConfig(from: tunnel)
+            {
+                return .webTunnel(url: url, ver: ver, tunnel: tunnel)
             }
         }
         else if url.scheme == "snowflake" {

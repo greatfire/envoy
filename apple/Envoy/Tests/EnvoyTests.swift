@@ -66,6 +66,16 @@ class EnvoyTests: XCTestCase {
                     iatMode: 0,
                     tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!))
 
+        assertWebTunnel("webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=socks5://127.0.0.1:12345",
+                        proxyUrl: "https://example.com/abcdefghijklm",
+                        ver: "0.0.1",
+                        tunnel: .socks5(host: "127.0.0.1", port: 12345))
+
+        assertWebTunnel("webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=https://proxy.example.com/proxy/",
+                        proxyUrl: "https://example.com/abcdefghijklm", 
+                        ver: "0.0.1",
+                        tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!))
+
         assertSnowflake("snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=socks5://127.0.0.1:12345",
                         broker: "https://broker.example.com/",
                         fronts: ".wellknown.org",
@@ -78,11 +88,11 @@ class EnvoyTests: XCTestCase {
     }
 
     func testRequestModification() {
-        let proxy = Envoy.Proxy.envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"])
+        var proxy = Envoy.Proxy.envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"])
 
         let request = URLRequest(url: URL(string: "https://example.com/")!)
 
-        let modified = proxy.maybeModify(request)
+        var modified = proxy.maybeModify(request)
 
         XCTAssertEqual(modified.url?.scheme, "https")
         XCTAssertEqual(modified.url?.host, "proxy.example.com")
@@ -90,7 +100,24 @@ class EnvoyTests: XCTestCase {
         XCTAssertTrue(modified.url?.queryItems.contains(where: { $0.name == "_digest" }) == true)
         XCTAssertEqual(modified.allHTTPHeaderFields, ["Host-Orig": "example.com", "Url-Orig": "https://example.com/", "X-foobar": "abcdefg"])
 
-        let reverted = proxy.revertModification(modified)
+        var reverted = proxy.revertModification(modified)
+
+        XCTAssertEqual(request.url, reverted.url)
+
+        proxy = Envoy.Proxy.webTunnel(
+            url: URL(string: "https://example.com/abcdefghijklm")!,
+            ver: "0.0.1",
+            tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"]))
+
+        modified = proxy.maybeModify(request)
+
+        XCTAssertEqual(modified.url?.scheme, "https")
+        XCTAssertEqual(modified.url?.host, "proxy.example.com")
+        XCTAssertEqual(modified.url?.path, "/proxy")
+        XCTAssertTrue(modified.url?.queryItems.contains(where: { $0.name == "_digest" }) == true)
+        XCTAssertEqual(modified.allHTTPHeaderFields, ["Host-Orig": "example.com", "Url-Orig": "https://example.com/", "X-foobar": "abcdefg"])
+
+        reverted = proxy.revertModification(modified)
 
         XCTAssertEqual(request.url, reverted.url)
     }
@@ -218,6 +245,19 @@ class EnvoyTests: XCTestCase {
         }
         else {
             XCTFail("This URL should have parsed to an Obfs4 PT proxy, but didn't!")
+        }
+    }
+
+    private func assertWebTunnel(_ url: String, proxyUrl: String, ver: String, tunnel: Envoy.Proxy) {
+        let proxy = assertProxy(url)
+
+        if case .webTunnel(let url2, let ver2, let tunnel2) = proxy {
+            XCTAssertEqual(url2, URL(string: proxyUrl))
+            XCTAssertEqual(ver2, ver)
+            XCTAssertEqual(tunnel2, tunnel)
+        }
+        else {
+            XCTFail("This URL should have parsed to WebTunnel PT proxy, but didn't!")
         }
     }
 

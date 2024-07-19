@@ -226,25 +226,10 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
             case .envoy:
                 break
 
-            case .meek(_, _, let tunnel):
-                switch tunnel {
-                case .envoy:
-                    break
-
-                default:
-                    return false
-                }
-
-            case .obfs4(_, _, let tunnel):
-                switch tunnel {
-                case .envoy:
-                    break
-
-                default:
-                    return false
-                }
-
-            case .snowflake(_, _, _, _, _, _, let tunnel):
+            case .meek(_, _, let tunnel),
+                    .obfs4(_, _, let tunnel),
+                    .webTunnel(_, _, let tunnel),
+                    .snowflake(_, _, _, _, _, _, let tunnel):
                 switch tunnel {
                 case .envoy:
                     break
