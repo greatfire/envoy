@@ -29,7 +29,7 @@ Pod::Spec.new do |s|
   s.homepage         = 'https://github.com/greatfire/envoy'
   s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author           = { 'Benjamin Erhart' => 'berhart@netzarchitekten.com' }
-  s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => "apple-#{s.version}" }
   s.social_media_url = 'https://twitter.com/tladesignz'
 
   s.swift_versions = '5.0'
