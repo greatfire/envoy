@@ -1,21 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="5dp">
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tab_layout"
-        style="@style/customTabLayout"
+    <LinearLayout
+        android:id="@+id/buttonList"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/resultTextView"
+        android:orientation="vertical">
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/pager"
+        <Button
+            android:id="@+id/directButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/direct" />
+
+        <Button
+            android:id="@+id/envoyButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/envoy" />
+
+        <Button
+            android:id="@+id/ssButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/ss" />
+
+        <Button
+            android:id="@+id/v2sButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/v2s" />
+
+        <Button
+            android:id="@+id/v2wButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/v2w" />
+
+        <Button
+            android:id="@+id/snowflakeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/snowflake" />
+
+        <Button
+            android:id="@+id/meekButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/meek" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/resultTextView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_margin="10dp"
+        app:layout_constraintTop_toBottomOf="@id/buttonList"
+        app:layout_constraintBottom_toTopOf="@id/msgTextView"
+        android:text="@string/result" />
 
-</LinearLayout>
+    <TextView
+        android:id="@+id/msgTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/resultTextView"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="@drawable/textview_border"
+        android:text="@string/msg" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
