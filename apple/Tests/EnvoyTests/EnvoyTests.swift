@@ -157,24 +157,29 @@ class EnvoyTests: XCTestCase {
         XCTAssertNil(dict?[kCFStreamPropertySOCKSPassword])
     }
 
-    @available(iOS 17.0, macOS 14.0, *)
     func testProxyConf() {
-        var proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
-                                      iatMode: 2, tunnel: .direct)
+        // Note @available at the func doesn't work. The test runner will still try to execute
+        // this method, but if the simulator selected isn't iOS 17 or higher, it will crash.
+        if #available(iOS 17.0, macOS 14.0, *) {
+            var proxy = Envoy.Proxy.obfs4(cert: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
+                                          iatMode: 2, tunnel: .direct)
 
-        var conf = proxy.getProxyConfig()
+            var conf = proxy.getProxyConfig()
 
-        XCTAssertNotNil(conf)
-        XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:47300")
-
-
-        proxy = .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345))
-
-        conf = proxy.getProxyConfig()
-
-        XCTAssertNotNil(conf)
-        XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:\(EnvoySocksForwarder.port)")
-
+            XCTAssertNotNil(conf)
+            XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:47300")
+            
+            
+            proxy = .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345))
+            
+            conf = proxy.getProxyConfig()
+            
+            XCTAssertNotNil(conf)
+            XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:\(EnvoySocksForwarder.port)")
+        }
+        else {
+            XCTAssertTrue(true)
+        }
     }
 
     private func assertProxy(_ url: String) -> Envoy.Proxy {
