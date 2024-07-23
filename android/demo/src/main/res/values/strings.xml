@@ -17,6 +17,14 @@
     </string>
     <string name="begin_request_msg">Begin to request %1$s</string>
 
+    <string name="direct">test direct url</string>
+    <string name="envoy">test envoy url</string>
+    <string name="ss">test shadowsocks url</string>
+    <string name="v2s">test v2ray srtp url</string>
+    <string name="v2w">test v2ray wechat url</string>
+    <string name="snowflake">test snowflake url</string>
+    <string name="meek">test meek url</string>
+
     <string-array name="http_method">
         <item>GET</item>
         <item>POST</item>

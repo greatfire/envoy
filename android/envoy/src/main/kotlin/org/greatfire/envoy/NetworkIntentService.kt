@@ -52,11 +52,13 @@ private const val DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) "
 
 class NetworkIntentService : IntentService("NetworkIntentService") {
     // https://android.googlesource.com/platform/frameworks/base.git/+/oreo-release/services/core/java/com/android/server/connectivity/NetworkMonitor.java
+    @Deprecated("Deprecated in Java")
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "NetworkIntentService created")
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "NetworkIntentService destroyed")
@@ -191,6 +193,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         fun getService(): NetworkIntentService = this@NetworkIntentService
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onHandleIntent(intent: Intent?) {
         when (intent?.action) {
             ACTION_SUBMIT -> {
@@ -207,6 +210,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBind(intent: Intent): IBinder {
         return binder
     }
