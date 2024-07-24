@@ -18,11 +18,15 @@ let package = Package(
         .target(
             name: "Envoy",
             dependencies: ["IEnvoyProxy"],
+            path: "apple",
+            exclude: ["Example"],
             // Needed for IEnvoyProxy, but not allowed in `.binaryTarget`. Hrgrml. But works this way.
             linkerSettings: [.linkedLibrary("resolv")]),
         .testTarget(
             name: "EnvoyTests",
-            dependencies: ["Envoy"]),
+            dependencies: ["Envoy"],
+            path: "apple",
+            exclude: ["Example"]),
     ],
     swiftLanguageVersions: [.v5]
 )
