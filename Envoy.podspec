@@ -39,11 +39,11 @@ Pod::Spec.new do |s|
 
   s.static_framework = true
 
-  s.source_files = 'Sources/Envoy/**/*'
+  s.source_files = 'apple/Sources/Envoy/**/*'
 
   s.dependency 'IEnvoyProxy', '~> 2.0'
 
   s.test_spec 'Tests' do |t|
-      t.source_files = 'Tests/EnvoyTests/**/*'
+      t.source_files = 'apple/Tests/EnvoyTests/**/*'
   end
 end
