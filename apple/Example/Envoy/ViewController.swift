@@ -9,7 +9,7 @@
 import UIKit
 import WebKit
 import os
-import Envoy
+import GreatfireEnvoy
 
 class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegate {
 

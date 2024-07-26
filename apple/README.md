@@ -1,12 +1,12 @@
 # Envoy for Apple Platforms
 
-[![Version](https://img.shields.io/cocoapods/v/Envoy.svg?style=flat)](https://cocoapods.org/pods/Envoy)
-[![License](https://img.shields.io/cocoapods/l/Envoy.svg?style=flat)](https://cocoapods.org/pods/Envoy)
-[![Platform](https://img.shields.io/cocoapods/p/Envoy.svg?style=flat)](https://cocoapods.org/pods/Envoy)
+[![Version](https://img.shields.io/cocoapods/v/GreatfireEnvoy.svg?style=flat)](https://cocoapods.org/pods/GreatfireEnvoy)
+[![License](https://img.shields.io/cocoapods/l/GreatfireEnvoy.svg?style=flat)](https://cocoapods.org/pods/GreatfireEnvoy)
+[![Platform](https://img.shields.io/cocoapods/p/GreatfireEnvoy.svg?style=flat)](https://cocoapods.org/pods/GreatfireEnvoy)
 
 This is the implementation for Apple platforms of the original [Envoy for Android](https://github.com/greatfire/envoy).
 
-Envoy is a manager for various proxy implementations.
+Greatfire's 'Envoy is a manager for various proxy implementations.
 
 It will automatically find the best working proxy and provide the necessary configuration
 via helper methods.
@@ -170,7 +170,7 @@ Example config URLs:
 
 ```Swift
 
-import Envoy
+import GreatfireEnvoy
 
 Task {
     await Envoy.shared.start(
@@ -263,7 +263,7 @@ Envoy is available through [CocoaPods](https://cocoapods.org). To install
 it, simply add the following line to your Podfile:
 
 ```ruby
-pod 'Envoy'
+pod 'GreatfireEnvoy'
 ```
 
 ## Author

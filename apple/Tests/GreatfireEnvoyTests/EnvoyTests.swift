@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import Envoy
+@testable import GreatfireEnvoy
 
 class EnvoyTests: XCTestCase {
 
