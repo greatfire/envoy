@@ -1,5 +1,5 @@
 #
-# Be sure to run `pod lib lint Envoy.podspec' to ensure this is a
+# Be sure to run `pod lib lint GreatfireEnvoy.podspec' to ensure this is a
 # valid spec before submitting.
 #
 # Any lines starting with a # are optional, but their use is encouraged
@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
   s.name             = 'GreatfireEnvoy'
   s.version          = '0.1.0'
-  s.summary          = 'Envoy is a manager for various proxy implementations.'
+  s.summary          = "Greatfire's Envoy is a manager for various proxy implementations."
 
   s.description      = <<-DESC
   It will automatically find the best working proxy and provide the necessary configuration

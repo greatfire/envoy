@@ -18,7 +18,7 @@ EXTERNAL SOURCES:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  GreatfireEnvoy: 810c00aff7ede5d9f39d0fa91cd486da30b8d56a
+  GreatfireEnvoy: 6a467155cacac44aa79a7a4645d4e98ab3ac0793
   IEnvoyProxy: 51bc3a4909edcc0eea86841072a1ea2fd49e7b5c
 
 PODFILE CHECKSUM: edbb85314aaaf9f1121aa01036258e18acabb8f6
