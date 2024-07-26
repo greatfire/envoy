@@ -8,7 +8,7 @@
 
 import Cocoa
 import WebKit
-import Envoy
+import GreatfireEnvoy
 
 class ViewController: NSViewController, WKNavigationDelegate {
 

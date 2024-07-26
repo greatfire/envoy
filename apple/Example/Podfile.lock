@@ -1,26 +1,26 @@
 PODS:
-  - Envoy (0.1.0):
+  - GreatfireEnvoy (0.1.0):
     - IEnvoyProxy (~> 2.0)
-  - Envoy/Tests (0.1.0):
+  - GreatfireEnvoy/Tests (0.1.0):
     - IEnvoyProxy (~> 2.0)
   - IEnvoyProxy (2.0.1)
 
 DEPENDENCIES:
-  - Envoy (from `../../`)
-  - Envoy/Tests (from `../../`)
+  - GreatfireEnvoy (from `../../`)
+  - GreatfireEnvoy/Tests (from `../../`)
 
 SPEC REPOS:
   https://github.com/CocoaPods/Specs.git:
     - IEnvoyProxy
 
 EXTERNAL SOURCES:
-  Envoy:
+  GreatfireEnvoy:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  Envoy: 091698751e7b285893f25e1ab7f6c676bf3b270f
+  GreatfireEnvoy: 810c00aff7ede5d9f39d0fa91cd486da30b8d56a
   IEnvoyProxy: 51bc3a4909edcc0eea86841072a1ea2fd49e7b5c
 
-PODFILE CHECKSUM: 819a3176634ff7902c1618a68ae5a4f991ea261f
+PODFILE CHECKSUM: edbb85314aaaf9f1121aa01036258e18acabb8f6
 
 COCOAPODS: 1.15.2

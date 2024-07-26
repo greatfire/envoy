@@ -7,7 +7,7 @@
 #
 
 Pod::Spec.new do |s|
-  s.name             = 'Envoy'
+  s.name             = 'GreatfireEnvoy'
   s.version          = '0.1.0'
   s.summary          = 'Envoy is a manager for various proxy implementations.'
 
@@ -39,11 +39,11 @@ Pod::Spec.new do |s|
 
   s.static_framework = true
 
-  s.source_files = 'apple/Sources/Envoy/**/*'
+  s.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
 
   s.dependency 'IEnvoyProxy', '~> 2.0'
 
   s.test_spec 'Tests' do |t|
-      t.source_files = 'apple/Tests/EnvoyTests/**/*'
+      t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'
   end
 end
