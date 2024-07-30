@@ -31,6 +31,7 @@ Pod::Spec.new do |s|
   s.author           = { 'Benjamin Erhart' => 'berhart@netzarchitekten.com' }
   s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => "apple-#{s.version}" }
   s.social_media_url = 'https://twitter.com/tladesignz'
+  s.readme           = "https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/README.md"
 
   s.swift_versions = '5.0'
 
