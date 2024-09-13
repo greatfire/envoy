@@ -39,7 +39,7 @@
 
     [Envoy.shared
      startWithUrls:urls
-     testUrl:[[NSURL alloc] initWithString:@"https://www.google.com/generate_204"]
+     test:Test.default_
      testDirect:urls.count == 0
      completionHandler:^{
         dispatch_async(dispatch_get_main_queue(), ^{
