@@ -1,7 +1,7 @@
 PODS:
-  - GreatfireEnvoy (0.1.0):
+  - GreatfireEnvoy (0.2.0):
     - IEnvoyProxy (~> 2.0)
-  - GreatfireEnvoy/Tests (0.1.0):
+  - GreatfireEnvoy/Tests (0.2.0):
     - IEnvoyProxy (~> 2.0)
   - IEnvoyProxy (2.0.1)
 
@@ -18,7 +18,7 @@ EXTERNAL SOURCES:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  GreatfireEnvoy: 6a467155cacac44aa79a7a4645d4e98ab3ac0793
+  GreatfireEnvoy: e7287bb905e8bca69b6e81bae57b589689b19216
   IEnvoyProxy: 51bc3a4909edcc0eea86841072a1ea2fd49e7b5c
 
 PODFILE CHECKSUM: edbb85314aaaf9f1121aa01036258e18acabb8f6
