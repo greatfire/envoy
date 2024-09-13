@@ -45,6 +45,7 @@
 		A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Envoy_Example-Bridging-Header.h"; sourceTree = "<group>"; };
 		A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjcViewController.h; sourceTree = "<group>"; };
 		A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjcViewController.m; sourceTree = "<group>"; };
+		A03141762C9497AC0011FC8A /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = CHANGELOG.md; path = ../CHANGELOG.md; sourceTree = "<group>"; };
 		A04B51922C414E940050CA0A /* proxies.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = proxies.plist; sourceTree = "<group>"; };
 		A04B51962C41500F0050CA0A /* Proxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Proxy.swift; sourceTree = "<group>"; };
 		A0730A492C500E58009A1C51 /* GreatfireEnvoy.podspec */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = text; name = GreatfireEnvoy.podspec; path = ../../GreatfireEnvoy.podspec; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
@@ -130,6 +131,7 @@
 				A0730A492C500E58009A1C51 /* GreatfireEnvoy.podspec */,
 				A0730A4A2C501074009A1C51 /* Package.swift */,
 				E613D66F9A0E5D47D6542ACD /* README.md */,
+				A03141762C9497AC0011FC8A /* CHANGELOG.md */,
 				A018BCC92BAC761700EC6172 /* Podfile */,
 				A018BCCA2BAC761700EC6172 /* Podfile.lock */,
 				747180B1950040CEBB90CA81 /* LICENSE */,

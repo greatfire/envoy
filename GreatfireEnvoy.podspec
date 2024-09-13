@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'GreatfireEnvoy'
-  s.version          = '0.1.0'
+  s.version          = '0.2.0'
   s.summary          = "Greatfire's Envoy is a manager for various proxy implementations."
 
   s.description      = <<-DESC
@@ -32,6 +32,8 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => "apple-#{s.version}" }
   s.social_media_url = 'https://twitter.com/tladesignz'
   s.readme           = "https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/README.md"
+  s.changelog        = 'https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/CHANGELOG.md'
+
 
   s.swift_versions = '5.0'
 
