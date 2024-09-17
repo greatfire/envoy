@@ -74,7 +74,8 @@ class Proxy: NSObject, Decodable {
            let url = Bundle.main.url(forResource: "proxies", withExtension: nil),
            let data = try? Data(contentsOf: url),
            let base64 = String(data: data, encoding: .utf8),
-           let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters)
+           let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters),
+           !data.isEmpty
         {
             do {
                 let box = try ChaChaPoly.SealedBox(combined: data)
