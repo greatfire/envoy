@@ -6,7 +6,7 @@
 //  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
-import WebKit
+@preconcurrency import WebKit
 
 /**
  This class helps you work around the limitations of `WKWebView` by

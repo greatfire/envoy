@@ -7,7 +7,7 @@
 //
 
 import Cocoa
-import WebKit
+@preconcurrency import WebKit
 import GreatfireEnvoy
 
 class ViewController: NSViewController, WKNavigationDelegate {
