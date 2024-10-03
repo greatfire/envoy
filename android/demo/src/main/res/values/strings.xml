@@ -20,6 +20,7 @@
     <string name="direct">test direct url</string>
     <string name="envoy">test envoy url</string>
     <string name="ss">test shadowsocks url</string>
+    <string name="hyst">test hysteria url</string>
     <string name="v2s">test v2ray srtp url</string>
     <string name="v2w">test v2ray wechat url</string>
     <string name="snowflake">test snowflake url</string>

@@ -37,6 +37,13 @@
             android:text="@string/ss" />
 
         <Button
+            android:id="@+id/hystButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:text="@string/hyst" />
+
+        <Button
             android:id="@+id/v2sButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -57,12 +64,12 @@
             android:gravity="left|center_vertical"
             android:text="@string/snowflake" />
 
-        <Button
+        <!--Button
             android:id="@+id/meekButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="left|center_vertical"
-            android:text="@string/meek" />
+            android:text="@string/meek" /-->
 
     </LinearLayout>
 

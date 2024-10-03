@@ -55,12 +55,51 @@ public class MainActivity extends FragmentActivity {
     TextView mResultTextView;
     Dialog mResultDialog;
 
+    String envoyUrl = "";
+    String shadowsocksUrl = "";
+    String hysteriaUrl = "";
+    String hysteriaCert = "";
+    String v2srtpUrl = "";
+    String v2wechatUrl = "";
+    String snowflakeUrl = "";
+    String meekUrl = "";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         mSecrets = new Secrets();
+
+        if (mSecrets.getdefProxy(getPackageName()) != null) {
+            String certList = mSecrets.getdefProxy(getPackageName());
+            String[] certArray = certList.split(",");
+            for (int i = 0; i < certArray.length; i++) {
+                if (certArray[i].startsWith("http")) {
+                    envoyUrl = certArray[i];
+                } else if (certArray[i].startsWith("envoy")) {
+                    envoyUrl = certArray[i];
+                } else if (certArray[i].startsWith("ss")) {
+                    shadowsocksUrl = certArray[i];
+                } else if (certArray[i].startsWith("hysteria")) {
+                    hysteriaUrl = certArray[i];
+                } else if (certArray[i].startsWith("v2srtp")) {
+                    v2srtpUrl = certArray[i];
+                } else if (certArray[i].startsWith("v2wechat")) {
+                    v2wechatUrl = certArray[i];
+                } else if (certArray[i].startsWith("snowflake")) {
+                    snowflakeUrl = certArray[i];
+                } else if (certArray[i].startsWith("meek")) {
+                    meekUrl = certArray[i];
+                } else {
+                    // unsupported url
+                }
+            }
+        }
+
+        if (mSecrets.gethystCert(getPackageName()) != null) {
+            hysteriaCert = mSecrets.gethystCert(getPackageName());
+        }
 
         // register to receive test results
         IntentFilter filter = new IntentFilter();
@@ -76,47 +115,85 @@ public class MainActivity extends FragmentActivity {
             }
         });
 
-        findViewById(R.id.envoyButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getenvoyUrl(getPackageName()));
-            }
-        });
+        if (envoyUrl.isEmpty()) {
+            findViewById(R.id.envoyButton).setEnabled(false);
+        } else {
+            findViewById(R.id.envoyButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrl(envoyUrl);
+                }
+            });
+        }
 
-        findViewById(R.id.ssButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getshadowsocksUrl(getPackageName()));
-            }
-        });
+        if (shadowsocksUrl.isEmpty()) {
+            findViewById(R.id.ssButton).setEnabled(false);
+        } else {
+            findViewById(R.id.ssButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrl(shadowsocksUrl);
+                }
+            });
+        }
 
-        findViewById(R.id.v2sButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getv2srtpUrl(getPackageName()));
-            }
-        });
+        if (hysteriaUrl.isEmpty() || hysteriaCert.isEmpty()) {
+            findViewById(R.id.hystButton).setEnabled(false);
+        } else {
+            findViewById(R.id.hystButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrlWithCert(hysteriaUrl, hysteriaCert);
+                }
+            });
+        }
 
-        findViewById(R.id.v2wButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getv2wechatUrl(getPackageName()));
-            }
-        });
+        if (v2srtpUrl.isEmpty()) {
+            findViewById(R.id.v2sButton).setEnabled(false);
+        } else {
+            findViewById(R.id.v2sButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrl(v2srtpUrl);
+                }
+            });
+        }
 
-        findViewById(R.id.snowflakeButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getsnowflakeUrl(getPackageName()));
-            }
-        });
+        if (v2wechatUrl.isEmpty()) {
+            findViewById(R.id.v2wButton).setEnabled(false);
+        } else {
+            findViewById(R.id.v2wButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrl(v2wechatUrl);
+                }
+            });
+        }
 
-        findViewById(R.id.meekButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getmeekUrl(getPackageName()));
-            }
-        });
+        if (snowflakeUrl.isEmpty()) {
+            findViewById(R.id.snowflakeButton).setEnabled(false);
+        } else {
+            findViewById(R.id.snowflakeButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrl(snowflakeUrl);
+                }
+            });
+        }
+
+        // meek is not available for testing at this time
+        /*
+        if (meekUrl.isEmpty()) {
+            findViewById(R.id.meekButton).setEnabled(false);
+        } else {
+            findViewById(R.id.meekButton).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    submitTestUrl(meekUrl);
+                }
+            });
+        }
+        */
 
         mMsgTextView = findViewById(R.id.msgTextView);
         mMsgTextView.setText("*\n*\n*\n*");
@@ -374,17 +451,24 @@ public class MainActivity extends FragmentActivity {
         ArrayList<String> testUrls = new ArrayList<String>();
         ArrayList<String> directUrls = new ArrayList<String>();
         directUrls.add(urlToSubmit);
-        submit(testUrls, directUrls);
+        submit(testUrls, directUrls, null);
     }
 
     private void submitTestUrl(String urlToSubmit) {
         ArrayList<String> testUrls = new ArrayList<String>();
         ArrayList<String> directUrls = new ArrayList<String>();
         testUrls.add(urlToSubmit);
-        submit(testUrls, directUrls);
+        submit(testUrls, directUrls, null);
     }
 
-    private void submit(ArrayList<String> testUrls, ArrayList<String> directUrls) {
+    private void submitTestUrlWithCert(String urlToSubmit, String cert) {
+        ArrayList<String> testUrls = new ArrayList<String>();
+        ArrayList<String> directUrls = new ArrayList<String>();
+        testUrls.add(urlToSubmit);
+        submit(testUrls, directUrls, cert);
+    }
+
+    private void submit(ArrayList<String> testUrls, ArrayList<String> directUrls, String cert) {
 
         // clear result window
         mResultTextView.setText("waiting for result...");
@@ -395,7 +479,7 @@ public class MainActivity extends FragmentActivity {
                 this,
                 testUrls,
                 directUrls,
-                null,
+                cert,
                 emptyList,
                 1,
                 1,
