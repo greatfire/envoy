@@ -11,15 +11,7 @@ class Secrets {
         }
     }
 
-    external fun getmeekUrl(packageName: String): String
+    external fun gethystCert(packageName: String): String
 
-    external fun getsnowflakeUrl(packageName: String): String
-
-    external fun getv2srtpUrl(packageName: String): String
-
-    external fun getv2wechatUrl(packageName: String): String
-
-    external fun getenvoyUrl(packageName: String): String
-
-    external fun getshadowsocksUrl(packageName: String): String
+    external fun getdefProxy(packageName: String): String
 }
