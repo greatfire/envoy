@@ -11,6 +11,12 @@ import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_ENDED_CAUSE;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_MS;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_ENVOY;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HTTPS;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HYSTERIA;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_MEEK;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_SNOWFLAKE;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_SS;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_V2SRTP;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_V2WECHAT;
 
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -33,9 +39,13 @@ import org.greatfire.envoy.CronetNetworking;
 import org.greatfire.envoy.NetworkIntentService;
 import org.greatfire.envoy.UrlUtil;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Objects;
 
 import okhttp3.OkHttpClient;
@@ -49,6 +59,15 @@ public class MainActivity extends FragmentActivity {
     NetworkIntentService mService;
     boolean mBound = false;
     TextView mOutputTextView;
+
+    String httpsUrl = "";
+    String envoyUrl = "";
+    String ssUrl = "";
+    String hystUrl = "";
+    String v2sUrl = "";
+    String v2wUrl = "";
+    String snowUrl = "";
+    String meekUrl = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -193,6 +212,8 @@ public class MainActivity extends FragmentActivity {
                         Log.e(TAG, "success status included no valid cronet url, can't continue");
                         displayOutput("validation returned no url");
                         displayResults(finalService, false);
+                        // log results to file
+                        logOutput(finalService, false);
                         return;
                     }
 
@@ -200,6 +221,8 @@ public class MainActivity extends FragmentActivity {
                         Log.e(TAG, "success status for the direct connection url, don't continue");
                         displayOutput("validation returned direct url");
                         displayResults(validUrl, true);
+                        // log results to file
+                        logOutput(validUrl, true);
                         return;
                     }
 
@@ -227,6 +250,8 @@ public class MainActivity extends FragmentActivity {
                                         Log.d(TAG, "update ui with response");
                                         displayOutput("successful connection with " + finalService + " - " + finalUrl);
                                         displayResults(finalService, true);
+                                        // log results to file
+                                        logOutput(finalService, true);
 
                                     }
                                 });
@@ -237,6 +262,8 @@ public class MainActivity extends FragmentActivity {
                                 Log.e(TAG, "proxied request caused okhttp error: ", e);
                                 displayOutput("failed connection with " + finalService + " - " + finalUrl);
                                 displayResults(finalService, false);
+                                // log results to file
+                                logOutput(finalService, false);
                             }
                         }
                     }.start();
@@ -262,7 +289,15 @@ public class MainActivity extends FragmentActivity {
                     }
 
                     displayOutput("INVALID: " + invalidService + " - " + sanitizedUrl);
-                    displayResults(invalidService, false);
+                    if (invalidUrl != null && invalidUrl.equals(WIKI_URL)) {
+                        displayResults(invalidUrl, false);
+                        // log results to file
+                        logOutput(invalidUrl, false);
+                    } else {
+                        displayResults(invalidService, false);
+                        // log results to file
+                        logOutput(invalidService, false);
+                    }
 
                     //showDialog("FAILURE", invalidService + " failed", false);
 
@@ -303,6 +338,29 @@ public class MainActivity extends FragmentActivity {
         String[] proxyParts = proxyList.split(",");
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
+
+        for (int i = 0; i < testUrls.size(); i++) {
+            if (testUrls.get(i).equals(WIKI_URL)) {
+                // NO-OP
+            } else if (testUrls.get(i).startsWith("https")) {
+                httpsUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("envoy")) {
+                envoyUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("ss")) {
+                ssUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("hysteria")) {
+                hystUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("v2srtp")) {
+                v2sUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("v2wechat")) {
+                v2wUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("snowflake")) {
+                snowUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("meek")) {
+                meekUrl = testUrls.get(i);
+            }
+        }
+
         if (mSecrets.gethystCert(getPackageName()) != null) {
             submit(testUrls, mSecrets.gethystCert(getPackageName()), directUrls);
         } else {
@@ -443,5 +501,54 @@ public class MainActivity extends FragmentActivity {
             newLines = newLines + "\n" + lineList[i];
         }
         mOutputTextView.setText(newLines);
+    }
+
+    void logOutput(String service, boolean success) {
+        String originalUrl = "???";
+        if (service.equals(WIKI_URL)) {
+            originalUrl = WIKI_URL;
+        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+            originalUrl = httpsUrl;
+        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+            originalUrl = envoyUrl;
+        } else if (service.equals(ENVOY_SERVICE_SS)) {
+            originalUrl = ssUrl;
+        } else if (service.equals(ENVOY_SERVICE_HYSTERIA)) {
+            originalUrl = hystUrl;
+        } else if (service.equals(ENVOY_SERVICE_V2SRTP)) {
+            originalUrl = v2sUrl;
+        } else if (service.equals(ENVOY_SERVICE_V2WECHAT)) {
+            originalUrl = v2wUrl;
+        } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+            originalUrl = snowUrl;
+        } else if (service.equals(ENVOY_SERVICE_MEEK)) {
+            originalUrl = meekUrl;
+        }
+
+        if (success) {
+            logOutput("SUCCESS\t" + originalUrl);
+        } else {
+            logOutput("FAILURE\t" + originalUrl);
+        }
+    }
+
+    void logOutput(String output) {
+
+        Date logDate = new Date(System.currentTimeMillis());
+        DateFormat logFormat = android.text.format.DateFormat.getDateFormat(getApplicationContext());
+
+        try {
+            File logPath = getApplicationContext().getExternalFilesDir(null);
+            File logFile = new File(logPath, "demo_log");
+            FileOutputStream logStream = new FileOutputStream(logFile, true);
+            String logString = logFormat.format(logDate) + "\t" + output + "\n";
+            try {
+                logStream.write(logString.getBytes());
+            } finally {
+                logStream.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "EXCEPTION WHEN LOGGING", e);
+        }
     }
 }
