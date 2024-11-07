@@ -136,39 +136,45 @@ extension URL {
             return nil
         }
 
-        var dict: [AnyHashable: Any] = [
-            kCFStreamPropertySOCKSProxyHost: host,
-            kCFStreamPropertySOCKSProxyPort: port]
+        var dict = [AnyHashable: Any]()
 
         var isSocks = false
 
         switch scheme {
         case "socks4":
-            dict[kCFProxyTypeKey] = kCFProxyTypeSOCKS
             dict[kCFStreamPropertySOCKSVersion] = kCFStreamSocketSOCKSVersion4
             isSocks = true
 
         case "socks5":
-            dict[kCFProxyTypeKey] = kCFProxyTypeSOCKS
             dict[kCFStreamPropertySOCKSVersion] = kCFStreamSocketSOCKSVersion5
             isSocks = true
 
         case "http":
             dict[kCFProxyTypeKey] = kCFProxyTypeHTTP
+            dict[kCFStreamPropertyHTTPProxyHost] = host
+            dict[kCFStreamPropertyHTTPProxyPort] = port
 
         case "https":
             dict[kCFProxyTypeKey] = kCFProxyTypeHTTPS
+            dict[kCFStreamPropertyHTTPSProxyHost] = host
+            dict[kCFStreamPropertyHTTPSProxyPort] = port
 
         default:
             return nil
         }
 
-        if let user = user, !user.isEmpty {
-            dict[isSocks ? kCFStreamPropertySOCKSUser : kCFHTTPAuthenticationUsername] = user
-        }
+        if isSocks {
+            dict[kCFProxyTypeKey] = kCFProxyTypeSOCKS
+            dict[kCFStreamPropertySOCKSProxyHost] = host
+            dict[kCFStreamPropertySOCKSProxyPort] = port
 
-        if let password = password, !password.isEmpty {
-            dict[isSocks ? kCFStreamPropertySOCKSPassword : kCFHTTPAuthenticationPassword] = password
+            if let user = user, !user.isEmpty {
+                dict[kCFStreamPropertySOCKSUser] = user
+            }
+
+            if let password = password, !password.isEmpty {
+                dict[kCFStreamPropertySOCKSPassword] = password
+            }
         }
 
         return dict
