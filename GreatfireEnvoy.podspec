@@ -42,11 +42,29 @@ Pod::Spec.new do |s|
 
   s.static_framework = true
 
-  s.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
-
-  s.dependency 'IEnvoyProxy', '~> 2.0'
-
   s.test_spec 'Tests' do |t|
       t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'
   end
+
+  s.subspec 'Core' do |ss|
+    ss.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
+
+    ss.dependency 'IEnvoyProxy', '~> 2.0'
+  end
+
+  s.subspec 'Curl' do |ss|
+    ss.dependency 'GreatfireEnvoy/Core'
+    ss.dependency 'SwiftyCurl', '~> 0.1'
+
+    ss.test_spec 'Tests' do |t|
+        t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'
+    end
+
+    ss.pod_target_xcconfig = {
+      'GCC_PREPROCESSOR_DEFINITIONS' => 'USE_CURL=1',
+      'SWIFT_ACTIVE_COMPILATION_CONDITIONS' => '$(inherited) USE_CURL',
+    }
+  end
+
+  s.default_subspec = 'Core'
 end
