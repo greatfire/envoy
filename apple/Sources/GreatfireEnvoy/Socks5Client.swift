@@ -695,7 +695,7 @@ open class Socks5Client: CustomStringConvertible {
 
         try await connection.send(request)
 
-        // If we don't do this, the connection will be instable and often break.
+        // If we don't do this, the connection will be unstable and often break.
         try await Task.sleep(nanoseconds: Self.second/10)
 
         let response = try await connection.receive(min: min, max: max)

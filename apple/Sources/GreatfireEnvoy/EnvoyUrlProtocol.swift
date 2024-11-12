@@ -57,7 +57,7 @@ public class EnvoyUrlProtocol: URLProtocol,
     }
 
     override public class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        Envoy.shared.maybeModify(request)
+        Envoy.shared.maybeModify(request).request
     }
 
     override public func startLoading() {
@@ -65,7 +65,7 @@ public class EnvoyUrlProtocol: URLProtocol,
 
         mySession = URLSession(configuration: Self.conf, delegate: self, delegateQueue: nil)
 
-        var request = Envoy.shared.maybeModify(request)
+        var request = Envoy.shared.maybeModify(request).request
 
         let mutableRequest = (request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
         Self.setProperty(true, forKey: Self.loopDetection, in: mutableRequest)
@@ -172,7 +172,7 @@ public class EnvoyUrlProtocol: URLProtocol,
     ) {
         client?.urlProtocol(self, wasRedirectedTo: Envoy.shared.revertModification(request), redirectResponse: response)
 
-        completionHandler(Envoy.shared.maybeModify(request))
+        completionHandler(Envoy.shared.maybeModify(request).request)
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,

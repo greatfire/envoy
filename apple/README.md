@@ -190,13 +190,13 @@ Task {
         // The test URL which determines success. Needs to return HTTP status code 204, to be counted as success.
         // The example given here is the default, so just provide this argument, if you want to use another test endpoint.
         testUrl: URL(string: "https://www.google.com/generate_204")!,
-        
+
         // Will test a clearnet connection first, if set to `true`!
         testDirect: true)
-        
-        
+
+
     // Alternatively, you can use this, if you don't need to rely on proxy URL strings:
-    
+
     await Envoy.shared.start(
         // Your proxies. Order is important!
         proxies: [
@@ -218,16 +218,23 @@ Task {
         // Will test a clearnet connection first, if set to `true`!
         testDirect: true)
 
-        
+
+    // Another approach is using the [`Proxy`](https://github.com/greatfire/envoy/blob/master/apple/Example/Shared/Proxy.swift) 
+    // class provided in the example code, which allows storing the URLs obfuscated in a separate file:
+    
+    let proxies = Proxy.fetch()
+    await Envoy.shared.start(urls: proxies.map({ $0.url }), testDirect: proxies.isEmpty)
+
+
     // NOTE: Start your requests only **after** `Envoy.shared.start()`` was run!
         
     let conf = URLSessionConfiguration.ephemeral
     conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
 
     let session = URLSession(configuration: conf)
-    
+
     let request = URLRequest(url: URL(string: "https://www.wikipedia.org/")!)
-    
+
     do {
         let (data, response) = try await session.data(for: Envoy.shared.maybeModify(request))
 
@@ -241,7 +248,7 @@ Task {
 
     // NOTE: Only initialize `EnvoyWebView` **after** `Envoy.shared.start()`` was run!
     // (This is a limitation of Apple platforms!)
-    
+
     let webView = EnvoyWebView(frame: .zero)
     view.addSubview(webView)
 

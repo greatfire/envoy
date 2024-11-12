@@ -11,12 +11,76 @@ import Network
 import CryptoKit
 import IEnvoyProxy
 
+#if USE_CURL
+import SwiftyCurl
+
+extension SwiftyCurl {
+
+    static let shared = {
+        let curl = SwiftyCurl()
+        curl.socksProxyResolves = true
+
+        return curl
+    }()
+}
+#endif
+
 /**
  Envoy is its own proxy method as well as a collection of other proxies.
  */
 @objc
 @objcMembers
 public class Envoy: NSObject {
+
+    /**
+     A test endpoint and the status code which represents success.
+     */
+    @objc
+    @objcMembers
+    public class Test: NSObject {
+
+        /**
+         Test, if `https://www.google.com/generate_204` returns a 204 status code.
+         */
+        public static let `default` = Test(
+            url: URL(string: "https://www.google.com/generate_204")!,
+            expectedStatusCode: 204)
+
+        /**
+         The endpoint to test. Only use HTTPS to not expose the exact endpoint to a listener on the network!
+
+         Use something, which isn't too specific and stands out! Big search engine providers are a good choice.
+         */
+        public var url: URL {
+            request.url!
+        }
+
+        /**
+         The status code which actually represents success.
+         */
+        public let expectedStatusCode: Int
+
+        /**
+         A request generated from the given `url`.
+         */
+        let request: URLRequest
+
+        /**
+         Create a test endpoint and the expected status code which actually represents success.
+
+         CAREFUL: If `testDirect` is selected (default!), then this will be sent over the (potentially listened upon) normal connection!
+
+         - parameter url: The endpoint to test. Use HTTPS! Use something, which isn't too specific and stands out! Big search engine providers are a good choice.
+         - parameter expectedStatusCode: The status code which actually represents success.
+         */
+        public init(url: URL, expectedStatusCode: Int) {
+            self.expectedStatusCode = expectedStatusCode
+            request = .init(url: url)
+
+            super.init()
+        }
+
+    }
 
     /**
      The currently supported proxies.
@@ -61,9 +125,10 @@ public class Envoy: NSObject {
 
          - parameter url: The URL to the Envoy proxy.
          - parameter headers: Additional headers to send.
+         - parameter address: IP address to use instead of DNS resolution.
          - parameter salt: A predefined salt for a cache-busting query parameter named `_digest`. Will be randomly generated on each request, if not given.
          */
-        case envoy(url: URL, headers: [String: String] = [:], salt: String? = nil)
+        case envoy(url: URL, headers: [String: String] = [:], address: String? = nil, salt: String? = nil)
 
         /**
          V2Ray proxy.
@@ -135,8 +200,8 @@ public class Envoy: NSObject {
             case .direct:
                 return "direct"
 
-            case .envoy(let url, let headers, let salt):
-                return "envoy url=\(url), headers=\(headers), salt=\(salt ?? "(nil)")"
+            case .envoy(let url, let headers, let address, let salt):
+                return "envoy url=\(url), headers=\(headers), address=\(address ?? "(nil)"), salt=\(salt ?? "(nil)")"
 
             case .v2Ray(let type, let host, let port, let id, let path):
                 return "v2ray type=\(type.rawValue), host=\(host), port=\(port), id=\(id), path=\(path ?? "(nil)")"
@@ -295,38 +360,41 @@ public class Envoy: NSObject {
          This is a no-op for all other types of proxies.
 
          - parameter request: A ``URLRequest`` which might need to be modified for this type of proxy.
-         - returns: An eventualy modified ``URLRequest`` object instead of the original one.
+         - returns: A tuple containing the eventualy modified ``URLRequest`` object instead of the original one and the IP address which should be used for the host instead of DNS resolution.
          */
-        public func maybeModify(_ request: URLRequest) -> URLRequest {
+        public func maybeModify(_ request: URLRequest) -> (request: URLRequest, address: String?) {
             var url: URL
             let headers: [String: String]
+            let address: String?
             let salt: String?
 
             switch self {
-            case .envoy(let u, let h, let s):
+            case .envoy(let u, let h, let a, let s):
                 url = u
                 headers = h
+                address = a
                 salt = s
 
             case .meek(_, _, let tunnel),
                     .obfs4(_, _, let tunnel),
                     .webTunnel(_, _, let tunnel),
                     .snowflake(_, _, _, _, _, _, let tunnel):
-                if case .envoy(let u, let h, let s) = tunnel {
+                if case .envoy(let u, let h, let a, let s) = tunnel {
                     url = u
                     headers = h
+                    address = a
                     salt = s
                 }
                 else {
-                    return request
+                    return (request, nil)
                 }
 
             default:
-                return request
+                return (request, nil)
             }
 
             guard !(request.url?.absoluteString.hasPrefix(url.absoluteString) ?? false) else {
-                return request
+                return (request, address)
             }
 
             switch request.httpMethod {
@@ -356,7 +424,7 @@ public class Envoy: NSObject {
                 modified.setValue(url.removingQueryItems(named: "_digest").absoluteString, forHTTPHeaderField: "Url-Orig")
             }
 
-            return modified
+            return (modified, address)
         }
 
         /**
@@ -373,14 +441,14 @@ public class Envoy: NSObject {
             let headers: [String: String]
 
             switch self {
-            case .envoy(_, let h, _):
+            case .envoy(_, let h, _, _):
                 headers = h
 
             case .meek(_, _, let tunnel),
                     .obfs4(_, _, let tunnel), 
                     .webTunnel(_, _, let tunnel),
                     .snowflake(_, _, _, _, _, _, let tunnel):
-                if case .envoy(_, let h, _) = tunnel {
+                if case .envoy(_, let h, _, _) = tunnel {
                     headers = h
                 }
                 else {
@@ -656,11 +724,11 @@ public class Envoy: NSObject {
      ``maybeModify(_:)`` and ``revertModification(_:)`` methods without needing to think about the used proxy type.
 
      - parameter urls: A list of proxy configuration URLs.
-     - parameter testURL: An endpoint which should be used for testing, if the proxy works. ATTENTION: A HTTP 204 response is expected!
+     - parameter test: An endpoint and the expected status code which should be used for testing, if the proxy works.
      - parameter testDirect: Flag, if the direct connection should be tested first.
      */
-    public func start(urls: [URL], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) async {
-        await start(proxies: urls.compactMap { parse($0) }, testUrl: testUrl, testDirect: testDirect)
+    public func start(urls: [URL], test: Test = .default, testDirect: Bool = true) async {
+        await start(proxies: urls.compactMap { parse($0) }, test: test, testDirect: testDirect)
     }
 
     /**
@@ -675,17 +743,15 @@ public class Envoy: NSObject {
      ``maybeModify(_:)`` and ``revertModification(_:)`` methods without needing to think about the used proxy type.
 
      - parameter urls: A list of proxy configurations.
-     - parameter testURL: An endpoint which should be used for testing, if the proxy works. ATTENTION: A HTTP 204 response is expected!
+     - parameter test: An endpoint and the expected status code which should be used for testing, if the proxy works.
      - parameter testDirect: Flag, if the direct connection should be tested first.
      */
-    public func start(proxies: [Proxy], testUrl: URL = URL(string: "https://www.google.com/generate_204")!, testDirect: Bool = true) async {
+    public func start(proxies: [Proxy], test: Test = .default, testDirect: Bool = true) async {
         var candidates = proxies
 
         if testDirect {
             candidates.insert(.direct, at: 0)
         }
-
-        let testRequest = URLRequest(url: testUrl)
 
         var parallel = true
 
@@ -726,7 +792,7 @@ public class Envoy: NSObject {
                     }
 
                     group.addTask {
-                        return (proxy, await Self.test(testRequest, with: proxy))
+                        return (proxy, await Self.test(test, with: proxy))
                     }
                 }
 
@@ -771,7 +837,7 @@ public class Envoy: NSObject {
                     break
                 }
 
-                if await Self.test(testRequest, with: proxy) {
+                if await Self.test(test, with: proxy) {
                     self.proxy = proxy
                     break
                 }
@@ -824,9 +890,9 @@ public class Envoy: NSObject {
      This is a no-op for all other types of proxies.
 
      - parameter request: A ``URLRequest`` which might need to be modified for this type of proxy.
-     - returns: An eventualy modified ``URLRequest`` object instead of the original one.
+     - returns: A tuple containing the eventualy modified ``URLRequest`` object instead of the original one and the IP address which should be used for the host instead of DNS resolution.
      */
-    public func maybeModify(_ request: URLRequest) -> URLRequest {
+    public func maybeModify(_ request: URLRequest) -> (request: URLRequest, address: String?) {
         proxy.maybeModify(request)
     }
 
@@ -1136,16 +1202,12 @@ public class Envoy: NSObject {
             }
         }
 
-        if !(address?.isEmpty ?? true) {
-            dest?.host = address
-        }
-
         if let dest = dest?.url {
             if dest.scheme == "socks5", let host = dest.host, let port = dest.port {
                 return .socks5(host: host, port: port)
             }
 
-            return .envoy(url: dest, headers: headers, salt: salt)
+            return .envoy(url: dest, headers: headers, address: address, salt: salt)
         }
 
         return nil
@@ -1154,20 +1216,35 @@ public class Envoy: NSObject {
     /**
      Test a given request with a given proxy.
 
-     - parameter request: The test URL which needs to return 204 on response to be considered valid.
+     - parameter test: The test URL and the expected status code to be considered success.
      - parameter proxy: The proxy to test.
      - returns: `true`, if the test request returned HTTP status 204, else false.
      */
-    private static func test(_ request: URLRequest, with proxy: Proxy) async -> Bool {
-        let conf = URLSessionConfiguration.ephemeral
-        conf.connectionProxyDictionary = proxy.getProxyDict()
-
-        let session = URLSession(configuration: conf)
+    private static func test(_ test: Test, with proxy: Proxy) async -> Bool {
+        let (request, address) = proxy.maybeModify(test.request)
 
         do {
-            let (_, response) = try await session.data(for: proxy.maybeModify(request))
+#if USE_CURL
+            SwiftyCurl.shared.proxyDict = proxy.getProxyDict()
 
-            return (response as? HTTPURLResponse)?.statusCode == 204
+            if let url = request.url, let address = address, !address.isEmpty {
+                SwiftyCurl.shared.resolve = [.init(url: url, addresses: [address])]
+            }
+            else {
+                SwiftyCurl.shared.resolve = nil
+            }
+
+            let (_, response) = try await SwiftyCurl.shared.perform(with: request)
+#else
+            let conf = URLSessionConfiguration.ephemeral
+            conf.connectionProxyDictionary = proxy.getProxyDict()
+
+            let session = URLSession(configuration: conf)
+
+            let (_, response) = try await session.data(for: request)
+#endif
+
+            return (response as? HTTPURLResponse)?.statusCode == test.expectedStatusCode
         }
         catch {
             return false

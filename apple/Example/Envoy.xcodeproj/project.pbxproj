@@ -17,10 +17,12 @@
 		A0258CE62C3EB74F00B3A9E7 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0258CE52C3EB74F00B3A9E7 /* ViewController.swift */; };
 		A0258CEB2C3EB75000B3A9E7 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = A0258CEA2C3EB75000B3A9E7 /* Base */; };
 		A0258D082C3ECB3A00B3A9E7 /* ObjcViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */; };
-		A04B51932C414E940050CA0A /* proxies.plist in Resources */ = {isa = PBXBuildFile; fileRef = A04B51922C414E940050CA0A /* proxies.plist */; };
-		A04B51942C414E940050CA0A /* proxies.plist in Resources */ = {isa = PBXBuildFile; fileRef = A04B51922C414E940050CA0A /* proxies.plist */; };
 		A04B51972C41500F0050CA0A /* Proxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04B51962C41500F0050CA0A /* Proxy.swift */; };
 		A04B51982C41500F0050CA0A /* Proxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04B51962C41500F0050CA0A /* Proxy.swift */; };
+		A0CAEE9A2C98750700AC5065 /* proxies.plist in Resources */ = {isa = PBXBuildFile; fileRef = A04B51922C414E940050CA0A /* proxies.plist */; };
+		A0CAEE9B2C98750700AC5065 /* proxies.plist in Resources */ = {isa = PBXBuildFile; fileRef = A04B51922C414E940050CA0A /* proxies.plist */; };
+		A0CAEE9C2C98765300AC5065 /* proxies in Resources */ = {isa = PBXBuildFile; fileRef = A0CAEE972C983D4B00AC5065 /* proxies */; };
+		A0CAEE9D2C98765300AC5065 /* proxies in Resources */ = {isa = PBXBuildFile; fileRef = A0CAEE972C983D4B00AC5065 /* proxies */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,10 +47,12 @@
 		A0258D052C3ECB3A00B3A9E7 /* Envoy_Example-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Envoy_Example-Bridging-Header.h"; sourceTree = "<group>"; };
 		A0258D062C3ECB3A00B3A9E7 /* ObjcViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjcViewController.h; sourceTree = "<group>"; };
 		A0258D072C3ECB3A00B3A9E7 /* ObjcViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjcViewController.m; sourceTree = "<group>"; };
+		A03141762C9497AC0011FC8A /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = CHANGELOG.md; path = ../CHANGELOG.md; sourceTree = "<group>"; };
 		A04B51922C414E940050CA0A /* proxies.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = proxies.plist; sourceTree = "<group>"; };
 		A04B51962C41500F0050CA0A /* Proxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Proxy.swift; sourceTree = "<group>"; };
 		A0730A492C500E58009A1C51 /* GreatfireEnvoy.podspec */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = text; name = GreatfireEnvoy.podspec; path = ../../GreatfireEnvoy.podspec; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		A0730A4A2C501074009A1C51 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Package.swift; path = ../../Package.swift; sourceTree = "<group>"; };
+		A0CAEE972C983D4B00AC5065 /* proxies */ = {isa = PBXFileReference; lastKnownFileType = text; path = proxies; sourceTree = "<group>"; };
 		D8C5EC9BC94045C321655445 /* Pods-Example for MacOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example for MacOS.release.xcconfig"; path = "Target Support Files/Pods-Example for MacOS/Pods-Example for MacOS.release.xcconfig"; sourceTree = "<group>"; };
 		DD7379308FB4B10EECA1F2D1 /* Pods_Example_for_MacOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Example_for_MacOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E613D66F9A0E5D47D6542ACD /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
@@ -130,6 +134,7 @@
 				A0730A492C500E58009A1C51 /* GreatfireEnvoy.podspec */,
 				A0730A4A2C501074009A1C51 /* Package.swift */,
 				E613D66F9A0E5D47D6542ACD /* README.md */,
+				A03141762C9497AC0011FC8A /* CHANGELOG.md */,
 				A018BCC92BAC761700EC6172 /* Podfile */,
 				A018BCCA2BAC761700EC6172 /* Podfile.lock */,
 				747180B1950040CEBB90CA81 /* LICENSE */,
@@ -154,6 +159,7 @@
 			children = (
 				A04B51962C41500F0050CA0A /* Proxy.swift */,
 				A04B51922C414E940050CA0A /* proxies.plist */,
+				A0CAEE972C983D4B00AC5065 /* proxies */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -178,6 +184,7 @@
 				607FACCC1AFB9204008FA782 /* Sources */,
 				607FACCD1AFB9204008FA782 /* Frameworks */,
 				607FACCE1AFB9204008FA782 /* Resources */,
+				D98BF150F6F00041CCB061DD /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,6 +203,7 @@
 				A0258CDD2C3EB74F00B3A9E7 /* Sources */,
 				A0258CDE2C3EB74F00B3A9E7 /* Frameworks */,
 				A0258CDF2C3EB74F00B3A9E7 /* Resources */,
+				A80C2679C82A40B47FE215B0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -214,7 +222,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 1540;
-				LastUpgradeCheck = 1540;
+				LastUpgradeCheck = 1610;
 				ORGANIZATIONNAME = GreatFire;
 				TargetAttributes = {
 					607FACCF1AFB9204008FA782 = {
@@ -251,7 +259,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
-				A04B51932C414E940050CA0A /* proxies.plist in Resources */,
+				A0CAEE9C2C98765300AC5065 /* proxies in Resources */,
+				A0CAEE9A2C98750700AC5065 /* proxies.plist in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,8 +269,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0CAEE9D2C98765300AC5065 /* proxies in Resources */,
+				A0CAEE9B2C98750700AC5065 /* proxies.plist in Resources */,
 				A0258CEB2C3EB75000B3A9E7 /* Base in Resources */,
-				A04B51942C414E940050CA0A /* proxies.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -310,6 +320,42 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A80C2679C82A40B47FE215B0 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Example for MacOS/Pods-Example for MacOS-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/SwiftyCurl-macOS/SwiftyCurl.framework",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SwiftyCurl.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Example for MacOS/Pods-Example for MacOS-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D98BF150F6F00041CCB061DD /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Envoy_Example/Pods-Envoy_Example-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/SwiftyCurl-iOS/SwiftyCurl.framework",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SwiftyCurl.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Envoy_Example/Pods-Envoy_Example-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -539,9 +585,9 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 CocoaPods. All rights reserved.";
@@ -582,8 +628,8 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 CocoaPods. All rights reserved.";

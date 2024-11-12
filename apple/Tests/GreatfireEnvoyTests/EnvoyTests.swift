@@ -17,8 +17,9 @@ class EnvoyTests: XCTestCase {
         assertEnvoy("https://proxy.example.com/proxy/")
 
         assertEnvoy("envoy://?url=https://proxy.example.com/proxy/&salt=abcdefghijklmnop&header_foobar=abcdefg&address=127.0.0.1",
-                    proxyUrl: "https://127.0.0.1/proxy/",
+                    proxyUrl: "https://proxy.example.com/proxy/",
                     headers: ["foobar": "abcdefg"],
+                    address: "127.0.0.1",
                     salt: "abcdefghijklmnop")
 
         assertV2Ray(
@@ -89,17 +90,18 @@ class EnvoyTests: XCTestCase {
     }
 
     func testRequestModification() {
-        var proxy = Envoy.Proxy.envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"])
+        var proxy = Envoy.Proxy.envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"], address: "127.0.0.1")
 
         let request = URLRequest(url: URL(string: "https://example.com/")!)
 
-        var modified = proxy.maybeModify(request)
+        var (modified, address) = proxy.maybeModify(request)
 
         XCTAssertEqual(modified.url?.scheme, "https")
         XCTAssertEqual(modified.url?.host, "proxy.example.com")
         XCTAssertEqual(modified.url?.path, "/proxy")
         XCTAssertTrue(modified.url?.queryItems.contains(where: { $0.name == "_digest" }) == true)
         XCTAssertEqual(modified.allHTTPHeaderFields, ["Host-Orig": "example.com", "Url-Orig": "https://example.com/", "X-foobar": "abcdefg"])
+        XCTAssertEqual(address, "127.0.0.1")
 
         var reverted = proxy.revertModification(modified)
 
@@ -110,7 +112,7 @@ class EnvoyTests: XCTestCase {
             ver: "0.0.1",
             tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!, headers: ["X-foobar": "abcdefg"]))
 
-        modified = proxy.maybeModify(request)
+        modified = proxy.maybeModify(request).request
 
         XCTAssertEqual(modified.url?.scheme, "https")
         XCTAssertEqual(modified.url?.host, "proxy.example.com")
@@ -189,12 +191,13 @@ class EnvoyTests: XCTestCase {
         return proxy!
     }
 
-    private func assertEnvoy(_ url: String, proxyUrl: String? = nil, headers: [String: String] = [:], salt: String? = nil) {
+    private func assertEnvoy(_ url: String, proxyUrl: String? = nil, headers: [String: String] = [:], address: String? = nil, salt: String? = nil) {
         let proxy = assertProxy(url)
 
-        if case .envoy(let url2, let headers2, let salt2) = proxy {
+        if case .envoy(let url2, let headers2, let address2, let salt2) = proxy {
             XCTAssertEqual(url2, URL(string: proxyUrl ?? url))
             XCTAssertEqual(headers2, headers)
+            XCTAssertEqual(address2, address)
             XCTAssertEqual(salt2, salt)
         }
         else {

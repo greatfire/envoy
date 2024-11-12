@@ -6,7 +6,7 @@
 //  Copyright © 2024 GreatFire. Licensed under Apache-2.0.
 //
 
-import WebKit
+@preconcurrency import WebKit
 
 /**
  This class helps you work around the limitations of `WKWebView` by
@@ -18,7 +18,7 @@ import WebKit
 
   **NOTES**:
 
-  1. Run `Envoy.shared.start(urls:testUrl:testDirect:)` or `Envoy.shared.start(proxies:testUrl:testDirect:)` first, before initializing this web view!
+  1. Run `Envoy.shared.start(urls:test:testDirect:)` or `Envoy.shared.start(proxies:test:testDirect:)` first, before initializing this web view!
 
   2. **DO NOT USE** the `async` methods of the `WKNavigationDelegate`. `EnvoyWebView` needs to intercept that delegate,
   and due to some limitations in the Swift compiler, calls to `async` implementations cannot be forwarded!

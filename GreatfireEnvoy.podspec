@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'GreatfireEnvoy'
-  s.version          = '0.1.0'
+  s.version          = '0.2.0'
   s.summary          = "Greatfire's Envoy is a manager for various proxy implementations."
 
   s.description      = <<-DESC
@@ -31,6 +31,9 @@ Pod::Spec.new do |s|
   s.author           = { 'Benjamin Erhart' => 'berhart@netzarchitekten.com' }
   s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => "apple-#{s.version}" }
   s.social_media_url = 'https://twitter.com/tladesignz'
+  s.readme           = "https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/README.md"
+  s.changelog        = 'https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/CHANGELOG.md'
+
 
   s.swift_versions = '5.0'
 
@@ -39,11 +42,29 @@ Pod::Spec.new do |s|
 
   s.static_framework = true
 
-  s.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
-
-  s.dependency 'IEnvoyProxy', '~> 2.0'
-
   s.test_spec 'Tests' do |t|
       t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'
   end
+
+  s.subspec 'Core' do |ss|
+    ss.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
+
+    ss.dependency 'IEnvoyProxy', '~> 2.0'
+  end
+
+  s.subspec 'Curl' do |ss|
+    ss.dependency 'GreatfireEnvoy/Core'
+    ss.dependency 'SwiftyCurl', '~> 0.1'
+
+    ss.test_spec 'Tests' do |t|
+        t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'
+    end
+
+    ss.pod_target_xcconfig = {
+      'GCC_PREPROCESSOR_DEFINITIONS' => 'USE_CURL=1',
+      'SWIFT_ACTIVE_COMPILATION_CONDITIONS' => '$(inherited) USE_CURL',
+    }
+  end
+
+  s.default_subspec = 'Core'
 end

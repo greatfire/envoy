@@ -1,26 +1,33 @@
 PODS:
-  - GreatfireEnvoy (0.1.0):
+  - GreatfireEnvoy/Core (0.2.0):
     - IEnvoyProxy (~> 2.0)
-  - GreatfireEnvoy/Tests (0.1.0):
-    - IEnvoyProxy (~> 2.0)
+  - GreatfireEnvoy/Curl (0.2.0):
+    - GreatfireEnvoy/Core
+    - SwiftyCurl (~> 0.1)
+  - GreatfireEnvoy/Curl/Tests (0.2.0):
+    - GreatfireEnvoy/Core
+    - SwiftyCurl (~> 0.1)
   - IEnvoyProxy (2.0.1)
+  - SwiftyCurl (0.1.0)
 
 DEPENDENCIES:
-  - GreatfireEnvoy (from `../../`)
-  - GreatfireEnvoy/Tests (from `../../`)
+  - GreatfireEnvoy/Curl (from `../../`)
+  - GreatfireEnvoy/Curl/Tests (from `../../`)
 
 SPEC REPOS:
   https://github.com/CocoaPods/Specs.git:
     - IEnvoyProxy
+    - SwiftyCurl
 
 EXTERNAL SOURCES:
   GreatfireEnvoy:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  GreatfireEnvoy: 6a467155cacac44aa79a7a4645d4e98ab3ac0793
+  GreatfireEnvoy: f05476eddeb074736d128c58c7f6bccb38acd4b4
   IEnvoyProxy: 51bc3a4909edcc0eea86841072a1ea2fd49e7b5c
+  SwiftyCurl: 4c53c1a023e5f133440626a4e91ac679003b7085
 
-PODFILE CHECKSUM: edbb85314aaaf9f1121aa01036258e18acabb8f6
+PODFILE CHECKSUM: 0aabea011dca1c759b3bb03a3c4a4e1b84253c9b
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2

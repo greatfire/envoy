@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Network
 
 extension URLComponents {
 
@@ -124,5 +125,90 @@ extension URL {
         urlc?.scheme = scheme
 
         return urlc?.url ?? self
+    }
+
+    var proxyDict: [AnyHashable: Any]? {
+        guard let scheme = scheme?.lowercased(),
+              scheme == "socks4" || scheme == "socks5" || scheme == "http" || scheme == "https",
+              let host = host, !host.isEmpty,
+              let port = port
+        else {
+            return nil
+        }
+
+        var dict = [AnyHashable: Any]()
+
+        var isSocks = false
+
+        switch scheme {
+        case "socks4":
+            dict[kCFStreamPropertySOCKSVersion] = kCFStreamSocketSOCKSVersion4
+            isSocks = true
+
+        case "socks5":
+            dict[kCFStreamPropertySOCKSVersion] = kCFStreamSocketSOCKSVersion5
+            isSocks = true
+
+        case "http":
+            dict[kCFProxyTypeKey] = kCFProxyTypeHTTP
+            dict[kCFStreamPropertyHTTPProxyHost] = host
+            dict[kCFStreamPropertyHTTPProxyPort] = port
+
+        case "https":
+            dict[kCFProxyTypeKey] = kCFProxyTypeHTTPS
+            dict[kCFStreamPropertyHTTPSProxyHost] = host
+            dict[kCFStreamPropertyHTTPSProxyPort] = port
+
+        default:
+            return nil
+        }
+
+        if isSocks {
+            dict[kCFProxyTypeKey] = kCFProxyTypeSOCKS
+            dict[kCFStreamPropertySOCKSProxyHost] = host
+            dict[kCFStreamPropertySOCKSProxyPort] = port
+
+            if let user = user, !user.isEmpty {
+                dict[kCFStreamPropertySOCKSUser] = user
+            }
+
+            if let password = password, !password.isEmpty {
+                dict[kCFStreamPropertySOCKSPassword] = password
+            }
+        }
+
+        return dict
+    }
+
+    @available(iOS 17.0, macOS 14.0, *)
+    var proxyConf: ProxyConfiguration? {
+        guard let scheme = scheme?.lowercased(),
+              scheme == "socks5" || scheme == "http" || scheme == "https",
+              let host = host, !host.isEmpty,
+              let port = port,
+              let port = NWEndpoint.Port(rawValue: UInt16(port))
+        else {
+            return nil
+        }
+
+        let endpoint = NWEndpoint.hostPort(host: .init(host), port: port)
+
+        let conf: ProxyConfiguration
+
+        if scheme == "socks5" {
+            conf = .init(socksv5Proxy: endpoint)
+        }
+        else {
+            conf = .init(httpCONNECTProxy: endpoint, tlsOptions: scheme == "http" ? nil : .init())
+        }
+
+        if let user = user, !user.isEmpty {
+            conf.applyCredential(username: user, password: password ?? "")
+        }
+        else if let password = password, !password.isEmpty {
+            conf.applyCredential(username: user ?? "", password: password)
+        }
+
+        return conf
     }
 }
