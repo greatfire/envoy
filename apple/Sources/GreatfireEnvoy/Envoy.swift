@@ -10,6 +10,7 @@ import Foundation
 import Network
 import CryptoKit
 import IEnvoyProxy
+import OSLog
 
 #if USE_CURL
 import SwiftyCurl
@@ -779,7 +780,7 @@ public class Envoy: NSObject {
                                 forwarder = try EnvoySocksForwarder(proxy).start()
                             }
                             catch {
-                                print("[\(String(describing: type(of: self)))] error=\(error)")
+                                Self.log(error)
 
                                 proxy.stop()
 
@@ -825,7 +826,7 @@ public class Envoy: NSObject {
                             forwarder = try EnvoySocksForwarder(proxy).start()
                         }
                         catch {
-                            print("[\(String(describing: type(of: self)))] error=\(error)")
+                            Self.log(error)
 
                             proxy.stop()
 
@@ -1248,6 +1249,41 @@ public class Envoy: NSObject {
         }
         catch {
             return false
+        }
+    }
+
+    static func log(_ message: String, _ caller: Any? = nil) {
+        let category: String
+        if let caller = caller {
+            category = String(describing: type(of: caller))
+        }
+        else {
+            category = String(describing: self)
+        }
+
+        if #available(iOS 14.0, macOS 11.0, *) {
+            Logger(for: self, category: category).debug("\(message)")
+        }
+        else {
+            print("[\(category)] \(message)")
+        }
+    }
+
+    @objc(logError::)
+    static func log(_ error: Error, _ caller: Any? = nil) {
+        let category: String
+        if let caller = caller {
+            category = String(describing: type(of: caller))
+        }
+        else {
+            category = String(describing: self)
+        }
+
+        if #available(iOS 14.0, macOS 11.0, *) {
+            Logger(for: self, category: category).error("\(error)")
+        }
+        else {
+            print("[\(category)] 🛑\n\(error)")
         }
     }
 }

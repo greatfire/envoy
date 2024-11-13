@@ -8,7 +8,7 @@
 
 import UIKit
 @preconcurrency import WebKit
-import os
+import OSLog
 import GreatfireEnvoy
 
 class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegate {
@@ -18,6 +18,8 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     @IBOutlet weak var addressTf: UITextField!
 
     private var webView: EnvoyWebView!
+
+    private let log = Logger(for: ViewController.self)
 
 
     override func viewDidLoad() {
@@ -29,14 +31,14 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 
         Task {
             Envoy.ptLogging = true
-            print("[\(String(describing: type(of: self)))] ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
+            log.debug("ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
 
             let proxies = Proxy.fetch()
-            print("[\(String(describing: type(of: self)))] proxies=\(proxies)")
+            log.debug("proxies=\(proxies)")
 
             await Envoy.shared.start(urls: proxies.map({ $0.url }), testDirect: proxies.isEmpty)
 
-            print("[\(String(describing: type(of: self)))] selected proxy: \(Envoy.shared.proxy)")
+            log.debug("selected proxy: \(Envoy.shared.proxy)")
 
             initWebView()
 
@@ -72,10 +74,10 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
 //                do {
 //                    let (data, response) = try await session.data(for: URLRequest(url: url))
 //
-//                    print("[\(String(describing: type(of: self)))] response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
+//                    log.debug("response=\(response), data=\(String(data: data, encoding: .utf8) ?? "(nil)")")
 //                }
 //                catch {
-//                    print("[\(String(describing: type(of: self)))] error=\(error)")
+//                    log.error("\(error)")
 //                }
 //            }
 
@@ -106,7 +108,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
-        print("[\(String(describing: type(of: self)))] error=\(error)")
+        log.error("\(error)")
     }
 
 

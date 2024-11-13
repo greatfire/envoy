@@ -92,7 +92,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     public func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
         let (request, address) = Envoy.shared.maybeModify(Self.revertModification(urlSchemeTask.request))
 
-        print("[\(String(describing: type(of: self)))] \(request.url?.absoluteString ?? "(nil)"): \(request.value(forHTTPHeaderField: "Url-Orig") ?? "(nil)")")
+        Envoy.log("\(request.url?.absoluteString ?? "(nil)"): \(request.value(forHTTPHeaderField: "Url-Orig") ?? "(nil)")", self)
 
 #if USE_CURL
         Task {
@@ -121,7 +121,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     }
 
     public func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {
-        print("[\(String(describing: type(of: self)))]#stop task=\(urlSchemeTask)")
+        Envoy.log("task=\(urlSchemeTask)", self)
 
 #if USE_CURL
         if let task = tasks[urlSchemeTask.hash] {
@@ -184,7 +184,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         if let error = error {
-            print("[\(String(describing: type(of: self)))]#didCompleteWithError \(error)")
+            Envoy.log(error, self)
 
             tasks[task]?.didFailWithError(error)
         }

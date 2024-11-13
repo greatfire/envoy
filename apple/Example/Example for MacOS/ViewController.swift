@@ -8,6 +8,7 @@
 
 import Cocoa
 @preconcurrency import WebKit
+import OSLog
 import GreatfireEnvoy
 
 class ViewController: NSViewController, WKNavigationDelegate {
@@ -19,6 +20,8 @@ class ViewController: NSViewController, WKNavigationDelegate {
 
     private var webView: EnvoyWebView?
 
+    private let log = Logger(for: ViewController.self)
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -29,14 +32,14 @@ class ViewController: NSViewController, WKNavigationDelegate {
 
         Task {
             Envoy.ptLogging = true
-            print("[\(String(describing: type(of: self)))] ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
+            log.debug("ptStateDir=\(Envoy.ptStateDir?.path ?? "(nil)")")
 
             let proxies = Proxy.fetch()
-            print("[\(String(describing: type(of: self)))] proxies=\(proxies)")
+            log.debug("proxies=\(proxies)")
 
             await Envoy.shared.start(urls: proxies.map({ $0.url }), testDirect: proxies.isEmpty)
 
-            print("[\(String(describing: type(of: self)))] selected proxy: \(Envoy.shared.proxy)")
+            log.debug("selected proxy: \(Envoy.shared.proxy)")
 
             initWebView()
 
@@ -85,7 +88,7 @@ class ViewController: NSViewController, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
-        print("[\(String(describing: type(of: self)))] error=\(error)")
+        log.error("\(error)")
     }
 
 

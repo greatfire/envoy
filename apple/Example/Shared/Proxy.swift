@@ -8,6 +8,7 @@
 
 import Foundation
 import CryptoKit
+import OSLog
 
 /**
  A helper class which reads proxy URLs from a plist file named `proxies.plist` or from an obfuscated file named `proxies`.
@@ -70,6 +71,8 @@ class Proxy: NSObject, Decodable {
      If everything fails, this method will return an empty array!
      */
     static func fetch() -> [Proxy] {
+        let log = Logger(for: Proxy.self)
+
         if let key = Self.key, !key.isEmpty,
            let url = Bundle.main.url(forResource: "proxies", withExtension: nil),
            let data = try? Data(contentsOf: url),
@@ -85,7 +88,7 @@ class Proxy: NSObject, Decodable {
                     .filter { $0.active && $0.url != nil }
             }
             catch {
-                print("[\(String(describing: self))] error=\(error)")
+                log.error("\(error)")
             }
         }
 
@@ -103,10 +106,10 @@ class Proxy: NSObject, Decodable {
                         return Data(buffer: pointer.bindMemory(to: UInt8.self))
                     }
 
-                    print("[\(String(describing: self))] key=\(keydata.base64EncodedString()), cypthertext=\(box.combined.base64EncodedString())")
+                    log.debug("key=\(keydata.base64EncodedString()), cypthertext=\(box.combined.base64EncodedString())")
                 }
                 catch {
-                    print("[\(String(describing: self))] error=\(error)")
+                    log.error("\(error)")
                 }
 
                 return proxies
