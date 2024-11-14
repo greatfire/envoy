@@ -15,7 +15,7 @@ import OSLog
 #if USE_CURL
 import SwiftyCurl
 
-extension SwiftyCurl {
+public extension SwiftyCurl {
 
     static let shared = {
         let curl = SwiftyCurl()
@@ -427,6 +427,48 @@ public class Envoy: NSObject {
 
             return (modified, address)
         }
+
+#if USE_CURL
+        /**
+         Create a `CurlTask` with the given `URLRequest` and the proxy parameters.
+
+         - If the proxy uses SOCKS, it will be set on the `SwiftyCurl` object and reset after creating the task.
+         - If the proxy uses its own DNS resolution, it will be set on the `SwiftyCurl` object and reset after creating the task.
+
+         - parameter curl: The `SwiftyCurl` instance to use.
+         - parameter request: The request to send. URL, method, headers, body and timeout properties will be honored.
+         - returns: A prepared `CurlTask` object you will need to `resume` to actually perform the request.
+         */
+        public func task(from curl: SwiftyCurl, with request: URLRequest) -> CurlTask? {
+            let (request, address) = maybeModify(request)
+
+            let oldResolve = curl.resolve
+
+            if let url = request.url {
+                let entry = CurlResolveEntry(url: url)
+                var resolve = curl.resolve
+                resolve?.removeAll { $0 == entry }
+
+                if let address = address, !address.isEmpty {
+                    entry.addresses = [address]
+                    resolve = resolve ?? []
+                    resolve?.append(entry)
+                }
+
+                curl.resolve = resolve
+            }
+
+            let oldProxyDict = curl.proxyDict
+            curl.proxyDict = getProxyDict()
+
+            let task = curl.task(with: request)
+
+            curl.proxyDict = oldProxyDict
+            curl.resolve = oldResolve
+
+            return task
+        }
+#endif
 
         /**
          Will revert all modifications ``maybeModify(_:)`` eventually did.
@@ -897,6 +939,22 @@ public class Envoy: NSObject {
         proxy.maybeModify(request)
     }
 
+#if USE_CURL
+    /**
+     Create a `CurlTask` with the given `URLRequest` and the currently selected ``Proxy``.
+
+     - If the proxy uses SOCKS, it will be set on the `SwiftyCurl` object and reset after creating the task.
+     - If the proxy uses its own DNS resolution, it will be set on the `SwiftyCurl` object and reset after creating the task.
+
+     - parameter curl: The `SwiftyCurl` instance to use.
+     - parameter request: The request to send. URL, method, headers, body and timeout properties will be honored.
+     - returns: A prepared `CurlTask` object you will need to `resume` to actually perform the request.
+     */
+    public func task(from curl: SwiftyCurl, with request: URLRequest) -> CurlTask? {
+        proxy.task(from: curl, with: request)
+    }
+#endif
+
     /**
      Will revert all modifications ``maybeModify(_:)`` eventually did.
 
@@ -1222,27 +1280,17 @@ public class Envoy: NSObject {
      - returns: `true`, if the test request returned HTTP status 204, else false.
      */
     private static func test(_ test: Test, with proxy: Proxy) async -> Bool {
-        let (request, address) = proxy.maybeModify(test.request)
-
         do {
 #if USE_CURL
-            SwiftyCurl.shared.proxyDict = proxy.getProxyDict()
-
-            if let url = request.url, let address = address, !address.isEmpty {
-                SwiftyCurl.shared.resolve = [.init(url: url, addresses: [address])]
-            }
-            else {
-                SwiftyCurl.shared.resolve = nil
-            }
-
-            let (_, response) = try await SwiftyCurl.shared.perform(with: request)
+            let result = try await proxy.task(from: SwiftyCurl.shared, with: test.request)?.resume()
+            let response = result?.1
 #else
             let conf = URLSessionConfiguration.ephemeral
             conf.connectionProxyDictionary = proxy.getProxyDict()
 
             let session = URLSession(configuration: conf)
 
-            let (_, response) = try await session.data(for: request)
+            let (_, response) = try await session.data(for: proxy.maybeModify(test.request).request)
 #endif
 
             return (response as? HTTPURLResponse)?.statusCode == test.expectedStatusCode

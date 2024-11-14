@@ -54,7 +54,7 @@ Pod::Spec.new do |s|
 
   s.subspec 'Curl' do |ss|
     ss.dependency 'GreatfireEnvoy/Core'
-    ss.dependency 'SwiftyCurl', '~> 0.1'
+    ss.dependency 'SwiftyCurl', '~> 0.3'
 
     ss.test_spec 'Tests' do |t|
         t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'

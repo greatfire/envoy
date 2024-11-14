@@ -19,7 +19,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     private static let httpsScheme = "envoy-https"
 
 #if USE_CURL
-    private var tasks = [Int : SCTask]()
+    private var tasks = [Int : CurlTask]()
 #else
     private var session: URLSession!
 
@@ -30,9 +30,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     private init(_ conf: URLSessionConfiguration = .default) {
         super.init()
 
-#if USE_CURL
-        SwiftyCurl.shared.proxyDict = Envoy.shared.getProxyDict()
-#else
+#if !USE_CURL
         conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
 
         session = URLSession(configuration: conf, delegate: self, delegateQueue: nil)
@@ -90,14 +88,14 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     // MARK: WKURLSchemeHandler
 
     public func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
-        let (request, address) = Envoy.shared.maybeModify(Self.revertModification(urlSchemeTask.request))
+        let request = Self.revertModification(urlSchemeTask.request)
 
-        Envoy.log("\(request.url?.absoluteString ?? "(nil)"): \(request.value(forHTTPHeaderField: "Url-Orig") ?? "(nil)")", self)
+        Envoy.log("\(request.url?.absoluteString ?? "(nil)")", self)
 
 #if USE_CURL
         Task {
             do {
-                let (data, response) = try await perform(request, address, urlSchemeTask.hash)
+                let (data, response) = try await perform(request, urlSchemeTask.hash)
 
                 if tasks[urlSchemeTask.hash]?.state == .completed {
                     urlSchemeTask.didReceive(response)
@@ -114,7 +112,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
             tasks[urlSchemeTask.hash] = nil
         }
 #else
-        let task = session.dataTask(with: request)
+        let task = session.dataTask(with: Envoy.shared.maybeModify(request).request)
         tasks[task] = urlSchemeTask
         task.resume()
 #endif
@@ -141,15 +139,8 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     /**
      Implements our own redirect logic, so we can inject the proxy again on redirection.
      */
-    func perform(_ request: URLRequest, _ address: String?, _ wkTaskHash: Int, _ counter: UInt = 0) async throws -> (data: Data, response: URLResponse) {
-        if let url = request.url, let address = address, !address.isEmpty {
-            SwiftyCurl.shared.resolve = [.init(url: url, addresses: [address])]
-        }
-        else {
-            SwiftyCurl.shared.resolve = nil
-        }
-
-        guard let task = SwiftyCurl.shared.task(with: request) else {
+    func perform(_ request: URLRequest, _ wkTaskHash: Int, _ counter: UInt = 0) async throws -> (data: Data, response: URLResponse) {
+        guard let task = Envoy.shared.task(from: SwiftyCurl.shared, with: request) else {
             throw NSError(domain: NSURLErrorDomain, code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create curl."])
         }
 
@@ -163,18 +154,14 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
            let location = hr.value(forHTTPHeaderField: "Location"),
            let location = URL(string: location)
         {
-            var redirect = Envoy.shared.revertModification(request)
+            var redirect = request
             redirect.url = location
 
             if hr.statusCode == 302 || hr.statusCode == 303 {
                 redirect.httpMethod = "GET"
             }
 
-            let address: String?
-
-            (redirect, address) = Envoy.shared.maybeModify(redirect)
-
-            return try await perform(redirect, address, wkTaskHash, counter + 1)
+            return try await perform(redirect, wkTaskHash, counter + 1)
         }
 
         return (data, response)
