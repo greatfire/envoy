@@ -65,6 +65,40 @@ Since Apple platforms come with some limitations, Envoy for Apple Platforms has 
 - `WKWebView` configurations cannot be changed after initialization. So you will need to wait with that, until
   `Envoy.shared.start()` was run.
   
+## `libcurl` Support:
+
+Since version 0.3.0, Envoy also has `libcurl` support.
+
+If you use `GreatfireEnvoy/Curl` as the dependency declaration, Envoy will take in additional 
+dependencies:
+- https://github.com/greatfire/SwiftyCurl
+- https://github.com/greatfire/curl-apple
+
+The latter provides `libcurl` compiled for iOS and macOS, the former provides a nice abstraction 
+over the somewhat cumbersome `libcurl` API.
+
+If `libcurl` is used, Envoy will change the following ways:
+- It will init and publicly share a `SwiftyCurl` object on `SwiftyCurl.shared`, which it uses 
+  itself for all requests.
+- Proxy testing will use `libcurl` instead of `URLSession`.
+- `EnvoySchemeHandler` (used in `EnvoyWebView`) will use `libcurl` instead of `URLSession`.
+- It will provide helper methods `Envoy.shared.task(from:with:)` and `Proxy.task(from:with:)` which
+  you can use to create your own `libcurl` tasks.
+  
+### Benefits
+
+Using `libcurl` improves support for the custom Envoy proxy type:
+
+- Supports `Host` header mangling, hence domain fronting: `libcurl` can use one domain for DNS 
+  resolution and TLS SNI, and another domain for the HTTP `Host` header to support domain fronting
+  scenarios.
+  
+- Supports hard-coded DNS resolution: You can provide hard-coded IP addresses for your custom Envoy 
+  proxy, and still use the provided domain for TLS SNI negotiation.
+  
+- Redirects are not automatically followed: We can rewrite redirects to tunnel them over a custom
+  Envoy proxy the same way as we can do with the initial request.
+  
 
 ## Supported Proxies
 
@@ -75,8 +109,13 @@ Example config URLs:
 `https://proxy.example.com/proxy/`
 `envoy://?url=https://proxy.example.com/proxy/&salt=abcdefghijklmnop&header_foobar=abcdefg&address=127.0.0.1`
 
-- Works with `URLSession` and `URLConnection` requests by using `Envoy.shared.maybeModify(:)` with the
-  `URLRequest` object.
+- Works with `URLSession` and `URLConnection` requests by using `Envoy.shared.maybeModify(:)` with 
+  the `URLRequest` object. Note, that you can *not* use domain fronting, hard-coded IP addresses 
+  and rewritten redirects like that, so only specific custom Envoy proxies work, and only, if 
+  there's no server-triggered redirects to blocked addresses!
+- Works with `SwiftyCurl` requests by using `Envoy.shared.task(for:with:)` with the `URLRequest` 
+  object. This is the preferred way, if you use domain-fronted proxies, need to hard-code IP 
+  addresses and want to control redirects.
 - Works with `UIWebView` by using `EnvoyUrlProtocol`.
 - Works partially with `WKWebView` by using `EnvoyWebView` which leverages `EnvoySchemeHandler`.
   **ATTENTION**: This works by rewriting the `https` scheme to `envoy-https` and then let the request
@@ -88,12 +127,6 @@ Example config URLs:
   Hence, use of the custom Envoy HTTP proxy is not recommended with `WKWebView` and can only be supported
   on a best-effort basis, where the user isn't concerned about having some requests go over the clearnet
   which might potentially be recorded or blocked! 
-- There is also no support for changing the `Host` header or fixing a name to an IP address (in other words:
-  meddling with the DNS resolution), since there is no way on Apple platforms to do that.
-  *Note*: The `address` config option is supported in Envoy config URLs for compatibility reasons, but it will only 
-  replace the host part in the provided `url`, and hence the request will fail, if your server needs a properly set 
-  TLS client hello host for certificate disambiguation and/or a properly set `Host` header for virtual host disambiguation.
-  As said, with the provided libraries on Apple platforms, this cannot be achieved.  
   
 ### V2Ray
 
@@ -104,14 +137,18 @@ Example config URLs:
 `v2srtp://127.0.0.1:12347?id=00000000-0000-0000-0000-00000000000`
 
 - All V2Ray proxy modes are fully supported.
-- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- Works with `URLSession`, `URLConnection`, `UIWebView` and `SwiftyCurl` by using 
+  `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards, by using `Envoy.shared.getProxyConfig()`
+  resp. `EnvoyWebView`.
 
 ### Hysteria 2
 
 - Fully supported by using the defined [Hysteria 2 URI Scheme](https://v2.hysteria.network/docs/developers/URI-Scheme/).
-- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- Works with `URLSession`, `URLConnection`, `UIWebView` and `SwiftyCurl` by using 
+  `Envoy.shared.getProxyDict()`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards, by using `Envoy.shared.getProxyConfig()`
+  resp. `EnvoyWebView`.
 
 ### Pluggable Transport: Meek
 
@@ -121,23 +158,29 @@ Example config URLs:
 `meek://?url=https://cdn.example.com/&front=.wellknown.org&tunnel=https://proxy.example.com/proxy/`
 
 - Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
-- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
-  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
-- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised 
+  against. See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)`
+  and `Envoy.shared.getProxyDict()`.
+- Works with `SwiftyCurl` by using `Envoy.shared.task(from:with:)`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, 
+  by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 ### Pluggable Transport: Obfs4
 
 Example config URLs:
 
-`obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=socks5://127.0.0.1:12345`
+`obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=socks5://192.168.254.254:12345`
 `obfs4://?cert=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr&tunnel=https://proxy.example.com/proxy/`
 
 - Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
-- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
-  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
-- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised 
+  against. See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` 
+  and `Envoy.shared.getProxyDict()`.
+- Works with `SwiftyCurl` by using `Envoy.shared.task(from:with:)`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, 
+  by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 ### Pluggable Transport: WebTunnel
 
@@ -147,10 +190,13 @@ Example config URLs:
 `webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=https://proxy.example.com/proxy/`
 
 - Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
-- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
-  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
-- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised 
+  against. See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` 
+  and `Envoy.shared.getProxyDict()`.
+- Works with `SwiftyCurl` by using `Envoy.shared.task(from:with:)`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, 
+  by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 ### Pluggable Transport: Snowflake
 
@@ -160,10 +206,13 @@ Example config URLs:
 `snowflake://?broker=https://broker.example.com/&front=.wellknown.org&tunnel=https://proxy.example.com/proxy/`
 
 - Fully supported when using a SOCKS5 proxy as the PT payload via `EnvoySocksForwarder`.
-- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised against. 
-  See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
-- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` and `Envoy.shared.getProxyDict()`.
-- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**, by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
+- The Custom Envoy HTTP proxy as PT payload is only partially supported and therefore advised 
+  against. See [Custom Envoy HTTP Proxy](#custom-envoy-http-proxy).
+- Works with `URLSession`, `URLConnection`, `UIWebView` by using `Envoy.shared.maybeModify(:)` 
+  and `Envoy.shared.getProxyDict()`.
+- Works with `SwiftyCurl` by using `Envoy.shared.task(from:with:)`.
+- Works with `WKWebView` from iOS 17 and macOS 14 onwards **when a SOCKS5 proxy is used**,
+  by using `Envoy.shared.getProxyConfig()` resp. `EnvoyWebView`.
 
 
 ## Usage
@@ -187,9 +236,9 @@ Task {
             URL(string: "envoy://?url=https://proxy.example.com/proxy/&salt=abcdefghijklmnop&header_foobar=abcdefg&address=127.0.0.1")!,
         ],
 
-        // The test URL which determines success. Needs to return HTTP status code 204, to be counted as success.
+        // The test URL which determines success.
         // The example given here is the default, so just provide this argument, if you want to use another test endpoint.
-        testUrl: URL(string: "https://www.google.com/generate_204")!,
+        test: .init(url: URL(string: "https://www.google.com/generate_204")!, expectedStatusCode: 204),
 
         // Will test a clearnet connection first, if set to `true`!
         testDirect: true)
@@ -211,9 +260,9 @@ Task {
             .envoy(url: URL(string: "https://127.0.0.1/proxy/")!, headers: ["foobar": "abcdefg"], salt: "abcdefghijklmnop"),
         ],
 
-        // The test URL which determines success. Needs to return HTTP status code 204, to be counted as success.
+        // The test URL which determines success.
         // The example given here is the default, so just provide this argument, if you want to use another test endpoint.
-        testUrl: URL(string: "https://www.google.com/generate_204")!,
+        test: .init(url: URL(string: "https://www.google.com/generate_204")!, expectedStatusCode: 204),
 
         // Will test a clearnet connection first, if set to `true`!
         testDirect: true)
@@ -246,6 +295,21 @@ Task {
     }
 
 
+    // or with `libcurl`:
+
+    if let task = Envoy.shared.task(for: SwiftyCurl.shared, with: request) {
+        do {
+            let (data, response) = try await task.resume()
+
+            print(response)
+            print(String(data: data, encoding: .utf8))
+        }
+        catch {
+            print(error)
+        }
+    }
+
+
     // NOTE: Only initialize `EnvoyWebView` **after** `Envoy.shared.start()`` was run!
     // (This is a limitation of Apple platforms!)
 
@@ -272,6 +336,31 @@ it, simply add the following line to your Podfile:
 ```ruby
 pod 'GreatfireEnvoy'
 ```
+
+For `libcurl` support, use:
+
+```ruby
+pod 'GreatfireEnvoy/Curl'
+```
+
+Envoy also supports Swift Package Manager.
+
+Just add the [git repo](https://github.com/greatfire/envoy/) to your Xcode package manager UI,
+or use this in your own package:
+
+```Swift
+dependencies: [
+    .package(url: "https://github.com/greatfire/envoy/", revision: "8e552d327c7cf75c4c44004cd9b99661afa254f2"),
+],
+```
+
+Unfortunately, Envoy is an older project which started its life as an Android library.
+Hence, tagging isn't done in a fashion SPM supports, so unfortunately, you
+will need to use specific commits when using SPM.
+
+Note, that there's currently no `libcurl` support available through SPM!
+
+
 
 ## Author
 
