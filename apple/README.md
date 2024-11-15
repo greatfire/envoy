@@ -358,7 +358,7 @@ Unfortunately, Envoy is an older project which started its life as an Android li
 Hence, tagging isn't done in a fashion SPM supports, so unfortunately, you
 will need to use specific commits when using SPM.
 
-Note, that there's currently no `libcurl` support available through SPM!
+Note, that when using SPM, `libcurl` and `SwiftyCurl` is always included and will be used by Envoy!
 
 
 
