@@ -30,7 +30,7 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author           = { 'Benjamin Erhart' => 'berhart@netzarchitekten.com' }
   s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => "apple-#{s.version}" }
-  s.social_media_url = 'https://twitter.com/tladesignz'
+  s.social_media_url = 'https://chaos.social/@tla'
   s.readme           = "https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/README.md"
   s.changelog        = 'https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/CHANGELOG.md'
 
@@ -54,7 +54,7 @@ Pod::Spec.new do |s|
 
   s.subspec 'Curl' do |ss|
     ss.dependency 'GreatfireEnvoy/Core'
-    ss.dependency 'SwiftyCurl', '~> 0.3'
+    ss.dependency 'SwiftyCurl', '~> 0.4'
 
     ss.test_spec 'Tests' do |t|
         t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'
