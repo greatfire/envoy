@@ -29,7 +29,7 @@ import SwiftyCurl
  */
 public class EnvoyUrlProtocol: URLProtocol,
                             URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate, URLSessionDownloadDelegate,
-                               URLAuthenticationChallengeSender, CurlTaskDelegate
+                               URLAuthenticationChallengeSender
 {
 
     private static let loopDetection = "EnvoyUrlProtocolLoopDetection"
@@ -335,7 +335,20 @@ public class EnvoyUrlProtocol: URLProtocol,
     }
 
 
-    // MARK: CurlTaskDelegate
+    // MARK: Private Methods
+
+    private func fail(_ error: Error) {
+        if let challenge = pendingAuthChallenge {
+            client?.urlProtocol(self, didCancel: challenge)
+            cancel(challenge)
+        }
+
+        client?.urlProtocol(self, didFailWithError: error)
+    }
+}
+
+#if USE_CURL
+extension EnvoyUrlProtocol: CurlTaskDelegate {
 
     public func task(_ task: CurlTask, isHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) {
         client?.urlProtocol(self, wasRedirectedTo: request, redirectResponse: response)
@@ -383,16 +396,5 @@ public class EnvoyUrlProtocol: URLProtocol,
             client?.urlProtocolDidFinishLoading(self)
         }
     }
-
-
-    // MARK: Private Methods
-
-    private func fail(_ error: Error) {
-        if let challenge = pendingAuthChallenge {
-            client?.urlProtocol(self, didCancel: challenge)
-            cancel(challenge)
-        }
-
-        client?.urlProtocol(self, didFailWithError: error)
-    }
 }
+#endif

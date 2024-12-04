@@ -13,7 +13,7 @@ import WebKit
 import SwiftyCurl
 #endif
 
-public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDelegate, CurlTaskDelegate {
+public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler {
 
     private static let httpScheme = "envoy-http"
     private static let httpsScheme = "envoy-https"
@@ -119,17 +119,16 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
             tasks[task] = nil
         }
     }
-
+}
 
 #if USE_CURL
-
-    // MARK: CurlTaskDelegate
+extension EnvoySchemeHandler: CurlTaskDelegate {
 
     public func task(_ task: CurlTask, isHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) {
         // Don't receive further interfering callbacks from this task.
         task.delegate = nil
 
-        print("Redirect: \(response.statusCode) \(response.url?.absoluteString ?? "(nil)") -> \(request.httpMethod ?? "(nil)") \(request.url?.absoluteString ?? "(nil)")")
+        Envoy.log("Redirect: \(response.statusCode) \(response.url?.absoluteString ?? "(nil)") -> \(request.httpMethod ?? "(nil)") \(request.url?.absoluteString ?? "(nil)")", self)
 
         // Issue a new task with the redirected URL.
         guard let newTask = Envoy.shared.task(from: SwiftyCurl.shared, with: request) else {
@@ -182,9 +181,12 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
             tasks[task] = nil
         }
     }
-
+}
 
 #else
+
+extension EnvoySchemeHandler: URLSessionDataDelegate {
+
     // MARK: URLSessionTaskDelegate
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
@@ -212,5 +214,5 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         tasks[dataTask]?.didReceive(data)
     }
-#endif
 }
+#endif
