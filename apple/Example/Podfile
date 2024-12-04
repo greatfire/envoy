@@ -18,8 +18,8 @@ target 'Envoy_Example' do
   envoy
   curl
 
-#  pod 'IEnvoyProxy',
-#    :path => '../../../IEnvoyProxy'
+  pod 'IEnvoyProxy',
+    :path => '../../../IEnvoyProxy'
 #    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
 #    :podspec => 'https://raw.githubusercontent.com/tladesignz/IEnvoyProxy/main/IEnvoyProxy.podspec'
 end

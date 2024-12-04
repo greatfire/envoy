@@ -109,6 +109,12 @@ public class Envoy: NSObject {
             case srtp = "v2srtp"
         }
 
+
+        private static let proxyController = IEnvoyProxyController(
+            Envoy.ptStateDir?.path, enableLogging: Envoy.ptLogging,
+            unsafeLogging: false, logLevel: "INFO", transportStopped: nil)
+
+
         /**
          No proxy used, connect directly.
          */
@@ -234,29 +240,29 @@ public class Envoy: NSObject {
             case .v2Ray(let type, _, _, _, _):
                 switch type {
                 case .ws:
-                    return IEnvoyProxyV2rayWsPort()
+                    return Self.proxyController?.port(IEnvoyProxyV2RayWs)
 
                 case .weChat:
-                    return IEnvoyProxyV2rayWechatPort()
+                    return Self.proxyController?.port(IEnvoyProxyV2RayWechat)
 
                 case .srtp:
-                    return IEnvoyProxyV2raySrtpPort()
+                    return Self.proxyController?.port(IEnvoyProxyV2RaySrtp)
                 }
 
             case .meek:
-                return IEnvoyProxyMeekPort()
+                return Self.proxyController?.port(IEnvoyProxyMeekLite)
 
             case .obfs4:
-                return IEnvoyProxyObfs4Port()
+                return Self.proxyController?.port(IEnvoyProxyObfs4)
 
             case .webTunnel:
-                return IEnvoyProxyWebtunnelPort()
+                return Self.proxyController?.port(IEnvoyProxyWebtunnel)
 
             case .snowflake:
-                return IEnvoyProxySnowflakePort()
+                return Self.proxyController?.port(IEnvoyProxySnowflake)
 
             case .hysteria2:
-                return IEnvoyProxyHysteria2Port()
+                return Self.proxyController?.port(IEnvoyProxyHysteria2)
 
             case .socks5(_, let port):
                 return port
@@ -269,32 +275,38 @@ public class Envoy: NSObject {
         /**
          Start the proxy/transport, if needed for this type.
          */
-        public func start() {
-            switch self {
-            case .meek, .obfs4, .webTunnel, .snowflake:
-                if let path = Envoy.ptStateDir?.path {
-                    IEnvoyProxy.setStateLocation(path)
-                }
-
-            default:
-                break
-            }
-
+        public func start() throws {
             switch self {
             case .v2Ray(let type, let host, let port, let id, let path):
                 switch type {
                 case .ws:
-                    IEnvoyProxyStartV2RayWs(host, String(port), path, id)
+                    Self.proxyController?.v2RayServerAddress = host
+                    Self.proxyController?.v2RayServerPort = String(port)
+                    Self.proxyController?.v2RayWsPath = path ?? ""
+                    Self.proxyController?.v2RayId = id
+                    try Self.proxyController?.start(IEnvoyProxyV2RayWs, proxy: nil)
 
                 case .weChat:
-                    IEnvoyProxyStartV2RayWechat(host, String(port), id)
+                    Self.proxyController?.v2RayServerAddress = host
+                    Self.proxyController?.v2RayServerPort = String(port)
+                    Self.proxyController?.v2RayId = id
+                    try Self.proxyController?.start(IEnvoyProxyV2RayWechat, proxy: nil)
 
                 case .srtp:
-                    IEnvoyProxyStartV2raySrtp(host, String(port), id)
+                    Self.proxyController?.v2RayServerAddress = host
+                    Self.proxyController?.v2RayServerPort = String(port)
+                    Self.proxyController?.v2RayId = id
+                    try Self.proxyController?.start(IEnvoyProxyV2RaySrtp, proxy: nil)
                 }
 
-            case .meek, .obfs4, .webTunnel:
-                IEnvoyProxyStartLyrebird("INFO", Envoy.ptLogging, false)
+            case .meek:
+                try Self.proxyController?.start(IEnvoyProxyMeekLite, proxy: nil)
+
+            case .obfs4:
+                try Self.proxyController?.start(IEnvoyProxyObfs4, proxy: nil)
+
+            case .webTunnel:
+                try Self.proxyController?.start(IEnvoyProxyWebtunnel, proxy: nil)
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, _):
                 var fronts = fronts.split(separator: ",").map { String($0) }
@@ -305,13 +317,17 @@ public class Envoy: NSObject {
                     }
                 }
 
-                IEnvoyProxyStartSnowflake(
-                    ice ?? Envoy.defaultIceServers, broker.absoluteString, fronts.joined(separator: ","), ampCache,
-                    sqsQueue?.absoluteString, sqsCreds, Envoy.ptLogging ? "snowflake.log" : nil,
-                    true, true, false, 1)
+                Self.proxyController?.snowflakeIceServers = ice ?? Envoy.defaultIceServers
+                Self.proxyController?.snowflakeBrokerUrl = broker.absoluteString
+                Self.proxyController?.snowflakeFrontDomains = fronts.joined(separator: ",")
+                Self.proxyController?.snowflakeAmpCacheUrl = ampCache ?? ""
+                Self.proxyController?.snowflakeSqsUrl = sqsQueue?.absoluteString ?? ""
+                Self.proxyController?.snowflakeSqsCreds = sqsCreds ?? ""
+                try Self.proxyController?.start(IEnvoyProxySnowflake, proxy: nil)
 
             case .hysteria2(let url):
-                IEnvoyProxyStartHysteria2(url.absoluteString)
+                Self.proxyController?.hysteria2Server = url.absoluteString
+                try Self.proxyController?.start(IEnvoyProxyHysteria2, proxy: nil)
 
             default:
                 break
@@ -326,23 +342,29 @@ public class Envoy: NSObject {
             case .v2Ray(let type, _, _, _, _):
                 switch type {
                 case .ws:
-                    IEnvoyProxyStopV2RayWs()
+                    Self.proxyController?.stop(IEnvoyProxyV2RayWs)
 
                 case .weChat:
-                    IEnvoyProxyStopV2RayWechat()
+                    Self.proxyController?.stop(IEnvoyProxyV2RayWechat)
 
                 case .srtp:
-                    IEnvoyProxyStopV2RaySrtp()
+                    Self.proxyController?.stop(IEnvoyProxyV2RaySrtp)
                 }
 
-            case .meek, .obfs4, .webTunnel:
-                IEnvoyProxyStopLyrebird()
+            case .meek:
+                Self.proxyController?.stop(IEnvoyProxyMeekLite)
+
+            case .obfs4:
+                Self.proxyController?.stop(IEnvoyProxyObfs4)
+
+            case .webTunnel:
+                Self.proxyController?.stop(IEnvoyProxyWebtunnel)
 
             case .snowflake:
-                IEnvoyProxyStopSnowflake()
+                Self.proxyController?.stop(IEnvoyProxySnowflake)
 
             case .hysteria2:
-                IEnvoyProxyStopHysteria2()
+                Self.proxyController?.stop(IEnvoyProxyHysteria2)
 
             default:
                 break
@@ -810,7 +832,14 @@ public class Envoy: NSObject {
         if parallel {
             await withTaskGroup(of: (Proxy, Bool).self) { group in
                 for proxy in candidates {
-                    proxy.start()
+                    do {
+                        try proxy.start()
+                    }
+                    catch {
+                        Self.log(error)
+
+                        continue
+                    }
 
                     switch proxy {
                     case .meek(_, _, let tunnel),
@@ -856,7 +885,14 @@ public class Envoy: NSObject {
         }
         else {
             for proxy in candidates {
-                proxy.start()
+                do {
+                    try proxy.start()
+                }
+                catch {
+                    Self.log(error)
+
+                    continue
+                }
 
                 switch proxy {
                 case .meek(_, _, let tunnel),
