@@ -82,6 +82,7 @@ If `libcurl` is used, Envoy will change the following ways:
   itself for all requests.
 - Proxy testing will use `libcurl` instead of `URLSession`.
 - `EnvoySchemeHandler` (used in `EnvoyWebView`) will use `libcurl` instead of `URLSession`.
+- `EnvoyUrlProtocol` will use `libcurl` instead of `URLSession`.
 - It will provide helper methods `Envoy.shared.task(from:with:)` and `Proxy.task(from:with:)` which
   you can use to create your own `libcurl` tasks.
   
@@ -94,7 +95,7 @@ Using `libcurl` improves support for the custom Envoy proxy type:
   scenarios.
   
 - Supports hard-coded DNS resolution: You can provide hard-coded IP addresses for your custom Envoy 
-  proxy, and still use the provided domain for TLS SNI negotiation.
+  proxy, and still use the provided domain for TLS SNI.
   
 - Redirects are not automatically followed: We can rewrite redirects to tunnel them over a custom
   Envoy proxy the same way as we can do with the initial request.
