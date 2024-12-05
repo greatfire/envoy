@@ -13,13 +13,13 @@ import WebKit
 import SwiftyCurl
 #endif
 
-public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDelegate {
+public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler {
 
     private static let httpScheme = "envoy-http"
     private static let httpsScheme = "envoy-https"
 
 #if USE_CURL
-    private var tasks = [Int : SCTask]()
+    private var tasks = [CurlTask: WKURLSchemeTask]()
 #else
     private var session: URLSession!
 
@@ -30,9 +30,7 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     private init(_ conf: URLSessionConfiguration = .default) {
         super.init()
 
-#if USE_CURL
-        SwiftyCurl.shared.proxyDict = Envoy.shared.getProxyDict()
-#else
+#if !USE_CURL
         conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
 
         session = URLSession(configuration: conf, delegate: self, delegateQueue: nil)
@@ -90,101 +88,110 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     // MARK: WKURLSchemeHandler
 
     public func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
-        let (request, address) = Envoy.shared.maybeModify(Self.revertModification(urlSchemeTask.request))
+        let request = Self.revertModification(urlSchemeTask.request)
 
-        print("[\(String(describing: type(of: self)))] \(request.url?.absoluteString ?? "(nil)"): \(request.value(forHTTPHeaderField: "Url-Orig") ?? "(nil)")")
+        Envoy.log("\(request.url?.absoluteString ?? "(nil)")", self)
 
 #if USE_CURL
-        Task {
-            do {
-                let (data, response) = try await perform(request, address, urlSchemeTask.hash)
-
-                if tasks[urlSchemeTask.hash]?.state == .completed {
-                    urlSchemeTask.didReceive(response)
-                    urlSchemeTask.didReceive(data)
-                    urlSchemeTask.didFinish()
-                }
-            }
-            catch {
-                if (error as NSError).domain != NSURLErrorDomain || (error as NSError).code != NSURLErrorCancelled {
-                    urlSchemeTask.didFailWithError(error)
-                }
-            }
-
-            tasks[urlSchemeTask.hash] = nil
+        guard let task = Envoy.shared.task(from: SwiftyCurl.shared, with: request) else {
+            urlSchemeTask.didFailWithError(NSError(domain: NSURLErrorDomain, code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not instantiate a `CurlTask` object!"]))
+            return
         }
+
+        task.delegate = self
+        DispatchQueue.global(qos: .userInitiated).sync {
+            tasks[task] = urlSchemeTask
+        }
+        task.resume()
 #else
-        let task = session.dataTask(with: request)
+        let task = session.dataTask(with: Envoy.shared.maybeModify(request).request)
         tasks[task] = urlSchemeTask
         task.resume()
 #endif
     }
 
     public func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {
-        print("[\(String(describing: type(of: self)))]#stop task=\(urlSchemeTask)")
+        Envoy.log("task=\(urlSchemeTask)", self)
 
-#if USE_CURL
-        if let task = tasks[urlSchemeTask.hash] {
-            task.cancel()
-        }
-#else
         if let task = tasks.first(where: { $1.hash == urlSchemeTask.hash })?.key {
             task.cancel()
 
             tasks[task] = nil
         }
-#endif
     }
-
+}
 
 #if USE_CURL
-    /**
-     Implements our own redirect logic, so we can inject the proxy again on redirection.
-     */
-    func perform(_ request: URLRequest, _ address: String?, _ wkTaskHash: Int, _ counter: UInt = 0) async throws -> (data: Data, response: URLResponse) {
-        if let url = request.url, let address = address, !address.isEmpty {
-            SwiftyCurl.shared.resolve = [.init(url: url, addresses: [address])]
-        }
-        else {
-            SwiftyCurl.shared.resolve = nil
-        }
+extension EnvoySchemeHandler: CurlTaskDelegate {
 
-        guard let task = SwiftyCurl.shared.task(with: request) else {
-            throw NSError(domain: NSURLErrorDomain, code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create curl."])
-        }
+    public func task(_ task: CurlTask, isHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) {
+        // Don't receive further interfering callbacks from this task.
+        task.delegate = nil
 
-        tasks[wkTaskHash] = task
+        Envoy.log("Redirect: \(response.statusCode) \(response.url?.absoluteString ?? "(nil)") -> \(request.httpMethod ?? "(nil)") \(request.url?.absoluteString ?? "(nil)")", self)
 
-        let (data, response) = try await task.resume()
-
-        if counter < 50,
-           let hr = response as? HTTPURLResponse,
-           hr.statusCode >= 300 && hr.statusCode < 400, // Server tells us to redirect
-           let location = hr.value(forHTTPHeaderField: "Location"),
-           let location = URL(string: location)
-        {
-            var redirect = Envoy.shared.revertModification(request)
-            redirect.url = location
-
-            if hr.statusCode == 302 || hr.statusCode == 303 {
-                redirect.httpMethod = "GET"
+        // Issue a new task with the redirected URL.
+        guard let newTask = Envoy.shared.task(from: SwiftyCurl.shared, with: request) else {
+            DispatchQueue.global(qos: .userInitiated).sync {
+                tasks[task]?.didFailWithError(NSError(
+                    domain: NSURLErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Could not instantiate a `CurlTask` object!"]))
             }
 
-            let address: String?
-
-            (redirect, address) = Envoy.shared.maybeModify(redirect)
-
-            return try await perform(redirect, address, wkTaskHash, counter + 1)
+            return
         }
 
-        return (data, response)
+        newTask.delegate = self
+
+        DispatchQueue.global(qos: .userInitiated).sync {
+            tasks[newTask] = tasks[task]
+            tasks[task] = nil
+        }
+
+        newTask.resume()
     }
+
+    public func task(_ task: CurlTask, didReceive response: URLResponse) -> Bool {
+        DispatchQueue.global(qos: .userInitiated).sync {
+            tasks[task]?.didReceive(response)
+        }
+
+        return true
+    }
+
+    public func task(_ task: CurlTask, didReceive data: Data) -> Bool {
+        DispatchQueue.global(qos: .userInitiated).sync {
+            tasks[task]?.didReceive(data)
+        }
+
+        return true
+    }
+
+    public func task(_ task: CurlTask, didCompleteWithError error: (any Error)?) {
+        DispatchQueue.global(qos: .userInitiated).sync {
+            if let error = error {
+                Envoy.log(error, self)
+
+                tasks[task]?.didFailWithError(error)
+            }
+            else {
+                tasks[task]?.didFinish()
+            }
+
+            tasks[task] = nil
+        }
+    }
+}
+
 #else
+
+extension EnvoySchemeHandler: URLSessionDataDelegate {
+
     // MARK: URLSessionTaskDelegate
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         if let error = error {
-            print("[\(String(describing: type(of: self)))]#didCompleteWithError \(error)")
+            Envoy.log(error, self)
 
             tasks[task]?.didFailWithError(error)
         }
@@ -207,5 +214,5 @@ public class EnvoySchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDel
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         tasks[dataTask]?.didReceive(data)
     }
-#endif
 }
+#endif

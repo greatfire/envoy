@@ -10,11 +10,12 @@ import Foundation
 import Network
 import CryptoKit
 import IEnvoyProxy
+import OSLog
 
 #if USE_CURL
 import SwiftyCurl
 
-extension SwiftyCurl {
+public extension SwiftyCurl {
 
     static let shared = {
         let curl = SwiftyCurl()
@@ -107,6 +108,12 @@ public class Envoy: NSObject {
              */
             case srtp = "v2srtp"
         }
+
+
+        private static let proxyController = IEnvoyProxyController(
+            Envoy.ptStateDir?.path, enableLogging: Envoy.ptLogging,
+            unsafeLogging: false, logLevel: "INFO", transportStopped: nil)
+
 
         /**
          No proxy used, connect directly.
@@ -233,29 +240,29 @@ public class Envoy: NSObject {
             case .v2Ray(let type, _, _, _, _):
                 switch type {
                 case .ws:
-                    return IEnvoyProxyV2rayWsPort()
+                    return Self.proxyController?.port(IEnvoyProxyV2RayWs)
 
                 case .weChat:
-                    return IEnvoyProxyV2rayWechatPort()
+                    return Self.proxyController?.port(IEnvoyProxyV2RayWechat)
 
                 case .srtp:
-                    return IEnvoyProxyV2raySrtpPort()
+                    return Self.proxyController?.port(IEnvoyProxyV2RaySrtp)
                 }
 
             case .meek:
-                return IEnvoyProxyMeekPort()
+                return Self.proxyController?.port(IEnvoyProxyMeekLite)
 
             case .obfs4:
-                return IEnvoyProxyObfs4Port()
+                return Self.proxyController?.port(IEnvoyProxyObfs4)
 
             case .webTunnel:
-                return IEnvoyProxyWebtunnelPort()
+                return Self.proxyController?.port(IEnvoyProxyWebtunnel)
 
             case .snowflake:
-                return IEnvoyProxySnowflakePort()
+                return Self.proxyController?.port(IEnvoyProxySnowflake)
 
             case .hysteria2:
-                return IEnvoyProxyHysteria2Port()
+                return Self.proxyController?.port(IEnvoyProxyHysteria2)
 
             case .socks5(_, let port):
                 return port
@@ -268,32 +275,38 @@ public class Envoy: NSObject {
         /**
          Start the proxy/transport, if needed for this type.
          */
-        public func start() {
-            switch self {
-            case .meek, .obfs4, .webTunnel, .snowflake:
-                if let path = Envoy.ptStateDir?.path {
-                    IEnvoyProxy.setStateLocation(path)
-                }
-
-            default:
-                break
-            }
-
+        public func start() throws {
             switch self {
             case .v2Ray(let type, let host, let port, let id, let path):
                 switch type {
                 case .ws:
-                    IEnvoyProxyStartV2RayWs(host, String(port), path, id)
+                    Self.proxyController?.v2RayServerAddress = host
+                    Self.proxyController?.v2RayServerPort = String(port)
+                    Self.proxyController?.v2RayWsPath = path ?? ""
+                    Self.proxyController?.v2RayId = id
+                    try Self.proxyController?.start(IEnvoyProxyV2RayWs, proxy: nil)
 
                 case .weChat:
-                    IEnvoyProxyStartV2RayWechat(host, String(port), id)
+                    Self.proxyController?.v2RayServerAddress = host
+                    Self.proxyController?.v2RayServerPort = String(port)
+                    Self.proxyController?.v2RayId = id
+                    try Self.proxyController?.start(IEnvoyProxyV2RayWechat, proxy: nil)
 
                 case .srtp:
-                    IEnvoyProxyStartV2raySrtp(host, String(port), id)
+                    Self.proxyController?.v2RayServerAddress = host
+                    Self.proxyController?.v2RayServerPort = String(port)
+                    Self.proxyController?.v2RayId = id
+                    try Self.proxyController?.start(IEnvoyProxyV2RaySrtp, proxy: nil)
                 }
 
-            case .meek, .obfs4, .webTunnel:
-                IEnvoyProxyStartLyrebird("INFO", Envoy.ptLogging, false)
+            case .meek:
+                try Self.proxyController?.start(IEnvoyProxyMeekLite, proxy: nil)
+
+            case .obfs4:
+                try Self.proxyController?.start(IEnvoyProxyObfs4, proxy: nil)
+
+            case .webTunnel:
+                try Self.proxyController?.start(IEnvoyProxyWebtunnel, proxy: nil)
 
             case .snowflake(let ice, let broker, let fronts, let ampCache, let sqsQueue, let sqsCreds, _):
                 var fronts = fronts.split(separator: ",").map { String($0) }
@@ -304,13 +317,17 @@ public class Envoy: NSObject {
                     }
                 }
 
-                IEnvoyProxyStartSnowflake(
-                    ice ?? Envoy.defaultIceServers, broker.absoluteString, fronts.joined(separator: ","), ampCache,
-                    sqsQueue?.absoluteString, sqsCreds, Envoy.ptLogging ? "snowflake.log" : nil,
-                    true, true, false, 1)
+                Self.proxyController?.snowflakeIceServers = ice ?? Envoy.defaultIceServers
+                Self.proxyController?.snowflakeBrokerUrl = broker.absoluteString
+                Self.proxyController?.snowflakeFrontDomains = fronts.joined(separator: ",")
+                Self.proxyController?.snowflakeAmpCacheUrl = ampCache ?? ""
+                Self.proxyController?.snowflakeSqsUrl = sqsQueue?.absoluteString ?? ""
+                Self.proxyController?.snowflakeSqsCreds = sqsCreds ?? ""
+                try Self.proxyController?.start(IEnvoyProxySnowflake, proxy: nil)
 
             case .hysteria2(let url):
-                IEnvoyProxyStartHysteria2(url.absoluteString)
+                Self.proxyController?.hysteria2Server = url.absoluteString
+                try Self.proxyController?.start(IEnvoyProxyHysteria2, proxy: nil)
 
             default:
                 break
@@ -325,23 +342,29 @@ public class Envoy: NSObject {
             case .v2Ray(let type, _, _, _, _):
                 switch type {
                 case .ws:
-                    IEnvoyProxyStopV2RayWs()
+                    Self.proxyController?.stop(IEnvoyProxyV2RayWs)
 
                 case .weChat:
-                    IEnvoyProxyStopV2RayWechat()
+                    Self.proxyController?.stop(IEnvoyProxyV2RayWechat)
 
                 case .srtp:
-                    IEnvoyProxyStopV2RaySrtp()
+                    Self.proxyController?.stop(IEnvoyProxyV2RaySrtp)
                 }
 
-            case .meek, .obfs4, .webTunnel:
-                IEnvoyProxyStopLyrebird()
+            case .meek:
+                Self.proxyController?.stop(IEnvoyProxyMeekLite)
+
+            case .obfs4:
+                Self.proxyController?.stop(IEnvoyProxyObfs4)
+
+            case .webTunnel:
+                Self.proxyController?.stop(IEnvoyProxyWebtunnel)
 
             case .snowflake:
-                IEnvoyProxyStopSnowflake()
+                Self.proxyController?.stop(IEnvoyProxySnowflake)
 
             case .hysteria2:
-                IEnvoyProxyStopHysteria2()
+                Self.proxyController?.stop(IEnvoyProxyHysteria2)
 
             default:
                 break
@@ -426,6 +449,48 @@ public class Envoy: NSObject {
 
             return (modified, address)
         }
+
+#if USE_CURL
+        /**
+         Create a `CurlTask` with the given `URLRequest` and the proxy parameters.
+
+         - If the proxy uses SOCKS, it will be set on the `SwiftyCurl` object and reset after creating the task.
+         - If the proxy uses its own DNS resolution, it will be set on the `SwiftyCurl` object and reset after creating the task.
+
+         - parameter curl: The `SwiftyCurl` instance to use.
+         - parameter request: The request to send. URL, method, headers, body and timeout properties will be honored.
+         - returns: A prepared `CurlTask` object you will need to `resume` to actually perform the request.
+         */
+        public func task(from curl: SwiftyCurl, with request: URLRequest) -> CurlTask? {
+            let (request, address) = maybeModify(request)
+
+            let oldResolve = curl.resolve
+
+            if let url = request.url {
+                let entry = CurlResolveEntry(url: url)
+                var resolve = curl.resolve
+                resolve?.removeAll { $0 == entry }
+
+                if let address = address, !address.isEmpty {
+                    entry.addresses = [address]
+                    resolve = resolve ?? []
+                    resolve?.append(entry)
+                }
+
+                curl.resolve = resolve
+            }
+
+            let oldProxyDict = curl.proxyDict
+            curl.proxyDict = getProxyDict()
+
+            let task = curl.task(with: request)
+
+            curl.proxyDict = oldProxyDict
+            curl.resolve = oldResolve
+
+            return task
+        }
+#endif
 
         /**
          Will revert all modifications ``maybeModify(_:)`` eventually did.
@@ -767,7 +832,14 @@ public class Envoy: NSObject {
         if parallel {
             await withTaskGroup(of: (Proxy, Bool).self) { group in
                 for proxy in candidates {
-                    proxy.start()
+                    do {
+                        try proxy.start()
+                    }
+                    catch {
+                        Self.log(error)
+
+                        continue
+                    }
 
                     switch proxy {
                     case .meek(_, _, let tunnel),
@@ -779,7 +851,7 @@ public class Envoy: NSObject {
                                 forwarder = try EnvoySocksForwarder(proxy).start()
                             }
                             catch {
-                                print("[\(String(describing: type(of: self)))] error=\(error)")
+                                Self.log(error)
 
                                 proxy.stop()
 
@@ -813,7 +885,14 @@ public class Envoy: NSObject {
         }
         else {
             for proxy in candidates {
-                proxy.start()
+                do {
+                    try proxy.start()
+                }
+                catch {
+                    Self.log(error)
+
+                    continue
+                }
 
                 switch proxy {
                 case .meek(_, _, let tunnel),
@@ -825,7 +904,7 @@ public class Envoy: NSObject {
                             forwarder = try EnvoySocksForwarder(proxy).start()
                         }
                         catch {
-                            print("[\(String(describing: type(of: self)))] error=\(error)")
+                            Self.log(error)
 
                             proxy.stop()
 
@@ -895,6 +974,22 @@ public class Envoy: NSObject {
     public func maybeModify(_ request: URLRequest) -> (request: URLRequest, address: String?) {
         proxy.maybeModify(request)
     }
+
+#if USE_CURL
+    /**
+     Create a `CurlTask` with the given `URLRequest` and the currently selected ``Proxy``.
+
+     - If the proxy uses SOCKS, it will be set on the `SwiftyCurl` object and reset after creating the task.
+     - If the proxy uses its own DNS resolution, it will be set on the `SwiftyCurl` object and reset after creating the task.
+
+     - parameter curl: The `SwiftyCurl` instance to use.
+     - parameter request: The request to send. URL, method, headers, body and timeout properties will be honored.
+     - returns: A prepared `CurlTask` object you will need to `resume` to actually perform the request.
+     */
+    public func task(from curl: SwiftyCurl, with request: URLRequest) -> CurlTask? {
+        proxy.task(from: curl, with: request)
+    }
+#endif
 
     /**
      Will revert all modifications ``maybeModify(_:)`` eventually did.
@@ -1221,33 +1316,58 @@ public class Envoy: NSObject {
      - returns: `true`, if the test request returned HTTP status 204, else false.
      */
     private static func test(_ test: Test, with proxy: Proxy) async -> Bool {
-        let (request, address) = proxy.maybeModify(test.request)
-
         do {
 #if USE_CURL
-            SwiftyCurl.shared.proxyDict = proxy.getProxyDict()
-
-            if let url = request.url, let address = address, !address.isEmpty {
-                SwiftyCurl.shared.resolve = [.init(url: url, addresses: [address])]
-            }
-            else {
-                SwiftyCurl.shared.resolve = nil
-            }
-
-            let (_, response) = try await SwiftyCurl.shared.perform(with: request)
+            let result = try await proxy.task(from: SwiftyCurl.shared, with: test.request)?.resume()
+            let response = result?.1
 #else
             let conf = URLSessionConfiguration.ephemeral
             conf.connectionProxyDictionary = proxy.getProxyDict()
 
             let session = URLSession(configuration: conf)
 
-            let (_, response) = try await session.data(for: request)
+            let (_, response) = try await session.data(for: proxy.maybeModify(test.request).request)
 #endif
 
             return (response as? HTTPURLResponse)?.statusCode == test.expectedStatusCode
         }
         catch {
             return false
+        }
+    }
+
+    static func log(_ message: String, _ caller: Any? = nil) {
+        let category: String
+        if let caller = caller {
+            category = String(describing: type(of: caller))
+        }
+        else {
+            category = String(describing: self)
+        }
+
+        if #available(iOS 14.0, macOS 11.0, *) {
+            Logger(for: self, category: category).debug("\(message)")
+        }
+        else {
+            print("[\(category)] \(message)")
+        }
+    }
+
+    @objc(logError::)
+    static func log(_ error: Error, _ caller: Any? = nil) {
+        let category: String
+        if let caller = caller {
+            category = String(describing: type(of: caller))
+        }
+        else {
+            category = String(describing: self)
+        }
+
+        if #available(iOS 14.0, macOS 11.0, *) {
+            Logger(for: self, category: category).error("\(error)")
+        }
+        else {
+            print("[\(category)] 🛑\n\(error)")
         }
     }
 }

@@ -8,15 +8,19 @@
 
 import Foundation
 
+#if USE_CURL
+import SwiftyCurl
+#endif
+
 /**
- TODO: This is far from finished, it probably doesn't even work because of the missing thread steering.
+ TODO: This is far from finished, it might not even properly work because of the missing thread steering.
 
- As it seems, URLProtocol didn't grow with the capabilities of URLSession.
- This cannot replace direct modification of URLRequests and proxy setup.
+ As it seems, `URLProtocol` didn't grow with the capabilities of `URLSession`.
+ This cannot replace direct modification of `URLRequest`s and proxy setup.
 
- - This will need a single URLSession and demultiplexing.
+ - This will need a single `URLSession` and demultiplexing.
  - It's probably a bad idea to try to go to the last details of all tasks, instead maybe reduce to data task again.
- - There should be an initializer method to hand over a URLSessionConfiguration.
+ - There should be an initializer method to hand over a `URLSessionConfiguration`.
  - This needs explicit thread steering.
  - This probably also needs a custom delegate to handle the cases, where we cannot replicate the correct behaviour
    due to missing interfaces.
@@ -25,16 +29,20 @@ import Foundation
  */
 public class EnvoyUrlProtocol: URLProtocol,
                             URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate, URLSessionDownloadDelegate,
-                            URLAuthenticationChallengeSender
+                               URLAuthenticationChallengeSender
 {
 
-    public static var conf = URLSessionConfiguration.default
-
     private static let loopDetection = "EnvoyUrlProtocolLoopDetection"
+
+#if USE_CURL
+    private var myTask: CurlTask?
+#else
+    public static var conf = URLSessionConfiguration.default
 
     private var mySession: URLSession?
 
     private var myTask: URLSessionTask?
+#endif
 
     private var pendingAuthCompletion: ((URLSession.AuthChallengeDisposition, URLCredential?) -> Void)?
     private var pendingAuthChallenge: URLAuthenticationChallenge?
@@ -61,6 +69,13 @@ public class EnvoyUrlProtocol: URLProtocol,
     }
 
     override public func startLoading() {
+#if USE_CURL
+        myTask = Envoy.shared.task(from: SwiftyCurl.shared, with: request)
+        myTask?.delegate = self
+
+        // Response, body and error handled in delegate callbacks.
+        myTask?.resume()
+#else
         Self.conf.connectionProxyDictionary = Envoy.shared.getProxyDict()
 
         mySession = URLSession(configuration: Self.conf, delegate: self, delegateQueue: nil)
@@ -113,15 +128,17 @@ public class EnvoyUrlProtocol: URLProtocol,
         }
 
         myTask?.resume()
-
+#endif
     }
 
     override public func stopLoading() {
         myTask?.cancel()
         myTask = nil
 
+#if !USE_CURL
         mySession?.invalidateAndCancel()
         mySession = nil
+#endif
     }
 
 
@@ -152,6 +169,7 @@ public class EnvoyUrlProtocol: URLProtocol,
 
     // MARK: URLSessionTaskDelegate
 
+#if !USE_CURL
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         if task == myTask {
             myTask = nil
@@ -165,6 +183,7 @@ public class EnvoyUrlProtocol: URLProtocol,
             client?.urlProtocolDidFinishLoading(self)
         }
     }
+#endif
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection
                            response: HTTPURLResponse, newRequest request: URLRequest,
@@ -240,7 +259,7 @@ public class EnvoyUrlProtocol: URLProtocol,
                 client?.urlProtocol(self, didLoad: data)
             }
             catch {
-                client?.urlProtocol(self, didFailWithError: error)
+                fail(error)
             }
         }
     }
@@ -327,3 +346,55 @@ public class EnvoyUrlProtocol: URLProtocol,
         client?.urlProtocol(self, didFailWithError: error)
     }
 }
+
+#if USE_CURL
+extension EnvoyUrlProtocol: CurlTaskDelegate {
+
+    public func task(_ task: CurlTask, isHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) {
+        client?.urlProtocol(self, wasRedirectedTo: request, redirectResponse: response)
+
+        // Don't receive further interfering callbacks from this task.
+        myTask?.delegate = nil
+
+        // Issue a new task with the redirected URL.
+        myTask = Envoy.shared.task(from: SwiftyCurl.shared, with: request)
+        myTask?.delegate = self
+        myTask?.resume()
+    }
+
+    public func task(_ task: CurlTask, didReceive challenge: URLAuthenticationChallenge) -> Bool {
+        if let challenge = pendingAuthChallenge {
+            client?.urlProtocol(self, didCancel: challenge)
+            cancel(challenge)
+        }
+        pendingAuthChallenge = .init(authenticationChallenge: challenge, sender: self)
+
+        client?.urlProtocol(self, didReceive: pendingAuthChallenge!)
+
+        return true
+    }
+
+    public func task(_ task: CurlTask, didReceive response: URLResponse) -> Bool {
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .allowed)
+
+        return true
+    }
+
+    public func task(_ task: CurlTask, didReceive data: Data) -> Bool {
+        client?.urlProtocol(self, didLoad: data)
+
+        return true
+    }
+
+    public func task(_ task: CurlTask, didCompleteWithError error: (any Error)?) {
+        myTask = nil
+
+        if let error = error {
+            fail(error)
+        }
+        else {
+            client?.urlProtocolDidFinishLoading(self)
+        }
+    }
+}
+#endif

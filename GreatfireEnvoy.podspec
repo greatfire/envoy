@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'GreatfireEnvoy'
-  s.version          = '0.2.0'
+  s.version          = '0.3.0'
   s.summary          = "Greatfire's Envoy is a manager for various proxy implementations."
 
   s.description      = <<-DESC
@@ -30,7 +30,7 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author           = { 'Benjamin Erhart' => 'berhart@netzarchitekten.com' }
   s.source           = { :git => 'https://github.com/greatfire/envoy.git', :tag => "apple-#{s.version}" }
-  s.social_media_url = 'https://twitter.com/tladesignz'
+  s.social_media_url = 'https://chaos.social/@tla'
   s.readme           = "https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/README.md"
   s.changelog        = 'https://raw.githubusercontent.com/greatfire/envoy/apple-#{s.version}/apple/CHANGELOG.md'
 
@@ -49,12 +49,12 @@ Pod::Spec.new do |s|
   s.subspec 'Core' do |ss|
     ss.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
 
-    ss.dependency 'IEnvoyProxy', '~> 2.0'
+    ss.dependency 'IEnvoyProxy', '~> 3.0'
   end
 
   s.subspec 'Curl' do |ss|
     ss.dependency 'GreatfireEnvoy/Core'
-    ss.dependency 'SwiftyCurl', '~> 0.1'
+    ss.dependency 'SwiftyCurl', '~> 0.4'
 
     ss.test_spec 'Tests' do |t|
         t.source_files = 'apple/Tests/GreatfireEnvoyTests/**/*'

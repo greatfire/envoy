@@ -229,11 +229,11 @@ class EnvoySocksForwarder {
                 result = "without error."
             }
 
-            print("[\(String(describing: type(of: self)))] Client \(client!.id) completed \(result)")
+            Envoy.log("Client \(client!.id) completed \(result)", self)
         }
 
         if let client = client {
-            print("[\(String(describing: type(of: self)))] Added client \(client.id)")
+            Envoy.log("Added client \(client.id)", self)
         }
     }
 

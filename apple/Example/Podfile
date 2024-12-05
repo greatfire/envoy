@@ -11,17 +11,20 @@ def curl
 #  pod 'SwiftyCurl', :path => '../../../SwiftyCurl'
 end
 
+def ienvoyproxy
+#  pod 'IEnvoyProxy',
+#    :path => '../../../IEnvoyProxy'
+#    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
+#    :podspec => 'https://raw.githubusercontent.com/tladesignz/IEnvoyProxy/main/IEnvoyProxy.podspec'
+end
+
 
 target 'Envoy_Example' do
   platform :ios, '14.0'
 
   envoy
   curl
-
-#  pod 'IEnvoyProxy',
-#    :path => '../../../IEnvoyProxy'
-#    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
-#    :podspec => 'https://raw.githubusercontent.com/tladesignz/IEnvoyProxy/main/IEnvoyProxy.podspec'
+  ienvoyproxy
 end
 
 target 'Example for MacOS' do
@@ -29,4 +32,5 @@ target 'Example for MacOS' do
 
   envoy
   curl
+  ienvoyproxy
 end

@@ -7,6 +7,9 @@
 //
 
 #import "ObjcViewController.h"
+#import <GreatfireEnvoy/GreatfireEnvoy-Swift.h>
+#import "Envoy_Example-Swift.h"
+#import <OSLog/OSLog.h>
 
 @interface ObjcViewController ()
 
@@ -17,19 +20,32 @@
 @end
 
 @implementation ObjcViewController
+{
+    os_log_t log;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+
+    NSString* subsystem = [NSBundle bundleForClass:self.class].bundleIdentifier;
+    if (!subsystem)
+    {
+        subsystem = NSStringFromClass(self.class);
+    }
+
+    NSString *category = NSStringFromClass(self.class);
+
+    log = os_log_create([subsystem cStringUsingEncoding:NSUTF8StringEncoding], [category cStringUsingEncoding:NSUTF8StringEncoding]);
 
     self.addressTf.text = @"https://www.wikipedia.org";
 
     self.busyView.layer.zPosition = 1000;
 
     Envoy.ptLogging = YES;
-    NSLog(@"[%@] ptStateDir=%@", self.class, Envoy.ptStateDir.path);
+    os_log_debug(log, "ptStateDir=%@", Envoy.ptStateDir.path);
 
     NSArray<Proxy *>* proxies = [Proxy fetch];
-    NSLog(@"[%@] proxies=%@", self.class, proxies);
+    os_log_debug(log, "proxies=%@", proxies);
 
     NSMutableArray<NSURL *>* urls = [NSMutableArray new];
 
@@ -43,7 +59,7 @@
      testDirect:urls.count == 0
      completionHandler:^{
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSLog(@"[%@] selected proxy: %@", self.class, Envoy.shared.proxyDescription);
+            os_log_debug(self->log, "selected proxy: %@", Envoy.shared.proxyDescription);
 
             [self initWebView];
 
