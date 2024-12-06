@@ -351,7 +351,7 @@ or use this in your own package:
 
 ```Swift
 dependencies: [
-    .package(url: "https://github.com/greatfire/envoy/", revision: "8e552d327c7cf75c4c44004cd9b99661afa254f2"),
+    .package(url: "https://github.com/greatfire/envoy/", revision: "43fcd4e1e983852933e33e92fd79fb8f6d0fc9ae"),
 ],
 ```
 
