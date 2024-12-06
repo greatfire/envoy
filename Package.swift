@@ -17,7 +17,7 @@ let package = Package(
             name: "IEnvoyProxy",
             url: "https://github.com/stevenmcdonald/IEnvoyProxy/releases/download/e3.0.0/IEnvoyProxy.xcframework.zip",
             // swift package compute-checksum IEnvoyProxy.xcframework.zip
-            checksum: "885d9b34c263fcfa864ea9b11195603fbcee20eaf1ceca42aaeae794a3436111"),
+            checksum: "940adeb9721048e590f01a6bd652412756715c197f6a82c14729785c2c346b4a"),
         .target(
             name: "GreatfireEnvoy",
             dependencies: [
