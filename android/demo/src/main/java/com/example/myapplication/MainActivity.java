@@ -55,7 +55,7 @@ import okhttp3.OkHttpClient;
 public class MainActivity extends FragmentActivity {
 
     private static final String WIKI_URL = "https://www.wikipedia.org/";
-    private static final String TAG = "FOO_1"; // "EnvoyDemoApp";
+    private static final String TAG = "EnvoyDemoApp";
 
     Secrets mSecrets;
     NetworkIntentService mService;
@@ -151,7 +151,7 @@ public class MainActivity extends FragmentActivity {
 
     protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 
-        private static final String TAG = "FOO_2"; // "EnvoyDemoReceiver";
+        private static final String TAG = "EnvoyDemoReceiver";
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -202,8 +202,6 @@ public class MainActivity extends FragmentActivity {
                         }
                         Log.d(TAG, "received a successful validation with a duration: " + validationSeconds);
                     }
-
-                    //showDialog("SUCCESS", validService + " succeeded", true);
 
                     final String finalService = validService;
                     final String finalUrl = sanitizedUrl;
