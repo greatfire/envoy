@@ -9,6 +9,7 @@ import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_FAILED;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_SUCCEEDED;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_ENDED_CAUSE;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_MS;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_DIRECT;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_ENVOY;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HTTPS;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HYSTERIA;
@@ -42,7 +43,8 @@ import org.greatfire.envoy.UrlUtil;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -59,6 +61,7 @@ public class MainActivity extends FragmentActivity {
     NetworkIntentService mService;
     boolean mBound = false;
     TextView mOutputTextView;
+    int mUrlCount = 0;
 
     String httpsUrl = "";
     String envoyUrl = "";
@@ -84,7 +87,7 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.runButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Log.d(TAG, "BUTTON PUSHED, SUBMIT URLS");
+                Log.d(TAG, "button pushed, submit urls");
                 resetResults();
                 submit();
                 findViewById(R.id.runButton).setEnabled(false);
@@ -95,12 +98,12 @@ public class MainActivity extends FragmentActivity {
         mOutputTextView = findViewById(R.id.output);
         mSecrets = new Secrets();
         if (mSecrets.getdefProxy(getPackageName()) == null) {
-            Log.d(TAG, "ON CREATE, NO URLS");
-            mOutputTextView.setText("nothing found to test...\n*\n*\n*");
+            Log.w(TAG, "on create, no urls");
+            mOutputTextView.setText("nothing found to test...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
             return;
         } else {
-            Log.d(TAG, "ON CREATE, SUBMIT URLS");
-            mOutputTextView.setText("*\n*\n*\n*");
+            Log.d(TAG, "on create, submit urls");
+            mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
             submit();
         }
     }
@@ -153,32 +156,31 @@ public class MainActivity extends FragmentActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
 
-            Log.e(TAG, "broadcast receiver triggered");
+            Log.d(TAG, "broadcast receiver triggered");
 
             if (intent != null && context != null) {
 
-                Log.e(TAG, "action received: " + intent.getAction());
+                Log.d(TAG, "action received: " + intent.getAction());
 
                 if (intent.getAction().equals(ENVOY_BROADCAST_VALIDATION_SUCCEEDED)) {
 
                     // if an unknown cronet engine is running, shut it down
                     if (CronetNetworking.cronetEngine() != null) {
-                        Log.e(TAG, "cronet already running (ignore)");
-                        // CronetNetworking.cronetEngine().shutdown();
+                        Log.d(TAG, "cronet already running (ignore)");
                     }
 
                     String validUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED);
                     if (validUrl == null || validUrl.isEmpty()) {
-                        Log.e(TAG, "received a valid url that was empty or null");
+                        Log.w(TAG, "received a valid url that was empty or null");
                     } else {
-                        Log.e(TAG, "received a valid url: " + validUrl);
+                        Log.d(TAG, "received a valid url: " + validUrl);
                     }
 
                     String validService = intent.getStringExtra(ENVOY_DATA_SERVICE_SUCCEEDED);
                     if (validService == null || validService.isEmpty()) {
-                        Log.e(TAG, "received a valid service that was empty or null");
+                        Log.w(TAG, "received a valid service that was empty or null");
                     } else {
-                        Log.e(TAG, "received a valid service: " + validService);
+                        Log.d(TAG, "received a valid service: " + validService);
                     }
 
                     String sanitizedUrl = "***";
@@ -192,42 +194,39 @@ public class MainActivity extends FragmentActivity {
                     Long validationMs = intent.getLongExtra(ENVOY_DATA_VALIDATION_MS, 0L);
                     Long validationSeconds = 0L;
                     if (validationMs <= 0L) {
-                        Log.e(TAG, "received a successful validation with an invalid duration");
+                        Log.w(TAG, "received a successful validation with an invalid duration");
                     } else {
                         validationSeconds = validationMs / 1000L;
                         if (validationSeconds < 1L) {
                             validationSeconds = 1L;
                         }
-                        Log.e(TAG, "received a successful validation with a duration: " + validationSeconds);
+                        Log.d(TAG, "received a successful validation with a duration: " + validationSeconds);
                     }
 
                     //showDialog("SUCCESS", validService + " succeeded", true);
 
                     final String finalService = validService;
                     final String finalUrl = sanitizedUrl;
-
-                    displayOutput("VALID: " + validService + " - " + sanitizedUrl + " (" + validationSeconds + " seconds)");
+                    final Long finalSeconds = validationSeconds;
 
                     if (validUrl == null || validUrl.isEmpty()) {
-                        Log.e(TAG, "success status included no valid cronet url, can't continue");
+                        Log.w(TAG, "success status included no valid cronet url, can't continue");
                         displayOutput("validation returned no url");
+                        displayOutput("INVALID: " + validService);
                         displayResults(finalService, false);
-                        // log results to file
-                        logOutput(finalService, false);
                         return;
                     }
 
                     if (validUrl.equals(WIKI_URL)) {
-                        Log.e(TAG, "success status for the direct connection url, don't continue");
+                        Log.d(TAG, "success status for the direct connection url, don't continue");
                         displayOutput("validation returned direct url");
-                        displayResults(validUrl, true);
-                        // log results to file
-                        logOutput(validUrl, true);
+                        displayOutput("VALID: " + validService + " - " + sanitizedUrl + " (" + validationSeconds + " seconds)");
+                        displayResults(finalService, true);
                         return;
                     }
 
                     // envoy success, try to connect
-                    Log.e(TAG, "set up cronet engine with envoy url " + validUrl);
+                    Log.d(TAG, "set up cronet engine with envoy url " + validUrl);
                     CronetNetworking.initializeCronetEngine(context, validUrl); // reInitializeIfNeeded set to false
                     CronetEngine engine = CronetNetworking.cronetEngine();
                     Log.d(TAG, "cronet engine created, version " + engine.getVersionString());
@@ -241,29 +240,24 @@ public class MainActivity extends FragmentActivity {
                                     .build();
                             okhttp3.Request request = new okhttp3.Request.Builder().url(WIKI_URL).build();
                             try (okhttp3.Response response = client.newCall(request).execute()) {
-                                String responseString = Objects.requireNonNull(response.body()).string();
-                                // Log.d(TAG, "proxied request returns " + responseString);
 
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
                                         Log.d(TAG, "update ui with response");
                                         displayOutput("successful connection with " + finalService + " - " + finalUrl);
+                                        displayOutput("VALID: " + finalService + " - " + finalUrl + " (" + finalSeconds + " seconds)");
                                         displayResults(finalService, true);
-                                        // log results to file
-                                        logOutput(finalService, true);
-
                                     }
                                 });
 
-                                Log.e(TAG, "proxied request succeeded");
+                                Log.d(TAG, "proxied request succeeded");
 
                             } catch (IOException e) {
                                 Log.e(TAG, "proxied request caused okhttp error: ", e);
                                 displayOutput("failed connection with " + finalService + " - " + finalUrl);
+                                displayOutput("INVALID: " + finalService + " - " + finalUrl);
                                 displayResults(finalService, false);
-                                // log results to file
-                                logOutput(finalService, false);
                             }
                         }
                     }.start();
@@ -289,17 +283,7 @@ public class MainActivity extends FragmentActivity {
                     }
 
                     displayOutput("INVALID: " + invalidService + " - " + sanitizedUrl);
-                    if (invalidUrl != null && invalidUrl.equals(WIKI_URL)) {
-                        displayResults(invalidUrl, false);
-                        // log results to file
-                        logOutput(invalidUrl, false);
-                    } else {
-                        displayResults(invalidService, false);
-                        // log results to file
-                        logOutput(invalidService, false);
-                    }
-
-                    //showDialog("FAILURE", invalidService + " failed", false);
+                    displayResults(invalidService, false);
 
                     Log.e(TAG, "validation failed");
 
@@ -322,7 +306,7 @@ public class MainActivity extends FragmentActivity {
                     }
 
                     displayOutput("COMPLETE: " + validationSeconds + " seconds");
-                    Log.e(TAG, "validation ended?");
+                    Log.e(TAG, "validation ended");
 
                 } else {
                     Log.e(TAG, "received an unexpected intent: " + intent.getAction());
@@ -334,12 +318,29 @@ public class MainActivity extends FragmentActivity {
     };
 
     private void submit() {
+
+        // reset log file
+        try {
+            File logPath = getApplicationContext().getExternalFilesDir(null);
+            File logFile = new File(logPath, "demo_log");
+            FileOutputStream logStream = new FileOutputStream(logFile, false);
+            try {
+                logStream.write("".getBytes());
+            } finally {
+                logStream.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "exception when clearing log", e);
+        }
+
         String proxyList = mSecrets.getdefProxy(getPackageName());
         String[] proxyParts = proxyList.split(",");
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
+        mUrlCount = 0;
 
         for (int i = 0; i < testUrls.size(); i++) {
+            mUrlCount = mUrlCount + 1;
             if (testUrls.get(i).equals(WIKI_URL)) {
                 // NO-OP
             } else if (testUrls.get(i).startsWith("https")) {
@@ -370,10 +371,10 @@ public class MainActivity extends FragmentActivity {
 
     private void submit(ArrayList<String> testUrls, String testCert, ArrayList<String> directUrls) {
 
-        Log.d(TAG, "SUBMIT " + testUrls.size() + " URLS");
+        Log.d(TAG, "submit " + testUrls.size() + " urls");
 
         // clear result window
-        mOutputTextView.setText("waiting for resultS...\n*\n*\n*");
+        mOutputTextView.setText("waiting for results...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
 
         ArrayList<String> emptyList = new ArrayList<String>();
 
@@ -401,8 +402,8 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.meekResult).setVisibility(View.GONE);
     }
 
-    void displayResults(String url, boolean success) {
-        if (url.equals(WIKI_URL)) {
+    void displayResults(String service, boolean success) {
+        if (service.equals(ENVOY_SERVICE_DIRECT)) {
             findViewById(R.id.directResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.directSuccess).setVisibility(View.VISIBLE);
@@ -411,7 +412,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.directSuccess).setVisibility(View.GONE);
                 findViewById(R.id.directFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("http")) {
+        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
             findViewById(R.id.httpsResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.httpsSuccess).setVisibility(View.VISIBLE);
@@ -420,7 +421,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.httpsSuccess).setVisibility(View.GONE);
                 findViewById(R.id.httpsFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("envoy")) {
+        } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
             findViewById(R.id.envoyResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.envoySuccess).setVisibility(View.VISIBLE);
@@ -429,7 +430,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.envoySuccess).setVisibility(View.GONE);
                 findViewById(R.id.envoyFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("ss")) {
+        } else if (service.equals(ENVOY_SERVICE_SS)) {
             findViewById(R.id.ssResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.ssSuccess).setVisibility(View.VISIBLE);
@@ -438,7 +439,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.ssSuccess).setVisibility(View.GONE);
                 findViewById(R.id.ssFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("hysteria")) {
+        } else if (service.equals(ENVOY_SERVICE_HYSTERIA)) {
             findViewById(R.id.hysteriaResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.hysteriaSuccess).setVisibility(View.VISIBLE);
@@ -447,7 +448,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.hysteriaSuccess).setVisibility(View.GONE);
                 findViewById(R.id.hysteriaFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("v2srtp")) {
+        } else if (service.equals(ENVOY_SERVICE_V2SRTP)) {
             findViewById(R.id.v2sResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.v2sSuccess).setVisibility(View.VISIBLE);
@@ -456,7 +457,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.v2sSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2sFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("v2wechat")) {
+        } else if (service.equals(ENVOY_SERVICE_V2WECHAT)) {
             findViewById(R.id.v2wResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.v2wSuccess).setVisibility(View.VISIBLE);
@@ -465,7 +466,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.v2wSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2wFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("snowflake")) {
+        } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
             findViewById(R.id.snowflakeResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.snowflakeSuccess).setVisibility(View.VISIBLE);
@@ -474,7 +475,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.snowflakeSuccess).setVisibility(View.GONE);
                 findViewById(R.id.snowflakeFailure).setVisibility(View.VISIBLE);
             }
-        } else if (url.startsWith("meek")) {
+        } else if (service.equals(ENVOY_SERVICE_MEEK)) {
             findViewById(R.id.meekResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.meekSuccess).setVisibility(View.VISIBLE);
@@ -484,10 +485,12 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.meekFailure).setVisibility(View.VISIBLE);
             }
         } else {
-            // unsupported url
-            Log.d(TAG, "UNSUPPORTED SERVICE: " + url);
-            return;
+            // unsupported service
+            Log.w(TAG, "unsupported service (display): " + service);
         }
+
+        // log results to file
+        logOutput(service, success);
 
         // if results were received, enable rerun test button
         findViewById(R.id.runButton).setEnabled(true);
@@ -505,11 +508,11 @@ public class MainActivity extends FragmentActivity {
 
     void logOutput(String service, boolean success) {
         String originalUrl = "???";
-        if (service.equals(WIKI_URL)) {
+        if (service.equals(ENVOY_SERVICE_DIRECT)) {
             originalUrl = WIKI_URL;
         } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
             originalUrl = httpsUrl;
-        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+        } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
             originalUrl = envoyUrl;
         } else if (service.equals(ENVOY_SERVICE_SS)) {
             originalUrl = ssUrl;
@@ -523,32 +526,43 @@ public class MainActivity extends FragmentActivity {
             originalUrl = snowUrl;
         } else if (service.equals(ENVOY_SERVICE_MEEK)) {
             originalUrl = meekUrl;
+        } else {
+            // unsupported service
+            Log.w(TAG, "unsupported service (log): " + service);
         }
 
         if (success) {
-            logOutput("SUCCESS\t" + originalUrl);
+            logOutput("SUCCESS," + service + "," + originalUrl);
         } else {
-            logOutput("FAILURE\t" + originalUrl);
+            logOutput("FAILURE," + service + "," + originalUrl);
         }
     }
 
     void logOutput(String output) {
 
-        Date logDate = new Date(System.currentTimeMillis());
-        DateFormat logFormat = android.text.format.DateFormat.getDateFormat(getApplicationContext());
+        long logMs = System.currentTimeMillis();
+        SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+        String logDate = isoFormat.format(new Date(logMs));
 
         try {
             File logPath = getApplicationContext().getExternalFilesDir(null);
             File logFile = new File(logPath, "demo_log");
             FileOutputStream logStream = new FileOutputStream(logFile, true);
-            String logString = logFormat.format(logDate) + "\t" + output + "\n";
+            String logString = logDate + "," + output + "\n";
             try {
                 logStream.write(logString.getBytes());
             } finally {
                 logStream.close();
             }
+
+            mUrlCount = mUrlCount - 1;
+            if (mUrlCount == 0) {
+                displayOutput("LOG FILE PATH: " + logFile.getAbsolutePath());
+            } else {
+                displayOutput("URLS REMAINING: " + mUrlCount);
+            }
         } catch (IOException e) {
-            Log.e(TAG, "EXCEPTION WHEN LOGGING", e);
+            Log.e(TAG, "exception when logging", e);
         }
     }
 }
