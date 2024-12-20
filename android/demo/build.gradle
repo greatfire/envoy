@@ -68,6 +68,9 @@ android {
 }
 
 dependencies {
+    // resolves duplicate class error
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
+
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     // implementation 'com.squareup.retrofit2:retrofit:2.7.1'
     implementation 'com.android.volley:volley:1.2.1'
@@ -79,6 +82,6 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
-     debugApi(name: 'cronet-debug', ext: 'aar')
-     releaseApi(name: 'cronet-release', ext: 'aar')
+    debugApi(name: 'cronet-debug', ext: 'aar')
+    releaseApi(name: 'cronet-release', ext: 'aar')
 }

@@ -359,6 +359,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (BuildConfig.BUILD_TYPE == "debug") {
             Log.d(TAG, "debug build, ignore time limit and submit")
             return true
+        } else {
+            Log.d(TAG, "release build, check time limit before submitting")
         }
 
         val currentTime = System.currentTimeMillis()
@@ -394,8 +396,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val batchSize: Int = (2..5).random()
 
         var max = shuffledUrls.size + shuffledHttps.size
-        if (max > batchSize) {
-            max = batchSize
+        if (BuildConfig.BUILD_TYPE == "debug") {
+            Log.d(TAG, "debug build, unlimited batch size")
+        } else {
+            Log.d(TAG, "release build, limit batch size")
+            if (max > batchSize) {
+                max = batchSize
+            }
         }
 
         currentBatch.clear()
@@ -1321,7 +1328,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     // check whether batch is complete
                     if (batchCount > 0) {
                         Log.d(TAG, "" + batchCount + " urls remaining in current batch")
-                    } else  {
+                    } else {
                         Log.d(TAG, "current batch is empty, but a valid url was already found")
 
                         broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)

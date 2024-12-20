@@ -6,6 +6,7 @@
     <string name="result">Result goes here</string>
     <string name="load">Load</string>
     <string name="msg">Messages go here</string>
+    <string name="out">Output goes here</string>
     <string name="nuke_instruction">
         <![CDATA[
         URL.setURLStreamHandlerFactory(engine.createURLStreamHandlerFactory());\n
@@ -17,13 +18,18 @@
     </string>
     <string name="begin_request_msg">Begin to request %1$s</string>
 
-    <string name="direct">test direct url</string>
-    <string name="envoy">test envoy url</string>
-    <string name="ss">test shadowsocks url</string>
-    <string name="v2s">test v2ray srtp url</string>
-    <string name="v2w">test v2ray wechat url</string>
-    <string name="snowflake">test snowflake url</string>
-    <string name="meek">test meek url</string>
+    <string name="run">rerun test sequence</string>
+    <string name="direct">\tdirect url</string>
+    <string name="https">\thttps url</string>
+    <string name="envoy">\tenvoy url</string>
+    <string name="ss">\tshadowsocks url</string>
+    <string name="hysteria">\thysteria url</string>
+    <string name="v2s">\tv2ray srtp url</string>
+    <string name="v2w">\tv2ray wechat url</string>
+    <string name="snowflake">\tsnowflake url</string>
+    <string name="meek">\tmeek url</string>
+    <string name="success">\tsuccess</string>
+    <string name="failure">\tfailure</string>
 
     <string-array name="http_method">
         <item>GET</item>

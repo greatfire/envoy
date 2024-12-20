@@ -9,10 +9,16 @@ import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_FAILED;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_SUCCEEDED;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_ENDED_CAUSE;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_MS;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_DIRECT;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_ENVOY;
 import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HTTPS;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HYSTERIA;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_MEEK;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_SNOWFLAKE;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_SS;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_V2SRTP;
+import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_V2WECHAT;
 
-import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -21,11 +27,8 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
@@ -37,8 +40,14 @@ import org.greatfire.envoy.CronetNetworking;
 import org.greatfire.envoy.NetworkIntentService;
 import org.greatfire.envoy.UrlUtil;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.Objects;
 
 import okhttp3.OkHttpClient;
@@ -51,16 +60,22 @@ public class MainActivity extends FragmentActivity {
     Secrets mSecrets;
     NetworkIntentService mService;
     boolean mBound = false;
-    TextView mMsgTextView;
-    TextView mResultTextView;
-    Dialog mResultDialog;
+    TextView mOutputTextView;
+    int mUrlCount = 0;
+
+    String httpsUrl = "";
+    String envoyUrl = "";
+    String ssUrl = "";
+    String hystUrl = "";
+    String v2sUrl = "";
+    String v2wUrl = "";
+    String snowUrl = "";
+    String meekUrl = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        mSecrets = new Secrets();
 
         // register to receive test results
         IntentFilter filter = new IntentFilter();
@@ -69,60 +84,28 @@ public class MainActivity extends FragmentActivity {
         filter.addAction(ENVOY_BROADCAST_VALIDATION_ENDED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, filter);
 
-        findViewById(R.id.directButton).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.runButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                submitDirectUrl(WIKI_URL);
+                Log.d(TAG, "button pushed, submit urls");
+                resetResults();
+                submit();
+                findViewById(R.id.runButton).setEnabled(false);
             }
         });
+        findViewById(R.id.runButton).setEnabled(false);
 
-        findViewById(R.id.envoyButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getenvoyUrl(getPackageName()));
-            }
-        });
-
-        findViewById(R.id.ssButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getshadowsocksUrl(getPackageName()));
-            }
-        });
-
-        findViewById(R.id.v2sButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getv2srtpUrl(getPackageName()));
-            }
-        });
-
-        findViewById(R.id.v2wButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getv2wechatUrl(getPackageName()));
-            }
-        });
-
-        findViewById(R.id.snowflakeButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getsnowflakeUrl(getPackageName()));
-            }
-        });
-
-        findViewById(R.id.meekButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                submitTestUrl(mSecrets.getmeekUrl(getPackageName()));
-            }
-        });
-
-        mMsgTextView = findViewById(R.id.msgTextView);
-        mMsgTextView.setText("*\n*\n*\n*");
-
-        mResultTextView = findViewById(R.id.resultTextView);
-        mResultTextView.setText("waiting for result...");
+        mOutputTextView = findViewById(R.id.output);
+        mSecrets = new Secrets();
+        if (mSecrets.getdefProxy(getPackageName()) == null) {
+            Log.w(TAG, "on create, no urls");
+            mOutputTextView.setText("nothing found to test...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
+            return;
+        } else {
+            Log.d(TAG, "on create, submit urls");
+            mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
+            submit();
+        }
     }
 
     @Override
@@ -166,31 +149,6 @@ public class MainActivity extends FragmentActivity {
         }
     };
 
-    private void showDialog(String title, String message, boolean result) {
-
-        mResultDialog = new Dialog(this);
-        mResultDialog.setContentView(R.layout.result_dialog);
-        TextView titleText = mResultDialog.findViewById(R.id.dialog_title);
-        titleText.setText(title);
-        if (result) {
-            titleText.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
-        } else {
-            titleText.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
-        }
-        TextView messageText = mResultDialog.findViewById(R.id.dialog_message);
-        messageText.setText(message);
-        Button okButton = mResultDialog.findViewById(R.id.dialog_button);
-        okButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mResultDialog.dismiss();
-            }
-        });
-        DisplayMetrics metrics = getResources().getDisplayMetrics();
-        mResultDialog.getWindow().setLayout(metrics.widthPixels - 100, ViewGroup.LayoutParams.WRAP_CONTENT);
-        mResultDialog.show();
-    }
-
     protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 
         private static final String TAG = "EnvoyDemoReceiver";
@@ -198,32 +156,31 @@ public class MainActivity extends FragmentActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
 
-            Log.e(TAG, "broadcast receiver triggered");
+            Log.d(TAG, "broadcast receiver triggered");
 
             if (intent != null && context != null) {
 
-                Log.e(TAG, "action received: " + intent.getAction());
+                Log.d(TAG, "action received: " + intent.getAction());
 
                 if (intent.getAction().equals(ENVOY_BROADCAST_VALIDATION_SUCCEEDED)) {
 
                     // if an unknown cronet engine is running, shut it down
                     if (CronetNetworking.cronetEngine() != null) {
-                        Log.e(TAG, "cronet already running (ignore)");
-                        // CronetNetworking.cronetEngine().shutdown();
+                        Log.d(TAG, "cronet already running (ignore)");
                     }
 
                     String validUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED);
                     if (validUrl == null || validUrl.isEmpty()) {
-                        Log.e(TAG, "received a valid url that was empty or null");
+                        Log.w(TAG, "received a valid url that was empty or null");
                     } else {
-                        Log.e(TAG, "received a valid url: " + validUrl);
+                        Log.d(TAG, "received a valid url: " + validUrl);
                     }
 
                     String validService = intent.getStringExtra(ENVOY_DATA_SERVICE_SUCCEEDED);
                     if (validService == null || validService.isEmpty()) {
-                        Log.e(TAG, "received a valid service that was empty or null");
+                        Log.w(TAG, "received a valid service that was empty or null");
                     } else {
-                        Log.e(TAG, "received a valid service: " + validService);
+                        Log.d(TAG, "received a valid service: " + validService);
                     }
 
                     String sanitizedUrl = "***";
@@ -237,37 +194,37 @@ public class MainActivity extends FragmentActivity {
                     Long validationMs = intent.getLongExtra(ENVOY_DATA_VALIDATION_MS, 0L);
                     Long validationSeconds = 0L;
                     if (validationMs <= 0L) {
-                        Log.e(TAG, "received a successful validation with an invalid duration");
+                        Log.w(TAG, "received a successful validation with an invalid duration");
                     } else {
                         validationSeconds = validationMs / 1000L;
                         if (validationSeconds < 1L) {
                             validationSeconds = 1L;
                         }
-                        Log.e(TAG, "received a successful validation with a duration: " + validationSeconds);
+                        Log.d(TAG, "received a successful validation with a duration: " + validationSeconds);
                     }
 
-                    String lines = mMsgTextView.getText().toString();
-                    String[] lineList = lines.split("\n");
-                    String newLines = "SUCCESS: " + validService + " - " + sanitizedUrl + " (" + validationSeconds + " seconds)";
-                    for (int i = 0; i < lineList.length - 1; i++) {
-                        newLines = newLines + "\n" + lineList[i];
-                    }
-                    mMsgTextView.setText(newLines);
-
-                    showDialog("SUCCESS", validService + " succeeded", true);
+                    final String finalService = validService;
+                    final String finalUrl = sanitizedUrl;
+                    final Long finalSeconds = validationSeconds;
 
                     if (validUrl == null || validUrl.isEmpty()) {
-                        Log.e(TAG, "success status included no valid cronet url, can't continue");
+                        Log.w(TAG, "success status included no valid cronet url, can't continue");
+                        displayOutput("validation returned no url");
+                        displayOutput("INVALID: " + validService);
+                        displayResults(finalService, false);
                         return;
                     }
 
                     if (validUrl.equals(WIKI_URL)) {
-                        Log.e(TAG, "success status for the direct connection url, don't continue");
+                        Log.d(TAG, "success status for the direct connection url, don't continue");
+                        displayOutput("validation returned direct url");
+                        displayOutput("VALID: " + validService + " - " + sanitizedUrl + " (" + validationSeconds + " seconds)");
+                        displayResults(finalService, true);
                         return;
                     }
 
                     // envoy success, try to connect
-                    Log.e(TAG, "set up cronet engine with envoy url " + validUrl);
+                    Log.d(TAG, "set up cronet engine with envoy url " + validUrl);
                     CronetNetworking.initializeCronetEngine(context, validUrl); // reInitializeIfNeeded set to false
                     CronetEngine engine = CronetNetworking.cronetEngine();
                     Log.d(TAG, "cronet engine created, version " + engine.getVersionString());
@@ -281,23 +238,27 @@ public class MainActivity extends FragmentActivity {
                                     .build();
                             okhttp3.Request request = new okhttp3.Request.Builder().url(WIKI_URL).build();
                             try (okhttp3.Response response = client.newCall(request).execute()) {
-                                String responseString = Objects.requireNonNull(response.body()).string();
-                                Log.d(TAG, "proxied request returns " + responseString);
 
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
                                         Log.d(TAG, "update ui with response");
-                                        mResultTextView.setText(responseString);
+                                        displayOutput("successful connection with " + finalService + " - " + finalUrl);
+                                        displayOutput("VALID: " + finalService + " - " + finalUrl + " (" + finalSeconds + " seconds)");
+                                        displayResults(finalService, true);
                                     }
                                 });
 
+                                Log.d(TAG, "proxied request succeeded");
+
                             } catch (IOException e) {
                                 Log.e(TAG, "proxied request caused okhttp error: ", e);
+                                displayOutput("failed connection with " + finalService + " - " + finalUrl);
+                                displayOutput("INVALID: " + finalService + " - " + finalUrl);
+                                displayResults(finalService, false);
                             }
                         }
                     }.start();
-
 
                 } else if (intent.getAction() == ENVOY_BROADCAST_VALIDATION_FAILED) {
 
@@ -319,15 +280,10 @@ public class MainActivity extends FragmentActivity {
                         }
                     }
 
-                    String lines = mMsgTextView.getText().toString();
-                    String[] lineList = lines.split("\n");
-                    String newLines = "FAILURE: " + invalidService + " - " + sanitizedUrl;
-                    for (int i = 0; i < lineList.length - 1; i++) {
-                        newLines = newLines + "\n" + lineList[i];
-                    }
-                    mMsgTextView.setText(newLines);
+                    displayOutput("INVALID: " + invalidService + " - " + sanitizedUrl);
+                    displayResults(invalidService, false);
 
-                    showDialog("FAILURE", invalidService + " failed", false);
+                    Log.e(TAG, "validation failed");
 
                 } else if (intent.getAction() == ENVOY_BROADCAST_VALIDATION_ENDED) {
 
@@ -347,15 +303,8 @@ public class MainActivity extends FragmentActivity {
                         Log.e(TAG, "received a validation cause that was empty or null");
                     }
 
-                    String lines = mMsgTextView.getText().toString();
-                    String[] lineList = lines.split("\n");
-                    if (lineList[0].startsWith("FAILURE")) {
-                        String newLines = lineList[0] + " (" + validationSeconds + " seconds, " + validationCause + ")";
-                        for (int i = 1; i < lineList.length; i++) {
-                            newLines = newLines + "\n" + lineList[i];
-                        }
-                        mMsgTextView.setText(newLines);
-                    }
+                    displayOutput("COMPLETE: " + validationSeconds + " seconds");
+                    Log.e(TAG, "validation ended");
 
                 } else {
                     Log.e(TAG, "received an unexpected intent: " + intent.getAction());
@@ -366,28 +315,64 @@ public class MainActivity extends FragmentActivity {
         }
     };
 
-    public void startCronet() {
-        Log.w(TAG, "no-op");
+    private void submit() {
+
+        // reset log file
+        try {
+            File logPath = getApplicationContext().getExternalFilesDir(null);
+            File logFile = new File(logPath, "demo_log");
+            FileOutputStream logStream = new FileOutputStream(logFile, false);
+            try {
+                logStream.write("".getBytes());
+            } finally {
+                logStream.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "exception when clearing log", e);
+        }
+
+        String proxyList = mSecrets.getdefProxy(getPackageName());
+        String[] proxyParts = proxyList.split(",");
+        ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
+        ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
+        mUrlCount = 0;
+
+        for (int i = 0; i < testUrls.size(); i++) {
+            mUrlCount = mUrlCount + 1;
+            if (testUrls.get(i).equals(WIKI_URL)) {
+                // NO-OP
+            } else if (testUrls.get(i).startsWith("https")) {
+                httpsUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("envoy")) {
+                envoyUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("ss")) {
+                ssUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("hysteria")) {
+                hystUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("v2srtp")) {
+                v2sUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("v2wechat")) {
+                v2wUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("snowflake")) {
+                snowUrl = testUrls.get(i);
+            } else if (testUrls.get(i).startsWith("meek")) {
+                meekUrl = testUrls.get(i);
+            }
+        }
+
+        if (mSecrets.gethystCert(getPackageName()) != null) {
+            submit(testUrls, mSecrets.gethystCert(getPackageName()), directUrls);
+        } else {
+            submit(testUrls, null, directUrls);
+        }
     }
 
-    private void submitDirectUrl(String urlToSubmit) {
-        ArrayList<String> testUrls = new ArrayList<String>();
-        ArrayList<String> directUrls = new ArrayList<String>();
-        directUrls.add(urlToSubmit);
-        submit(testUrls, directUrls);
-    }
+    private void submit(ArrayList<String> testUrls, String testCert, ArrayList<String> directUrls) {
 
-    private void submitTestUrl(String urlToSubmit) {
-        ArrayList<String> testUrls = new ArrayList<String>();
-        ArrayList<String> directUrls = new ArrayList<String>();
-        testUrls.add(urlToSubmit);
-        submit(testUrls, directUrls);
-    }
-
-    private void submit(ArrayList<String> testUrls, ArrayList<String> directUrls) {
+        Log.d(TAG, "submit " + testUrls.size() + " urls");
 
         // clear result window
-        mResultTextView.setText("waiting for result...");
+        mOutputTextView.setText("waiting for results...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
 
         ArrayList<String> emptyList = new ArrayList<String>();
 
@@ -395,11 +380,187 @@ public class MainActivity extends FragmentActivity {
                 this,
                 testUrls,
                 directUrls,
-                null,
+                testCert,
                 emptyList,
                 1,
                 1,
                 1
         );
+    }
+
+    void resetResults() {
+        findViewById(R.id.directResult).setVisibility(View.GONE);
+        findViewById(R.id.httpsResult).setVisibility(View.GONE);
+        findViewById(R.id.envoyResult).setVisibility(View.GONE);
+        findViewById(R.id.ssResult).setVisibility(View.GONE);
+        findViewById(R.id.hysteriaResult).setVisibility(View.GONE);
+        findViewById(R.id.v2sResult).setVisibility(View.GONE);
+        findViewById(R.id.v2wResult).setVisibility(View.GONE);
+        findViewById(R.id.snowflakeResult).setVisibility(View.GONE);
+        findViewById(R.id.meekResult).setVisibility(View.GONE);
+    }
+
+    void displayResults(String service, boolean success) {
+        if (service.equals(ENVOY_SERVICE_DIRECT)) {
+            findViewById(R.id.directResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.directSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.directFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.directSuccess).setVisibility(View.GONE);
+                findViewById(R.id.directFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+            findViewById(R.id.httpsResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.httpsSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.httpsFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.httpsSuccess).setVisibility(View.GONE);
+                findViewById(R.id.httpsFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
+            findViewById(R.id.envoyResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.envoySuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.envoyFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.envoySuccess).setVisibility(View.GONE);
+                findViewById(R.id.envoyFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_SS)) {
+            findViewById(R.id.ssResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.ssSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.ssFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.ssSuccess).setVisibility(View.GONE);
+                findViewById(R.id.ssFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_HYSTERIA)) {
+            findViewById(R.id.hysteriaResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.hysteriaSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.hysteriaFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.hysteriaSuccess).setVisibility(View.GONE);
+                findViewById(R.id.hysteriaFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_V2SRTP)) {
+            findViewById(R.id.v2sResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.v2sSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.v2sFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.v2sSuccess).setVisibility(View.GONE);
+                findViewById(R.id.v2sFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_V2WECHAT)) {
+            findViewById(R.id.v2wResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.v2wSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.v2wFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.v2wSuccess).setVisibility(View.GONE);
+                findViewById(R.id.v2wFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+            findViewById(R.id.snowflakeResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.snowflakeSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.snowflakeFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.snowflakeSuccess).setVisibility(View.GONE);
+                findViewById(R.id.snowflakeFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(ENVOY_SERVICE_MEEK)) {
+            findViewById(R.id.meekResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.meekSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.meekFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.meekSuccess).setVisibility(View.GONE);
+                findViewById(R.id.meekFailure).setVisibility(View.VISIBLE);
+            }
+        } else {
+            // unsupported service
+            Log.w(TAG, "unsupported service (display): " + service);
+        }
+
+        // log results to file
+        logOutput(service, success);
+
+        // if results were received, enable rerun test button
+        findViewById(R.id.runButton).setEnabled(true);
+    }
+
+    void displayOutput(String output) {
+        String lines = mOutputTextView.getText().toString();
+        String[] lineList = lines.split("\n");
+        String newLines = output;
+        for (int i = 0; i < lineList.length - 1; i++) {
+            newLines = newLines + "\n" + lineList[i];
+        }
+        mOutputTextView.setText(newLines);
+    }
+
+    void logOutput(String service, boolean success) {
+        String originalUrl = "???";
+        if (service.equals(ENVOY_SERVICE_DIRECT)) {
+            originalUrl = WIKI_URL;
+        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+            originalUrl = httpsUrl;
+        } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
+            originalUrl = envoyUrl;
+        } else if (service.equals(ENVOY_SERVICE_SS)) {
+            originalUrl = ssUrl;
+        } else if (service.equals(ENVOY_SERVICE_HYSTERIA)) {
+            originalUrl = hystUrl;
+        } else if (service.equals(ENVOY_SERVICE_V2SRTP)) {
+            originalUrl = v2sUrl;
+        } else if (service.equals(ENVOY_SERVICE_V2WECHAT)) {
+            originalUrl = v2wUrl;
+        } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+            originalUrl = snowUrl;
+        } else if (service.equals(ENVOY_SERVICE_MEEK)) {
+            originalUrl = meekUrl;
+        } else {
+            // unsupported service
+            Log.w(TAG, "unsupported service (log): " + service);
+        }
+
+        if (success) {
+            logOutput("SUCCESS," + service + "," + originalUrl);
+        } else {
+            logOutput("FAILURE," + service + "," + originalUrl);
+        }
+    }
+
+    void logOutput(String output) {
+
+        long logMs = System.currentTimeMillis();
+        SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+        String logDate = isoFormat.format(new Date(logMs));
+
+        try {
+            File logPath = getApplicationContext().getExternalFilesDir(null);
+            File logFile = new File(logPath, "demo_log");
+            FileOutputStream logStream = new FileOutputStream(logFile, true);
+            String logString = logDate + "," + output + "\n";
+            try {
+                logStream.write(logString.getBytes());
+            } finally {
+                logStream.close();
+            }
+
+            mUrlCount = mUrlCount - 1;
+            if (mUrlCount == 0) {
+                displayOutput("LOG FILE PATH: " + logFile.getAbsolutePath());
+            } else {
+                displayOutput("URLS REMAINING: " + mUrlCount);
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "exception when logging", e);
+        }
     }
 }
