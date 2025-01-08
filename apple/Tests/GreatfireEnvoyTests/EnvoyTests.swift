@@ -23,7 +23,7 @@ class EnvoyTests: XCTestCase {
                     salt: "abcdefghijklmnop")
 
         assertV2Ray(
-            "v2ws://127.0.0.1:12345?id=00000000-0000-0000-0000-00000000000&path=/websocket/", 
+            "v2ws://127.0.0.1:12345?id=00000000-0000-0000-0000-00000000000&path=/websocket/",
             type: .ws,
             host: "127.0.0.1",
             port: 12345,
@@ -74,7 +74,7 @@ class EnvoyTests: XCTestCase {
                         tunnel: .socks5(host: "127.0.0.1", port: 12345))
 
         assertWebTunnel("webtunnel://?url=https://example.com/abcdefghijklm&ver=0.0.1&tunnel=https://proxy.example.com/proxy/",
-                        proxyUrl: "https://example.com/abcdefghijklm", 
+                        proxyUrl: "https://example.com/abcdefghijklm",
                         ver: "0.0.1",
                         tunnel: .envoy(url: URL(string: "https://proxy.example.com/proxy/")!))
 
@@ -135,7 +135,7 @@ class EnvoyTests: XCTestCase {
         XCTAssertEqual(dict?[kCFProxyTypeKey] as! CFString, kCFProxyTypeSOCKS)
         XCTAssertEqual(dict?[kCFStreamPropertySOCKSVersion] as! CFString, kCFStreamSocketSOCKSVersion5)
         XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyHost] as! String, "127.0.0.1")
-        XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyPort] as! Int, 47300)
+        XCTAssertEqual(dict?[kCFStreamPropertySOCKSProxyPort] as! Int, 0)
 
         // Dictionaries don't have order, so the order of the arguments changes randomly on reruns.
         let arguments = (dict?[kCFStreamPropertySOCKSUser] as! String) + (dict?[kCFStreamPropertySOCKSPassword] as! String)
@@ -169,13 +169,12 @@ class EnvoyTests: XCTestCase {
             var conf = proxy.getProxyConfig()
 
             XCTAssertNotNil(conf)
-            XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:47300")
-            
-            
+            XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:0")
+
             proxy = .meek(url: URL(string: "https://cdn.example.com/")!, front: ".wellknown.org", tunnel: .socks5(host: "127.0.0.1", port: 12345))
-            
+
             conf = proxy.getProxyConfig()
-            
+
             XCTAssertNotNil(conf)
             XCTAssertEqual(conf?.debugDescription, "socksv5 Proxy: 127.0.0.1:\(EnvoySocksForwarder.port)")
         }
@@ -270,7 +269,7 @@ class EnvoyTests: XCTestCase {
         }
     }
 
-    private func assertSnowflake(_ url: String, ice: String? = nil, broker: String, 
+    private func assertSnowflake(_ url: String, ice: String? = nil, broker: String,
                                  fronts: String, ampCache: String? = nil, sqsQueue: String? = nil,
                                  sqsCreds: String? = nil, tunnel: Envoy.Proxy)
     {

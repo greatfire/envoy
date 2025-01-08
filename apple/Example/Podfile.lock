@@ -8,7 +8,7 @@ PODS:
     - GreatfireEnvoy/Core
     - SwiftyCurl (~> 0.4)
   - IEnvoyProxy (3.0.0)
-  - SwiftyCurl (0.4.0)
+  - SwiftyCurl (0.4.1)
 
 DEPENDENCIES:
   - GreatfireEnvoy/Curl (from `../../`)
@@ -26,7 +26,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   GreatfireEnvoy: 5581f0c241b24298ac7610ca09fb8bd8d23a36e3
   IEnvoyProxy: 7264306407958184669e9d90844e1f3014aef44d
-  SwiftyCurl: 7c38c8d48ae276823f374e6fd13880b6538cc148
+  SwiftyCurl: 2fcde581b4fd161451e29076b2cca8624e3e347e
 
 PODFILE CHECKSUM: 7ab5a75273a64740d8d60515289326188d1226f6
 
