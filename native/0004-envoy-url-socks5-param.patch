@@ -1,7 +1,9 @@
  .../chromium/net/impl/CronetUrlRequestContext.java | 33 +++++++++++++++-------
+ components/cronet/cronet_context.cc                |  4 +--
+ components/cronet/cronet_context.h                 |  2 +-
  components/cronet/native/engine.cc                 | 33 +++++++++++++++++-----
  components/cronet/native/sample/main.cc            | 11 ++++++--
- 3 files changed, 58 insertions(+), 19 deletions(-)
+ 5 files changed, 61 insertions(+), 22 deletions(-)
 
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 index c8f43ce7b5470..b65ea463f907f 100644
@@ -56,8 +58,38 @@ index c8f43ce7b5470..b65ea463f907f 100644
                          }
  
                          if (cronetInitializedInfoLogger != null) {
+diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
+index fd8bb335c9748..879f80d3f6335 100644
+--- a/components/cronet/cronet_context.cc
++++ b/components/cronet/cronet_context.cc
+@@ -249,10 +249,10 @@ CronetContext::NetworkTasks::~NetworkTasks() {
+     net::NetworkChangeNotifier::RemoveNetworkObserver(this);
+ }
+ 
+-void CronetContext::InitRequestContextOnInitThreadWithUri(base::StringPiece uri) {
++void CronetContext::InitRequestContextOnInitThreadWithUri(std::string uri) {
+   DCHECK(OnInitThread());
+   auto proxy_config_service =
+-      cronet::CreateFixedProxyConfigService(GetNetworkTaskRunner(), uri);
++      cronet::CreateFixedProxyConfigService(GetNetworkTaskRunner(), std::move(uri));
+   g_net_log.Get().EnsureInitializedOnInitThread();
+   GetNetworkTaskRunner()->PostTask(
+       FROM_HERE,
+diff --git a/components/cronet/cronet_context.h b/components/cronet/cronet_context.h
+index d0a9631a0e3d9..b667a66df4e2e 100644
+--- a/components/cronet/cronet_context.h
++++ b/components/cronet/cronet_context.h
+@@ -113,7 +113,7 @@ class CronetContext {
+   // Blocks until network thread is destroyed after running all pending tasks.
+   virtual ~CronetContext();
+ 
+-  void InitRequestContextOnInitThreadWithUri(base::StringPiece uri);
++  void InitRequestContextOnInitThreadWithUri(std::string uri);
+ 
+   // Called on init thread to initialize URLRequestContext.
+   void InitRequestContextOnInitThread();
 diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
-index 864d4b72235b5..9170eea1a32a8 100644
+index 864d4b72235b5..373abb7dcd229 100644
 --- a/components/cronet/native/engine.cc
 +++ b/components/cronet/native/engine.cc
 @@ -15,6 +15,7 @@
@@ -98,7 +130,7 @@ index 864d4b72235b5..9170eea1a32a8 100644
 +    cronet::PostTaskToInitThread(
 +      FROM_HERE,
 +      base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
-+                     base::Unretained(context_.get()), base::StringPiece(envoy_socks)));
++                     base::Unretained(context_.get()), std::move(envoy_socks)));
 +  } else if (params->envoy_url.rfind("socks5://", 0) == 0) {
 +    // socks5:// URL
 +    cronet::PostTaskToInitThread(
