@@ -69,7 +69,7 @@ for arch in arm arm64 x86 x64; do
     # shellcheck disable=SC2086
     "$PATCH_DIR/venv/bin/python3" "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
     # XXX this default setting causes build problems, so disable it
-    echo "use_remoteexec = false" >>"$out/args.gn"
+    echo "use_remoteexec = false" >> "${out_dir}/args.gn"
     autoninja -C "$out_dir" cronet_package
     if [[ $arch != "arm" ]]; then
         cp -a "$out_dir/cronet/libs/"* "$out_dir/../Cronet-arm-$BUILD_VARIANT/cronet/libs/"
