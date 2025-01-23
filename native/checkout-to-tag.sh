@@ -8,7 +8,7 @@ export DEPOT_TOOLS_UPDATE=0
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
 DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 export PATH="$DEPOT_TOOLS_ROOT:$PATH"
-TAG=${1:-125.0.6422.35}
+TAG=${1:-128.0.6537.2}
 
 cd "$CHROMIUM_SRC_ROOT" || exit 1
 
