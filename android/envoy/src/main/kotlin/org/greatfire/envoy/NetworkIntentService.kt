@@ -52,11 +52,13 @@ private const val DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) "
 
 class NetworkIntentService : IntentService("NetworkIntentService") {
     // https://android.googlesource.com/platform/frameworks/base.git/+/oreo-release/services/core/java/com/android/server/connectivity/NetworkMonitor.java
+    @Deprecated("Deprecated in Java")
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "NetworkIntentService created")
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "NetworkIntentService destroyed")
@@ -191,6 +193,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         fun getService(): NetworkIntentService = this@NetworkIntentService
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onHandleIntent(intent: Intent?) {
         when (intent?.action) {
             ACTION_SUBMIT -> {
@@ -207,6 +210,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBind(intent: Intent): IBinder {
         return binder
     }
@@ -355,6 +359,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (BuildConfig.BUILD_TYPE == "debug") {
             Log.d(TAG, "debug build, ignore time limit and submit")
             return true
+        } else {
+            Log.d(TAG, "release build, check time limit before submitting")
         }
 
         val currentTime = System.currentTimeMillis()
@@ -390,8 +396,13 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val batchSize: Int = (2..5).random()
 
         var max = shuffledUrls.size + shuffledHttps.size
-        if (max > batchSize) {
-            max = batchSize
+        if (BuildConfig.BUILD_TYPE == "debug") {
+            Log.d(TAG, "debug build, unlimited batch size")
+        } else {
+            Log.d(TAG, "release build, limit batch size")
+            if (max > batchSize) {
+                max = batchSize
+            }
         }
 
         currentBatch.clear()
@@ -870,9 +881,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "create direct request to " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
 
         val executor: Executor = Executors.newSingleThreadExecutor()
-        val myBuilder = CronetEngine.Builder(applicationContext)
-        val cronetEngine: CronetEngine = myBuilder
-            .setUserAgent(DEFAULT_USER_AGENT).build()
+        val cronetEngine: CronetEngine = CronetNetworking.buildEngine(context = applicationContext)
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             directUrl,
             MyUrlRequestCallback(
@@ -905,21 +914,16 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         if (cacheMap.keys.contains(originalUrl)) {
 
             Log.d(TAG, "cache setup, found cache directory for " + sanitizedOriginal + " -> " + cacheMap.get(originalUrl))
-            val cacheDir = File(applicationContext.cacheDir, cacheMap.get(originalUrl))
 
             try {
                 val executor: Executor = Executors.newSingleThreadExecutor()
-                val myBuilder = CronetEngine.Builder(applicationContext)
-                val cronetEngine: CronetEngine = myBuilder
-                    .enableBrotli(true)
-                    .enableHttp2(true)
-                    .enableQuic(true)
-                    .setEnvoyUrl(envoyUrl)
-                    .SetStrategy(strategy)
-                    .setStoragePath(cacheDir.absolutePath)
-                    .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1 * 1024 * 1024) // 1 megabyte
-                    .setUserAgent(DEFAULT_USER_AGENT)
-                    .build()
+                val cronetEngine: CronetEngine = CronetNetworking.buildEngine(
+                    context = applicationContext,
+                    cacheFolder = cacheMap.get(originalUrl),
+                    envoyUrl = envoyUrl,
+                    strategy = strategy,
+                    cacheSize = 1
+                )
                 val requestBuilder = cronetEngine.newUrlRequestBuilder(
                     captive_portal_url,
                     MyUrlRequestCallback(
@@ -935,7 +939,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 Log.d(TAG, "cache setup, cache cronet engine for url " + sanitizedOriginal)
                 cronetMap.put(originalUrl, cronetEngine)
             } catch (ise: IllegalStateException) {
-                Log.e(TAG, "cache setup, " + cacheDir.absolutePath + " could not be used")
+                Log.e(TAG, "cache setup, cache directory " + cacheMap.get(originalUrl) + " could not be used")
             }
         } else {
             Log.e(TAG, "cache setup, could not find cache directory for " + sanitizedOriginal)
@@ -1324,7 +1328,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                     // check whether batch is complete
                     if (batchCount > 0) {
                         Log.d(TAG, "" + batchCount + " urls remaining in current batch")
-                    } else  {
+                    } else {
                         Log.d(TAG, "current batch is empty, but a valid url was already found")
 
                         broadcastBatchStatus(ENVOY_BROADCAST_BATCH_SUCCEEDED)

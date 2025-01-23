@@ -1,0 +1,36 @@
+source 'https://github.com/CocoaPods/Specs.git'
+
+use_frameworks!
+
+def envoy
+  pod 'GreatfireEnvoy/Curl', :path => '../../', :testspecs => ['Tests']
+#  pod 'GreatfireEnvoy', :path => '../../', :testspecs => ['Tests']
+end
+
+def curl
+#  pod 'SwiftyCurl', :path => '../../../SwiftyCurl'
+end
+
+def ienvoyproxy
+#  pod 'IEnvoyProxy',
+#    :path => '../../../IEnvoyProxy'
+#    :git => 'https://github.com/tladesignz/IEnvoyProxy.git'
+#    :podspec => 'https://raw.githubusercontent.com/tladesignz/IEnvoyProxy/main/IEnvoyProxy.podspec'
+end
+
+
+target 'Envoy_Example' do
+  platform :ios, '14.0'
+
+  envoy
+  curl
+  ienvoyproxy
+end
+
+target 'Example for MacOS' do
+  platform :osx, '12'
+
+  envoy
+  curl
+  ienvoyproxy
+end
