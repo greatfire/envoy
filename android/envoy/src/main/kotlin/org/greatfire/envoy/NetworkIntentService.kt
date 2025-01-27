@@ -1,6 +1,6 @@
 package org.greatfire.envoy
 
-import IEnvoyProxy.IEnvoyProxy
+import plenipotentiary.plenipotentiary
 import android.app.IntentService
 import android.content.Context
 import android.content.Intent
@@ -91,7 +91,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     // the valid url at index 0 should be the one that was selected to use for setting up cronet
     private var validUrls = Collections.synchronizedList(mutableListOf<String>())
     private var invalidUrls = Collections.synchronizedList(mutableListOf<String>())
-    private var blockedUrls = Collections.synchronizedList(mutableListOf<String>())
 
     // Binder given to clients
     private val binder = NetworkBinder()
@@ -137,12 +136,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             // the cause of failure is reported as a timeout only if there were remaining unchecked urls
             return ENVOY_ENDED_TIMEOUT
         } else if (submittedUrls.isNullOrEmpty()) {
-            // check whether no urls were submitted because they had all been previously blocked
-            if (blockedUrls.isNullOrEmpty()) {
-                return ENVOY_ENDED_EMPTY
-            } else {
-                return ENVOY_ENDED_BLOCKED
-            }
+            return ENVOY_ENDED_EMPTY
         } else if (!invalidUrls.isNullOrEmpty()) {
             return ENVOY_ENDED_FAILED
         } else {
@@ -199,13 +193,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             ACTION_SUBMIT -> {
                 val urls = intent.getStringArrayListExtra(EXTRA_PARAM_SUBMIT)
                 val directUrls = intent.getStringArrayListExtra(EXTRA_PARAM_DIRECT)
-                val hysteriaCert = intent.getStringExtra(EXTRA_PARAM_CERT)
                 val urlSources = intent.getStringArrayListExtra(EXTRA_PARAM_SOURCES)
                 val urlInterval = intent.getIntExtra(EXTRA_PARAM_INTERVAL, 1)
                 val urlStart = intent.getIntExtra(EXTRA_PARAM_START, -1)
                 val urlEnd = intent.getIntExtra(EXTRA_PARAM_END, -1)
                 val firstAttempt = intent.getBooleanExtra(EXTRA_PARAM_FIRST, false)
-                handleActionSubmit(urls, directUrls, hysteriaCert, urlSources, urlInterval, urlStart, urlEnd, firstAttempt)
+                handleActionSubmit(urls, directUrls, urlSources, urlInterval, urlStart, urlEnd, firstAttempt)
             }
         }
     }
@@ -240,7 +233,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     private fun handleActionSubmit(
         urls: List<String>?,
         directUrls: List<String>?,
-        hysteriaCert: String?,
         urlSources: List<String>?,
         urlInterval: Int,
         urlStart: Int,
@@ -253,8 +245,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "validation started at " + validationStart)
 
             // set logging directory
-            Log.d(TAG, "set logging directory to " + filesDir.path)
-            IEnvoyProxy.setStateLocation(filesDir.path)
+            // Log.d(TAG, "set state directory to " + filesDir.path)
+            // IEnvoyProxy.setStateLocation(filesDir.path)
 
             Log.d(TAG, "clear " + additionalUrlSources.size + " previously submitted url sources")
             additionalUrlSources.clear()
@@ -286,15 +278,12 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         Log.d(TAG, "reset previous direct url count")
         directUrlCount = 0
 
-        Log.d(TAG, "clear " + blockedUrls.size + " previously blocked urls")
-        blockedUrls.clear()
-
         if (!directUrls.isNullOrEmpty()) {
             directUrls.forEach { directUrl ->
                 Log.d(TAG, "found direct url: " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
                 submittedUrls.add(directUrl)
                 directUrlCount = directUrlCount + 1
-                handleDirectRequest(directUrl, hysteriaCert)
+                handleDirectRequest(directUrl)
             }
         } else {
             Log.d(TAG, "found no direct urls to test")
@@ -303,18 +292,14 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val urlsToSubmit = mutableListOf<String>()
         if (!urls.isNullOrEmpty()) {
             urls.forEach { url ->
-                if (shouldSubmitUrl(url)) {
-                    urlsToSubmit.add(url)
-                } else {
-                    blockedUrls.add(url)
-                }
+                urlsToSubmit.add(url)
             }
         }
 
         if (urlsToSubmit.isNullOrEmpty()) {
             if (firstAttempt && !additionalUrls.isNullOrEmpty()) {
                 // if first attempt and additional urls available, submit additional urls
-                submitAdditionalUrls(hysteriaCert)
+                submitAdditionalUrls()
             } else {
                 Log.w(TAG, "no urls found to submit, cannot continue")
                 broadcastValidationFailure()
@@ -349,7 +334,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 shuffledUrls.add(0, url)
             }
 
-            handleBatch(hysteriaCert)
+            handleBatch()
         }
     }
 
@@ -381,8 +366,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    private fun handleBatch(hysteriaCert: String?,
-                            captive_portal_url: String = "https://www.google.com/generate_204") {
+    private fun handleBatch(captive_portal_url: String = "https://www.google.com/generate_204") {
 
         // under certain circumstances this can be called multiple times when a single batch is completed
         if (batchInProgress) {
@@ -444,33 +428,35 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             Log.d(TAG, "cache setup, create directory: " + cacheDir.absolutePath)
             cacheDir.mkdirs()
 
-            if (envoyUrl.startsWith("v2ws://")) {
-                Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2WS))
-                handleV2rayWsSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("v2srtp://")) {
-                Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2SRTP))
-                handleV2raySrtpSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("v2wechat://")) {
-                Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2WECHAT))
-                handleV2rayWechatSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("hysteria://")) {
-                Log.d(TAG, "found hysteria url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_HYSTERIA))
-                handleHysteriaSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("ss://")) {
-                Log.d(TAG, "found ss url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SS))
-                handleShadowsocksSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("snowflake://")) {
-                Log.d(TAG, "found snowflake url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SNOWFLAKE));
-                handleSnowflakeSubmit(envoyUrl, captive_portal_url, hysteriaCert);
-            } else if (envoyUrl.startsWith("meek://")) {
-                Log.d(TAG, "found meek url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_MEEK));
-                handleMeekSubmit(envoyUrl, captive_portal_url, hysteriaCert);
-            } else if (envoyUrl.startsWith("http")) {
+            // if (envoyUrl.startsWith("v2ws://")) {
+            //     Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2WS))
+            //     handleV2rayWsSubmit(envoyUrl, captive_portal_url)
+            // } else if (envoyUrl.startsWith("v2srtp://")) {
+            //     Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2SRTP))
+            //     handleV2raySrtpSubmit(envoyUrl, captive_portal_url)
+            // } else if (envoyUrl.startsWith("v2wechat://")) {
+            //     Log.d(TAG, "found v2ray url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_V2WECHAT))
+            //     handleV2rayWechatSubmit(envoyUrl, captive_portal_url)
+            // } else if (envoyUrl.startsWith("hysteria://")) {
+            //     Log.d(TAG, "found hysteria url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_HYSTERIA))
+            //     handleHysteriaSubmit(envoyUrl, captive_portal_url)
+            // } else if (envoyUrl.startsWith("ss://")) {
+            //     Log.d(TAG, "found ss url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SS))
+            //     handleShadowsocksSubmit(envoyUrl, captive_portal_url)
+            // } else if (envoyUrl.startsWith("snowflake://")) {
+            //     Log.d(TAG, "found snowflake url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_SNOWFLAKE));
+            //     handleSnowflakeSubmit(envoyUrl, captive_portal_url);
+            // } else if (envoyUrl.startsWith("meek://")) {
+            //     Log.d(TAG, "found meek url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_MEEK));
+            //     handleMeekSubmit(envoyUrl, captive_portal_url);
+            // } else
+
+            if (envoyUrl.startsWith("http")) {
                 Log.d(TAG, "found http url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_HTTPS))
-                handleHttpsSubmit(envoyUrl, captive_portal_url, hysteriaCert)
-            } else if (envoyUrl.startsWith("envoy")) {
-                Log.d(TAG, "found envoy url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_ENVOY))
-                handleEnvoySubmit(envoyUrl, captive_portal_url, hysteriaCert)
+                handleHttpsSubmit(envoyUrl, captive_portal_url)
+            // } else if (envoyUrl.startsWith("envoy")) {
+            //     Log.d(TAG, "found envoy url: " + UrlUtil.sanitizeUrl(envoyUrl, ENVOY_SERVICE_ENVOY))
+            //     handleEnvoySubmit(envoyUrl, captive_portal_url)
             } else {
                 // prefix check should handle this but if not, batch count may not add up
                 Log.w(TAG, "found unsupported url: " + UrlUtil.sanitizeUrl(envoyUrl))
@@ -486,31 +472,30 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         captive_portal_url: String,
         hysteriaCert: String?
     ) {
-
-        // nothing to parse at this time, leave url in string format
-
-        httpsUrls.add(url)
         Log.d(TAG, "submit http(s) url")
-        handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url, hysteriaCert)
+
+        p = plenipotentiary.NewServer()
+        p.EnvoyUrl = url
+        newUrl = p.FindEnvoyUrl()
+        httpsUrls.add(newUrl)
+
+        handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url)
     }
 
-    private fun handleEnvoySubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
+    // private fun handleEnvoySubmit(
+    //     url: String,
+    //     captive_portal_url: String
+    // ) {
 
-        // nothing to parse at this time, leave url in string format
-
-        httpsUrls.add(url)
-        Log.d(TAG, "submit envoy url")
-        handleRequest(url, url, ENVOY_SERVICE_ENVOY, captive_portal_url, hysteriaCert)
-    }
+    //     // nothing to parse at this time, leave url in string format
+    //     httpsUrls.add(url)
+    //     Log.d(TAG, "submit envoy url")
+    //     handleRequest(url, url, ENVOY_SERVICE_ENVOY, captive_portal_url)
+    // }
 
     private fun handleShadowsocksSubmit(
         url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
+        captive_portal_url: String
     ) {
 
         // nothing to parse at this time, leave url in string format
@@ -534,332 +519,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 LOCAL_URL_BASE + 1080,
                 ENVOY_SERVICE_SS,
                 captive_portal_url,
-                hysteriaCert
             )
-        }
-    }
-
-    private fun handleHysteriaSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
-        val uri = URI(url)
-        var hystKey = ""
-        val rawQuery = uri.rawQuery
-        val queries = rawQuery.split("&")
-        for (i in 0 until queries.size) {
-            val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("obfs")) {
-                hystKey = queryParts[1]
-            }
-        }
-
-        // start hysteria service
-        if (hystKey.isNullOrEmpty() || hysteriaCert.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for hysteria service are missing")
-        } else {
-            val hystCertParts = hysteriaCert.split(",")
-            var hystCert = "-----BEGIN CERTIFICATE-----\n"
-            for (i in 0 until hystCertParts.size) {
-                hystCert = hystCert + hystCertParts[i] + "\n"
-            }
-            hystCert = hystCert + "-----END CERTIFICATE-----"
-            val hysteriaPort =
-                IEnvoyProxy.startHysteria(uri.host + ":" + uri.port, hystKey, hystCert)
-            Log.d(TAG, "hysteria service started at " + LOCAL_URL_BASE + hysteriaPort)
-
-            hysteriaUrls.add(LOCAL_URL_BASE + hysteriaPort)
-
-            // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting hysteria")
-            ioScope.launch() {
-                Log.d(TAG, "start hysteria delay")
-                delay(MEDIUM_DELAY)
-                Log.d(TAG, "end hysteria delay")
-                handleRequest(
-                    url,
-                    LOCAL_URL_BASE + hysteriaPort,
-                    ENVOY_SERVICE_HYSTERIA,
-                    captive_portal_url,
-                    hysteriaCert
-                )
-            }
-        }
-    }
-
-    private fun handleV2rayWsSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
-
-        val uri = URI(url)
-        var path = ""
-        var id = ""
-        val rawQuery = uri.rawQuery
-        val queries = rawQuery.split("&")
-        for (i in 0 until queries.size) {
-            val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("path")) {
-                path = "/" + queryParts[1]
-            } else if (queryParts[0].equals("id")) {
-                id = queryParts[1]
-            }
-        }
-
-        // start v2ray websocket service
-        if (path.isNullOrEmpty() || id.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for v2ray websocket service are missing")
-        } else {
-            val v2wsPort = IEnvoyProxy.startV2RayWs(uri.host, "" + uri.port, path, id)
-            Log.d(TAG, "v2ray websocket service started at " + LOCAL_URL_BASE + v2wsPort)
-
-            v2rayWsUrls.add(LOCAL_URL_BASE + v2wsPort)
-
-            // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting v2ray websocket")
-            ioScope.launch() {
-                Log.d(TAG, "start v2ray websocket delay")
-                delay(MEDIUM_DELAY)
-                Log.d(TAG, "end v2ray websocket delay")
-                handleRequest(
-                    url,
-                    LOCAL_URL_BASE + v2wsPort,
-                    ENVOY_SERVICE_V2WS,
-                    captive_portal_url,
-                    hysteriaCert
-                )
-            }
-        }
-    }
-
-    private fun handleV2raySrtpSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
-
-        val uri = URI(url)
-        var id = ""
-        val rawQuery = uri.rawQuery
-        val queries = rawQuery.split("&")
-        for (i in 0 until queries.size) {
-            val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("id")) {
-                id = queryParts[1]
-            }
-        }
-
-        // start v2ray srtp service
-        if (id.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for v2ray srtp service are missing")
-        } else {
-            val v2srtpPort = IEnvoyProxy.startV2raySrtp(uri.host, "" + uri.port, id)
-            Log.d(TAG, "v2ray srtp service started at " + LOCAL_URL_BASE + v2srtpPort)
-
-            v2raySrtpUrls.add(LOCAL_URL_BASE + v2srtpPort)
-
-            // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting v2ray srtp")
-            ioScope.launch() {
-                Log.d(TAG, "start v2ray srtp delay")
-                delay(MEDIUM_DELAY)
-                Log.d(TAG, "end v2ray srtp delay")
-                handleRequest(
-                    url,
-                    LOCAL_URL_BASE + v2srtpPort,
-                    ENVOY_SERVICE_V2SRTP,
-                    captive_portal_url,
-                    hysteriaCert
-                )
-            }
-        }
-    }
-
-    private fun handleV2rayWechatSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
-
-        val uri = URI(url)
-        var id = ""
-        val rawQuery = uri.rawQuery
-        val queries = rawQuery.split("&")
-        for (i in 0 until queries.size) {
-            val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("id")) {
-                id = queryParts[1]
-            }
-        }
-        // start v2ray wechat service
-        if (id.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for v2ray wechat service are missing")
-        } else {
-            val v2wechatPort = IEnvoyProxy.startV2RayWechat(uri.host, "" + uri.port, id)
-            Log.d(TAG, "v2ray wechat service started at " + LOCAL_URL_BASE + v2wechatPort)
-
-            v2rayWechatUrls.add(LOCAL_URL_BASE + v2wechatPort)
-
-            // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting v2ray wechat")
-            ioScope.launch() {
-                Log.d(TAG, "start v2ray wechat delay")
-                delay(MEDIUM_DELAY)
-                Log.d(TAG, "end v2ray wechat delay")
-                handleRequest(
-                    url,
-                    LOCAL_URL_BASE + v2wechatPort,
-                    ENVOY_SERVICE_V2WECHAT,
-                    captive_portal_url,
-                    hysteriaCert
-                )
-            }
-        }
-    }
-
-    private fun handleSnowflakeSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
-
-        // borrowed from the list Tor Browser uses: https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/merge_requests/617/diffs
-        // too many is a problem, both of these seem to work for us
-        var ice = "stun:stun.l.google.com:19302,stun:stun.sonetel.com:3478,stun:stun.voipgate.com:3478"
-        // additional hardcoded snowflake parameters
-        val logFile = ""
-        val logToStateDir = false
-        val keepLocalAddresses = true
-        val unsafeLogging = true
-        val maxPeers = 1L  // With >1 our test client can never make more than one
-
-        val uri = URI(url)
-        var brokerUrl = ""
-        var ampCache = ""
-        var front = ""
-        var tunnelUrl = ""
-        val rawQuery = uri.rawQuery
-        val queries = rawQuery.split("&")
-        for (i in 0 until queries.size) {
-            val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("broker")) {
-                brokerUrl = URLDecoder.decode(queryParts[1], "UTF-8")
-            } else if (queryParts[0].equals("ampCache")) {
-                ampCache = URLDecoder.decode(queryParts[1], "UTF-8")
-            } else if (queryParts[0].equals("front")) {
-                front = queryParts[1]
-                // if needed, generate randomized host name prefix
-                if (front.startsWith('.')) {
-                    front = randomString().plus(front)
-                    Log.d(TAG, "front updated with random prefix: " + front)
-                } else {
-                    Log.d(TAG, "front included as-is: " + front)
-                }
-            } else if (queryParts[0].equals("tunnel")) {
-                // this is purposfully not decocded to add to an Envoy URL
-                tunnelUrl = queryParts[1]
-            } else if (queryParts[0].equals("ice")) {
-                // allow overriding the STUN server list
-                ice = URLDecoder.decode(queryParts[1], "UTF-8")
-            }
-        }
-        // start snowflake service
-        if (brokerUrl.isNullOrEmpty() || tunnelUrl.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for snowflake service are missing")
-        } else {
-            val snowflakePort = IEnvoyProxy.startSnowflake(
-                ice, brokerUrl, front, ampCache, logFile, logToStateDir, keepLocalAddresses,
-                unsafeLogging, maxPeers)
-            val urlString = SNOWFLAKE_URL_BASE_1 + tunnelUrl + SNOWFLAKE_URL_BASE_2 + snowflakePort
-
-            Log.d(TAG, "snowflake service started at " + urlString)
-
-            snowflakeUrls.add(urlString)
-
-            // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting snowflake")
-            ioScope.launch() {
-                Log.d(TAG, "start snowflake delay")
-                delay(SHORT_DELAY)
-                Log.d(TAG, "end snowflake delay")
-                handleRequest(
-                    url,
-                    urlString,
-                    ENVOY_SERVICE_SNOWFLAKE,
-                    captive_portal_url,
-                    hysteriaCert
-                )
-            }
-        }
-    }
-
-    private fun handleMeekSubmit(
-        url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
-    ) {
-
-        val uri = URI(url)
-        var meekUrl = ""
-        var meekFront = ""
-        var meekTunnel = ""
-        val rawQuery = uri.rawQuery
-        val queries = rawQuery.split("&")
-        for (i in 0 until queries.size) {
-            val queryParts = queries[i].split("=")
-            if (queryParts[0].equals("url")) {
-                meekUrl = URLDecoder.decode(queryParts[1], "UTF-8")
-            } else if (queryParts[0].equals("front")) {
-                meekFront = URLDecoder.decode(queryParts[1], "UTF-8")
-                // if needed, generate randomized host name prefix
-                if (meekFront.startsWith('.')) {
-                    meekFront = randomString().plus(meekFront)
-                    Log.d(TAG, "front updated with random prefix: " + meekFront)
-                } else {
-                    Log.d(TAG, "front included as-is: " + meekFront)
-                }
-            } else if (queryParts[0].equals("tunnel")) {
-                // this is purposfully not decocded to add to an Envoy URL
-                meekTunnel = queryParts[1]
-            }
-        }
-        // start meek service
-        if (meekUrl.isNullOrEmpty() || meekFront.isNullOrEmpty() || meekTunnel.isNullOrEmpty()) {
-            Log.e(TAG, "some arguments required for meek service are missing")
-        } else {
-
-            // set the login params
-            val meekUserString = "url=" + meekUrl + ";front=" + meekFront
-            val nullCharString = "" + Char.MIN_VALUE
-
-            // additional hardcoded meek parameters
-            val logLevel = "ERROR"
-            val enableLogging = false
-            val unsafeLogging = false
-
-            val meekPort = IEnvoyProxy.startMeek(meekUserString, nullCharString, logLevel, enableLogging, unsafeLogging)
-            val urlString = MEEK_URL_BASE_1 + meekTunnel + MEEK_URL_BASE_2 + meekPort
-
-            Log.d(TAG, "meek service started at " + urlString)
-
-            meekUrls.add(urlString)
-
-            // method returns port immediately but service is not ready immediately
-            Log.d(TAG, "submit url after a short delay for starting meek")
-            ioScope.launch() {
-                Log.d(TAG, "start meek delay")
-                delay(SHORT_DELAY)
-                Log.d(TAG, "end meek delay")
-                handleRequest(
-                    url,
-                    urlString,
-                    ENVOY_SERVICE_MEEK,
-                    captive_portal_url,
-                    hysteriaCert
-                )
-            }
         }
     }
 
@@ -895,8 +555,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         val request: UrlRequest = requestBuilder.build()
         request.start()
     }
-
-    // TODO: do we just hard code captive portal url or add the default here?
 
     private fun handleRequest(
         originalUrl: String,
@@ -950,42 +608,43 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         Log.d(TAG, UrlUtil.sanitizeUrl(envoyUrl, envoyService) + " is redundant or invalid, cleanup and/or stop services if needed")
 
-        if (v2rayWsUrls.contains(envoyUrl)) {
-            v2rayWsUrls.remove(envoyUrl)
-            if (v2rayWsUrls.isEmpty()) {
-                Log.d(TAG, "no v2rayWs urls remaining, stop service")
-                IEnvoyProxy.stopV2RayWs()
-            } else {
-                Log.d(TAG, "" + v2rayWsUrls.size + " v2rayWs urls remaining, service in use")
-            }
-        } else if (v2raySrtpUrls.contains(envoyUrl)) {
-            v2raySrtpUrls.remove(envoyUrl)
-            if (v2raySrtpUrls.isEmpty()) {
-                Log.d(TAG, "no v2raySrtp urls remaining, stop service")
-                IEnvoyProxy.stopV2RaySrtp()
-            } else {
-                Log.d(TAG, "" + v2raySrtpUrls.size + " v2raySrtp urls remaining, service in use")
-            }
+        // if (v2rayWsUrls.contains(envoyUrl)) {
+        //     v2rayWsUrls.remove(envoyUrl)
+        //     if (v2rayWsUrls.isEmpty()) {
+        //         Log.d(TAG, "no v2rayWs urls remaining, stop service")
+        //         IEnvoyProxy.stopV2RayWs()
+        //     } else {
+        //         Log.d(TAG, "" + v2rayWsUrls.size + " v2rayWs urls remaining, service in use")
+        //     }
+        // } else if (v2raySrtpUrls.contains(envoyUrl)) {
+        //     v2raySrtpUrls.remove(envoyUrl)
+        //     if (v2raySrtpUrls.isEmpty()) {
+        //         Log.d(TAG, "no v2raySrtp urls remaining, stop service")
+        //         IEnvoyProxy.stopV2RaySrtp()
+        //     } else {
+        //         Log.d(TAG, "" + v2raySrtpUrls.size + " v2raySrtp urls remaining, service in use")
+        //     }
 
-        } else if (v2rayWechatUrls.contains(envoyUrl)) {
-            v2rayWechatUrls.remove(envoyUrl)
-            if (v2rayWechatUrls.isEmpty()) {
-                Log.d(TAG, "no v2rayWechat urls remaining, stop service")
-                IEnvoyProxy.stopV2RayWechat()
-            } else {
-                Log.d(TAG, "" + v2rayWechatUrls.size + " v2rayWechat urls remaining, service in use")
-            }
+        // } else if (v2rayWechatUrls.contains(envoyUrl)) {
+        //     v2rayWechatUrls.remove(envoyUrl)
+        //     if (v2rayWechatUrls.isEmpty()) {
+        //         Log.d(TAG, "no v2rayWechat urls remaining, stop service")
+        //         IEnvoyProxy.stopV2RayWechat()
+        //     } else {
+        //         Log.d(TAG, "" + v2rayWechatUrls.size + " v2rayWechat urls remaining, service in use")
+        //     }
 
-        } else if (hysteriaUrls.contains(envoyUrl)) {
-            hysteriaUrls.remove(envoyUrl)
-            if (hysteriaUrls.isEmpty()) {
-                Log.d(TAG, "no hysteria urls remaining, stop service")
-                IEnvoyProxy.stopHysteria()
-            } else {
-                Log.d(TAG, "" + hysteriaUrls.size + " hysteria urls remaining, service in use")
-            }
+        // } else if (hysteriaUrls.contains(envoyUrl)) {
+        //     hysteriaUrls.remove(envoyUrl)
+        //     if (hysteriaUrls.isEmpty()) {
+        //         Log.d(TAG, "no hysteria urls remaining, stop service")
+        //         IEnvoyProxy.stopHysteria()
+        //     } else {
+        //         Log.d(TAG, "" + hysteriaUrls.size + " hysteria urls remaining, service in use")
+        //     }
 
-        } else if (shadowsocksUrls.contains(envoyUrl)) {
+        // } else
+        if (shadowsocksUrls.contains(envoyUrl)) {
             shadowsocksUrls.remove(envoyUrl)
             if (shadowsocksUrls.isEmpty()) {
                 Log.d(TAG, "no shadowsocks urls remaining, stop service")
@@ -1001,23 +660,23 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             } else {
                 Log.d(TAG, "" + httpsUrls.size + " https urls remaining (no service)")
             }
-        } else if (snowflakeUrls.contains(envoyUrl)) {
-            snowflakeUrls.remove(envoyUrl)
-            if (snowflakeUrls.isEmpty()) {
-                Log.d(TAG, "no snowflake urls remaining, stop service")
-                IEnvoyProxy.stopSnowflake()
-            } else {
-                Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, service in use")
-            }
-        } else if (meekUrls.contains(envoyUrl)) {
-            meekUrls.remove(envoyUrl)
-            if (meekUrls.isEmpty()) {
-                Log.d(TAG, "no meek urls remaining, stop service")
-                // stop lyrebird for both meek/obfs4
-                IEnvoyProxy.stopLyrebird()
-            } else {
-                Log.d(TAG, "" + meekUrls.size + " meek urls remaining, service in use")
-            }
+        // } else if (snowflakeUrls.contains(envoyUrl)) {
+        //     snowflakeUrls.remove(envoyUrl)
+        //     if (snowflakeUrls.isEmpty()) {
+        //         Log.d(TAG, "no snowflake urls remaining, stop service")
+        //         IEnvoyProxy.stopSnowflake()
+        //     } else {
+        //         Log.d(TAG, "" + snowflakeUrls.size + " snowflake urls remaining, service in use")
+        //     }
+        // } else if (meekUrls.contains(envoyUrl)) {
+        //     meekUrls.remove(envoyUrl)
+        //     if (meekUrls.isEmpty()) {
+        //         Log.d(TAG, "no meek urls remaining, stop service")
+        //         // stop lyrebird for both meek/obfs4
+        //         IEnvoyProxy.stopLyrebird()
+        //     } else {
+        //         Log.d(TAG, "" + meekUrls.size + " meek urls remaining, service in use")
+        //     }
         } else {
             Log.d(TAG, "url was not previously cached")
         }
@@ -1196,9 +855,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         EXTRA_PARAM_DIRECT,
                         directUrls as java.util.ArrayList<String>?
                     )
-                }
-                if (!hysteriaCert.isNullOrEmpty()) {
-                    putExtra(EXTRA_PARAM_CERT, hysteriaCert)
                 }
                 if (!urlSources.isNullOrEmpty()) {
                     putStringArrayListExtra(
@@ -1468,7 +1124,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
                 if (checkValidationTime()) {
                     // time remaining, continue
-                    handleBatch(hysteriaCert)
+                    handleBatch()
                 } else {
                     // time expired, do not continue
                     Log.w(TAG, "time expired, cannot continue with next batch")
@@ -1487,7 +1143,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 } else if (checkValidationTime()) {
                     // all urls in original submission have failed, submit additional urls for validation
                     Log.w(TAG, "all urls submitted have failed, validate additional urls")
-                    submitAdditionalUrls(hysteriaCert)
+                    submitAdditionalUrls()
                 } else {
                     // time expired, do not continue
                     Log.w(TAG, "time expired, cannot continue with additional urls")
