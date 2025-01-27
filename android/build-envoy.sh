@@ -34,7 +34,7 @@ echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "ndk;${NDK_VERSION}"
 echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "cmake;${CMAKE_VERSION}"
 
 set +o pipefail # sdkmanager --licenses "fails" if all licenses are already accepted
-yes | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses
+yes | $sdkmanager  --sdk_root=${ANDROID_SDK_ROOT} --sdk_root=${ANDROID_SDK_ROOT} --licenses
 set -o pipefail
 
 BUILD=${1:-release}
