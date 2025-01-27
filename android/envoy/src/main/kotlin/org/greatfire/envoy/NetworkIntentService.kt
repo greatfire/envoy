@@ -469,12 +469,11 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     private fun handleHttpsSubmit(
         url: String,
-        captive_portal_url: String,
-        hysteriaCert: String?
+        captive_portal_url: String
     ) {
         Log.d(TAG, "submit http(s) url")
 
-        p = plenipotentiary.NewServer()
+        val p = plenipotentiary.NewServer()
         p.EnvoyUrl = url
         newUrl = p.FindEnvoyUrl()
         httpsUrls.add(newUrl)
@@ -534,8 +533,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     // test direct connection to avoid using proxy resources when not required
     private fun handleDirectRequest(
-        directUrl: String,
-        hysteriaCert: String?
+        directUrl: String
     ) {
 
         Log.d(TAG, "create direct request to " + UrlUtil.sanitizeUrl(directUrl, ENVOY_SERVICE_DIRECT))
@@ -547,8 +545,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             MyUrlRequestCallback(
                 directUrl,
                 directUrl,
-                ENVOY_SERVICE_DIRECT,
-                hysteriaCert
+                ENVOY_SERVICE_DIRECT
             ),
             executor
         )
@@ -561,7 +558,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         envoyUrl: String,
         envoyService: String,
         captive_portal_url: String,
-        hysteriaCert: String?,
         strategy: Int = 0
     ) {
 
@@ -588,7 +584,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                         originalUrl,
                         envoyUrl,
                         envoyService,
-                        hysteriaCert
                     ),
                     executor
                 )
@@ -773,7 +768,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
         }
     }
 
-    fun submitAdditionalUrls(hysteriaCert: String?) {
+    fun submitAdditionalUrls() {
         if (additionalUrls.isNullOrEmpty()) {
             // this check may be redundant
             Log.w(TAG, "no additional urls to submit")
@@ -784,7 +779,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             val localIntent = Intent(ENVOY_BROADCAST_VALIDATION_CONTINUED)
             LocalBroadcastManager.getInstance(this@NetworkIntentService).sendBroadcast(localIntent)
 
-            submitAdditional(this@NetworkIntentService, additionalUrls, hysteriaCert)
+            submitAdditional(this@NetworkIntentService, additionalUrls)
         }
     }
 
@@ -812,26 +807,25 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             context: Context,
             urls: List<String>,
             directUrls: List<String>?,
-            hysteriaCert: String?,
             urlSources: List<String>?,
             urlInterval: Int,
             urlStart: Int,
             urlEnd: Int
         ) {
             Log.d(TAG, "jvm submit")
-            processSubmit(context, urls, directUrls, hysteriaCert, urlSources, urlInterval, urlStart, urlEnd, true)
+            processSubmit(context, urls, directUrls, urlSources, urlInterval, urlStart, urlEnd, true)
         }
 
         @JvmStatic
         fun submit(context: Context, urls: List<String>) {
             Log.d(TAG, "backwards compatible submit")
-            processSubmit(context, urls, null, null, null, 1, -1, -1, true)
+            processSubmit(context, urls, null, null, 1, -1, -1, true)
         }
 
         // no jvm annotation, not for external use
-        fun submitAdditional(context: Context, urls: List<String>, hysteriaCert: String?) {
+        fun submitAdditional(context: Context, urls: List<String>) {
             Log.d(TAG, "dnstt submit")
-            processSubmit(context, urls, null, hysteriaCert, null, 1, -1, -1, false)
+            processSubmit(context, urls, null, null, 1, -1, -1, false)
         }
 
         // no jvm annotation, not for external use
@@ -839,7 +833,6 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
             context: Context,
             urls: List<String>,
             directUrls: List<String>?,
-            hysteriaCert: String?,
             urlSources: List<String>?,
             urlInterval: Int,
             urlStart: Int,
@@ -879,8 +872,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
     inner class MyUrlRequestCallback(private val originalUrl: String,
                                      private val envoyUrl: String,
-                                     private val envoyService: String,
-                                     private val hysteriaCert: String?) : UrlRequest.Callback() {
+                                     private val envoyService: String) : UrlRequest.Callback() {
 
         override fun onRedirectReceived(
             request: UrlRequest?,
