@@ -480,7 +480,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         Log.d(TAG, "using Envoy URL: " + newUrl)
 
-        handleRequest(newUrl, newUrl, ENVOY_SERVICE_HTTPS, captive_portal_url)
+        handleRequest(url, newUrl, ENVOY_SERVICE_HTTPS, captive_portal_url)
     }
 
     // private fun handleEnvoySubmit(
