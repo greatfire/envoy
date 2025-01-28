@@ -475,8 +475,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
 
         val p = Plenipotentiary.newPlenipotentiary()
         p.envoyUrl = url
-        var newUrl = p.findEnvoyUrl()
+        var newUrl = p.findEnvoyUrl(filesDir.path)
         httpsUrls.add(newUrl)
+
+        Log.d(TAG, "using Envoy URL: " + newUrl)
 
         handleRequest(url, url, ENVOY_SERVICE_HTTPS, captive_portal_url)
     }
