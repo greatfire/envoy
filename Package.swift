@@ -10,14 +10,14 @@ let package = Package(
         .library(name: "GreatfireEnvoy", targets: ["GreatfireEnvoy"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/greatfire/SwiftyCurl", from: "0.4.0"),
+        .package(url: "https://github.com/greatfire/SwiftyCurl", from: "0.4.1"),
     ],
     targets: [
         .binaryTarget(
             name: "IEnvoyProxy",
-            url: "https://github.com/stevenmcdonald/IEnvoyProxy/releases/download/e3.0.0/IEnvoyProxy.xcframework.zip",
+            url: "https://github.com/stevenmcdonald/IEnvoyProxy/releases/download/e3.3.0/IEnvoyProxy.xcframework.zip",
             // swift package compute-checksum IEnvoyProxy.xcframework.zip
-            checksum: "940adeb9721048e590f01a6bd652412756715c197f6a82c14729785c2c346b4a"),
+            checksum: "7b8cddc3d332c2b64dfd40cf63a79fc21b76600aab53891c588f3169cfc0aae9"),
         .target(
             name: "GreatfireEnvoy",
             dependencies: [
