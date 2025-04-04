@@ -1,0 +1,223 @@
+ components/cronet/url_request_context_config.cc | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ components/cronet/url_request_context_config.h  | 32 ++++++++++++++++++++++++++++++++
+ net/ssl/ssl_config_service_defaults.cc          |  5 +++++
+ net/ssl/ssl_config_service_defaults.h           |  2 ++
+ 4 files changed, 103 insertions(+)
+
+diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
+index 5ef2058149f28..90ad5c47ee772 100644
+--- a/components/cronet/url_request_context_config.cc
++++ b/components/cronet/url_request_context_config.cc
+@@ -34,6 +34,9 @@
+ #include "net/nqe/network_quality_estimator_params.h"
+ #include "net/quic/set_quic_flag.h"
+ #include "net/socket/ssl_client_socket.h"
++#include "net/ssl/ssl_cipher_suite_names.h"
++#include "net/ssl/ssl_config.h"
++#include "net/ssl/ssl_config_service_defaults.h"
+ #include "net/ssl/ssl_key_logger_impl.h"
+ #include "net/third_party/quiche/src/quiche/quic/core/quic_packets.h"
+ #include "net/third_party/quiche/src/quiche/quic/core/quic_tag.h"
+@@ -265,6 +268,9 @@ URLRequestContextConfig::URLRequestContextConfig(
+     const std::string& storage_path,
+     const std::string& accept_language,
+     const std::string& user_agent,
++    const std::string& disabled_cipher_suites,
++    const uint16_t ssl_version_min,
++    const uint16_t ssl_version_max,
+     base::Value::Dict experimental_options,
+     std::unique_ptr<net::CertVerifier> mock_cert_verifier,
+     bool enable_network_quality_estimator,
+@@ -279,6 +285,9 @@ URLRequestContextConfig::URLRequestContextConfig(
+       storage_path(storage_path),
+       accept_language(accept_language),
+       user_agent(user_agent),
++      disabled_cipher_suites(disabled_cipher_suites),
++      ssl_version_min(ssl_version_min),
++      ssl_version_max(ssl_version_max),
+       mock_cert_verifier(std::move(mock_cert_verifier)),
+       enable_network_quality_estimator(enable_network_quality_estimator),
+       bypass_public_key_pinning_for_local_trust_anchors(
+@@ -305,6 +314,9 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+     const std::string& storage_path,
+     const std::string& accept_language,
+     const std::string& user_agent,
++    const std::string& disabled_cipher_suites,
++    const uint16_t ssl_version_min,
++    const uint16_t ssl_version_max,
+     const std::string& unparsed_experimental_options,
+     std::unique_ptr<net::CertVerifier> mock_cert_verifier,
+     bool enable_network_quality_estimator,
+@@ -323,6 +335,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+   return base::WrapUnique(new URLRequestContextConfig(
+       enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
+       load_disable_cache, storage_path, accept_language, user_agent,
++      disabled_cipher_suites, ssl_version_min, ssl_version_max,
+       std::move(experimental_options).value(), std::move(mock_cert_verifier),
+       enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+@@ -800,6 +813,56 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+   }
+   context_builder->set_accept_language(accept_language);
+   context_builder->set_user_agent(user_agent);
++
++  net::SSLContextConfig ssl_context_config;
++
++  // TEMP: replace local parameter with this string for testing
++  //   first 2 values should be parsed, 3rd should fail
++  // std::string disabled_cipher_string = "0xc024,0xc02f,0002";
++  if (!disabled_cipher_suites.empty()) {
++    std::cerr << "TEMP - got cipher suite string: " << disabled_cipher_suites << std::endl;
++    auto cipher_strings = base::SplitString(disabled_cipher_suites, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++    // see net::ParseCipherSuites(cipher_strings);
++    std::vector<uint16_t> cipher_suites;
++    cipher_suites.reserve(cipher_strings.size());
++
++    for (auto it = cipher_strings.begin(); it != cipher_strings.end(); ++it) {
++      uint16_t cipher_suite = 0;
++      if (!net::ParseSSLCipherString(*it, &cipher_suite)) {
++        std::cerr << "TEMP - ignoring unrecognized or unparsable cipher suite: " << *it << std::endl;
++        continue;
++      } else {
++        std::cerr << "TEMP - include parsed cipher suite: " << *it << std::endl;
++      }
++      cipher_suites.push_back(cipher_suite);
++    }
++    std::sort(cipher_suites.begin(), cipher_suites.end());
++
++    ssl_context_config.disabled_cipher_suites =  cipher_suites;
++  } else {
++    std::cerr << "TEMP - no cipher suite string." << std::endl;
++  }
++
++  // TEMP: replace local parameters with these strings for testing
++  //   min > max means all versions rejected, should result in error
++  // uint16_t min = net::SSL_PROTOCOL_VERSION_TLS1_3;
++  // uint16_t max = net::SSL_PROTOCOL_VERSION_TLS1_2;
++  if (ssl_version_min != net::kDefaultSSLVersionMin) {
++    std::cerr << "TEMP - set min value" << std::endl;
++    ssl_context_config.version_min = ssl_version_min;
++  } else {
++    std::cerr << "TEMP - keep default min value" << std::endl;
++  }
++  if (ssl_version_max != net::kDefaultSSLVersionMax) {
++    std::cerr << "TEMP - set max value" << std::endl;
++    ssl_context_config.version_max = ssl_version_max;
++  } else {
++    std::cerr << "TEMP - keep default max value" << std::endl;
++  }
++
++  auto ssl_config_service_ptr = std::make_unique<net::SSLConfigServiceDefaults>(ssl_context_config);
++  context_builder->set_ssl_config_service(std::move(ssl_config_service_ptr));
++
+   net::HttpNetworkSessionParams session_params;
+   session_params.enable_http2 = enable_spdy;
+   session_params.enable_quic = enable_quic;
+@@ -830,6 +893,7 @@ URLRequestContextConfigBuilder::Build() {
+   return URLRequestContextConfig::CreateURLRequestContextConfig(
+       enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
+       load_disable_cache, storage_path, accept_language, user_agent,
++      disabled_cipher_suites, ssl_version_min, ssl_version_max,
+       experimental_options, std::move(mock_cert_verifier),
+       enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+diff --git a/components/cronet/url_request_context_config.h b/components/cronet/url_request_context_config.h
+index 3ce700f953184..929c9e34b6904 100644
+--- a/components/cronet/url_request_context_config.h
++++ b/components/cronet/url_request_context_config.h
+@@ -16,6 +16,7 @@
+ #include "net/base/network_handle.h"
+ #include "net/cert/cert_verifier.h"
+ #include "net/nqe/effective_connection_type.h"
++#include "net/ssl/ssl_config.h"
+ #include "url/origin.h"
+ 
+ namespace net {
+@@ -127,6 +128,13 @@ struct URLRequestContextConfig {
+   // User-Agent request header field.
+   const std::string user_agent;
+ 
++  // cipher suite config field.
++  const std::string disabled_cipher_suites;
++
++  // ssl version config fields.
++  const uint16_t ssl_version_min;
++  const uint16_t ssl_version_max;
++
+   // Certificate verifier for testing.
+   std::unique_ptr<net::CertVerifier> mock_cert_verifier;
+ 
+@@ -199,6 +207,14 @@ struct URLRequestContextConfig {
+       const std::string& accept_language,
+       // User-Agent request header field.
+       const std::string& user_agent,
++
++      // cipher suite config field.
++      const std::string& disabled_cipher_suites,
++
++      // ssl version config fields.
++      const uint16_t ssl_version_min,
++      const uint16_t ssl_version_max,
++
+       // JSON encoded experimental options.
+       const std::string& unparsed_experimental_options,
+       // MockCertVerifier to use for testing purposes.
+@@ -233,6 +249,14 @@ struct URLRequestContextConfig {
+       const std::string& accept_language,
+       // User-Agent request header field.
+       const std::string& user_agent,
++
++      // cipher suite config field.
++      const std::string& disabled_cipher_suites,
++
++      // ssl version config fields.
++      const uint16_t ssl_version_min,
++      const uint16_t ssl_version_max,
++
+       // Parsed experimental options.
+       base::Value::Dict experimental_options,
+       // MockCertVerifier to use for testing purposes.
+@@ -301,6 +325,14 @@ struct URLRequestContextConfigBuilder {
+   std::string accept_language = "";
+   // User-Agent request header field.
+   std::string user_agent = "";
++
++  // cipher suite config field.
++  std::string disabled_cipher_suites = "";
++
++  // ssl version config fields.
++  const uint16_t ssl_version_min = net::kDefaultSSLVersionMin;
++  const uint16_t ssl_version_max = net::kDefaultSSLVersionMax;
++
+   // Experimental options encoded as a string in a JSON format containing
+   // experiments and their corresponding configuration options. The format
+   // is a JSON object with the name of the experiment as the key, and the
+diff --git a/net/ssl/ssl_config_service_defaults.cc b/net/ssl/ssl_config_service_defaults.cc
+index 7d137e59662d3..099b4ef8209d7 100644
+--- a/net/ssl/ssl_config_service_defaults.cc
++++ b/net/ssl/ssl_config_service_defaults.cc
+@@ -9,6 +9,11 @@ namespace net {
+ SSLConfigServiceDefaults::SSLConfigServiceDefaults() = default;
+ SSLConfigServiceDefaults::~SSLConfigServiceDefaults() = default;
+ 
++SSLConfigServiceDefaults::SSLConfigServiceDefaults(SSLContextConfig default_config): default_config_(default_config) {
++  // TODO: copied commented line from patch, delete?
++  // default_config.disabled_cipher_suites = default_config_.disabled_cipher_suites;
++}
++
+ SSLContextConfig SSLConfigServiceDefaults::GetSSLContextConfig() {
+   return default_config_;
+ }
+diff --git a/net/ssl/ssl_config_service_defaults.h b/net/ssl/ssl_config_service_defaults.h
+index 32770a45d4f24..d6c7dde1d1a03 100644
+--- a/net/ssl/ssl_config_service_defaults.h
++++ b/net/ssl/ssl_config_service_defaults.h
+@@ -24,6 +24,8 @@ class NET_EXPORT SSLConfigServiceDefaults : public SSLConfigService {
+ 
+   ~SSLConfigServiceDefaults() override;
+ 
++  SSLConfigServiceDefaults(SSLContextConfig default_config);
++
+   // Returns the default SSL config settings.
+   SSLContextConfig GetSSLContextConfig() override;
+ 
