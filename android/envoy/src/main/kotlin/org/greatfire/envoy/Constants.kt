@@ -56,4 +56,18 @@ const val ENVOY_ENDED_FAILED = "failed"
 const val ENVOY_ENDED_TIMEOUT = "timeout"
 const val ENVOY_ENDED_UNKNOWN = "unknown"
 
+// EnvoyConnectWorker test types
+const val ENVOY_TEST_DIRECT = "org.greatfire.envoy.test.DIRECT"
+// do we want to support/test all these cases?
+const val ENVOY_TEST_OKHTTP_ENVOY = "org.greatfire.envoy.test.OKHTTP_ENVOY"
+const val ENVOY_TEST_CRONET_ENVOY = "org.greatfire.envoy.test.CRONET_ENVOY"
+const val ENVOY_TEST_OKHTTP_PROXY = "org.greatfire.envoy.test.OKHTTP_PROXY"
+const val ENVOY_TEST_CRONET_PROXY = "org.greatfire.envoy.test.CRONET_PROXY"
+const val ENVOY_TEST_HYSTERIA2 = "org.greatfire.envoy.test.HYSTERIA2"
+
+//
+const val ENVOY_ACTIVE_NONE = "org.greatfire.envoy.active.NONE"
+const val ENVOY_ACTIVE_OKHTTP_ENVOY = "org.greatfire.envoy.active.OKHTTP_ENVOY"
+const val ENVOY_ACTIVE_OKHTTP_PROXY = "org.greatfire.envoy.active.OKHTTP_PROXY"
+
 class Constants {}
