@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import java.net.URL
+import java.net.URI
 import kotlinx.coroutines.*
 
 /*
@@ -18,47 +18,44 @@ class EnvoyConnectWorker(
         private const val TAG = "EnvoyConnectWorker"
     }
 
-    private val testUrls = ArrayDeque(listOf<String>(""))
+    private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
 
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
-    suspend fun testUrl(id: Int) {
-        var url = testUrls.removeFirstOrNull()
+    suspend fun testUrls(id: Int) {
+        var test = envoyTests.removeFirstOrNull()
 
         val WTAG = TAG + "-" + id
 
-        Log.d(WTAG, "worker: " + id)
-        Log.d(WTAG, "Thread: " + Thread.currentThread().name)
+        // Log.d(WTAG, "worker: " + id)
+        // Log.d(WTAG, "Thread: " + Thread.currentThread().name)
 
-        while (!url.isNullOrEmpty()) {
-            val proxyUrl = URL(url)
-            Log.d(WTAG, "Testing URL: " + url)
+        while (test != null) {
+            val proxyUri = URI(test.url)
+            Log.d(WTAG, "Testing type: " + test.testType + " URL: " + test.url)
 
-           val res = when (proxyUrl.getProtocol()) {
-                // "direct" -> {
-                //     val result = EnvoyNetworking.testDirectConnection()
-                //     Log.d(WTAG, "Direct connection worked? " + result)
-                //     EnvoyNetworking.setDirect(result)
-                //     result
-                // }
-                "http", "https" -> {
-                    // XXX assume this is an Envoy proxy for now
-                    Log.d(WTAG, "Testing Envoy URL")
-                    EnvoyNetworking.testEnvoyOkHttp(proxyUrl)
+            val res = when(test.testType) {
+                ENVOY_TEST_DIRECT -> {
+                    Log.d(WTAG, "Testing Direct Connection")
+                    EnvoyNetworking.testDirectConnection()
                 }
-                "socks5" -> {
-                    Log.d(WTAG, "Testing SOCKS5")
-                    EnvoyNetworking.testStandardProxy(proxyUrl)
+                ENVOY_TEST_OKHTTP_ENVOY -> {
+                    Log.d(WTAG, "Testing Envoy URL")
+                    EnvoyNetworking.testEnvoyOkHttp(proxyUri)
+                }
+                ENVOY_TEST_OKHTTP_PROXY -> {
+                    Log.d(WTAG, "Testing Proxyed")
+                    EnvoyNetworking.testStandardProxy(proxyUri)
                 }
                 else -> {
-                    Log.e(WTAG, "Unsupported protocol: " + proxyUrl.getProtocol())
+                    Log.e(WTAG, "Unsupported test type: " + test.testType)
                     false
                 }
             }
 
-            Log.d(WTAG, "URL: " + url + " worked?: " + res)
-            url = testUrls.removeFirstOrNull()
+            Log.d(WTAG, "URL: " + test.url + " worked?: " + res)
+            test = envoyTests.removeFirstOrNull()
         }
 
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
@@ -68,7 +65,7 @@ class EnvoyConnectWorker(
         for (i in 1..EnvoyNetworking.concurrency) {
             Log.d(TAG, "Launching worker: " + i)
             var job = launch(Dispatchers.IO) {
-                testUrl(i)
+                testUrls(i)
             }
             jobs.add(job)
         }
@@ -84,18 +81,20 @@ class EnvoyConnectWorker(
 
     override suspend fun doWork(): Result {
         // reset things
-        testUrls.clear()
+        envoyTests.clear()
         jobs.clear()
 
         // test direct connection first
         if (EnvoyNetworking.directUrl != "") {
-            testUrls.add(EnvoyNetworking.directUrl)
+            // testUrls.add(EnvoyNetworking.directUrl)
+            val test = EnvoyTest(ENVOY_TEST_DIRECT, EnvoyNetworking.directUrl)
+            envoyTests.add(test)
         }
         // shuffle the rest of the URLs
-        testUrls.addAll(EnvoyNetworking.envoyUrls.shuffled())
+        envoyTests.addAll(EnvoyNetworking.envoyTests.shuffled())
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
-                + testUrls.size
+                + envoyTests.size
                 + " URLs to test")
 
         startWorkers()

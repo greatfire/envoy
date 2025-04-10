@@ -1,3 +1,5 @@
+// OkHttp Interceptor that services all requests using Envoy's Cronet
+
 package org.greatfire.envoy
 
 import android.util.Log
