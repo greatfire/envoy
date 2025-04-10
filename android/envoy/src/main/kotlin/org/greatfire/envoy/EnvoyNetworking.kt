@@ -33,7 +33,8 @@ class EnvoyNetworking {
         var envoyConnected = false
         var useDirect = false
         var activeUrl: String = ""
-        var activeType: String = ENVOY_ACTIVE_NONE
+        // this value is essentially meaningless before we try connecting
+        var activeType: String = ENVOY_PROXY_DIRECT
 
         var appConnectionsWorking = false
 
@@ -48,17 +49,15 @@ class EnvoyNetworking {
         // and an Envoy proxy URL to the list to test
         @JvmStatic
         fun addEnvoyUrl(url: String): Companion {
-            // envoyUrls.add(url)
-
             val uri = URI(url)
 
             when (uri.getScheme()) {
                 "http", "https" -> {
                     envoyTests.add(
-                        EnvoyTest(ENVOY_TEST_OKHTTP_ENVOY, url))
+                        EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, url))
                 }
                 "hysteria2" -> {
-                    envoyTests.add(EnvoyTest(ENVOY_TEST_HYSTERIA2, url))
+                    envoyTests.add(EnvoyTest(ENVOY_PROXY_HYSTERIA2, url))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
@@ -72,7 +71,7 @@ class EnvoyNetworking {
         @JvmStatic
         fun addProxyUrl(url: String): Companion {
 
-            val test = EnvoyTest(ENVOY_TEST_OKHTTP_PROXY, url)
+            val test = EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, url)
             envoyTests.add(test)
 
             return Companion
@@ -125,6 +124,10 @@ class EnvoyNetworking {
 
         // The connection worker found a successful connection
         fun connected(newActiveType: String, newActiveUrl: String) {
+            Log.i(TAG, "Envoy Connected!")
+            Log.d(TAG, "activeType: " + activeType)
+            Log.d(TAG, "URL: " + newActiveUrl)
+
             envoyConnected = true // 🎉
             activeType = newActiveType
             activeUrl = newActiveUrl

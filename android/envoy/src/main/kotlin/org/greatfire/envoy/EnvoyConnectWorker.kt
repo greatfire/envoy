@@ -33,19 +33,19 @@ class EnvoyConnectWorker(
 
         while (test != null) {
             val proxyUri = URI(test.url)
-            Log.d(WTAG, "Testing type: " + test.testType + " URL: " + test.url)
+            Log.d(WTAG, "Test: " + test)
 
             val res = when(test.testType) {
-                ENVOY_TEST_DIRECT -> {
+                ENVOY_PROXY_DIRECT -> {
                     Log.d(WTAG, "Testing Direct Connection")
                     EnvoyNetworking.testDirectConnection()
                 }
-                ENVOY_TEST_OKHTTP_ENVOY -> {
-                    Log.d(WTAG, "Testing Envoy URL")
+                ENVOY_PROXY_OKHTTP_ENVOY -> {
+                    Log.d(WTAG, "Testing Envoy URL: " + test.url)
                     EnvoyNetworking.testEnvoyOkHttp(proxyUri)
                 }
-                ENVOY_TEST_OKHTTP_PROXY -> {
-                    Log.d(WTAG, "Testing Proxyed")
+                ENVOY_PROXY_OKHTTP_PROXY -> {
+                    Log.d(WTAG, "Testing Proxyed: " + test.url)
                     EnvoyNetworking.testStandardProxy(proxyUri)
                 }
                 else -> {
@@ -54,11 +54,41 @@ class EnvoyConnectWorker(
                 }
             }
 
-            Log.d(WTAG, "URL: " + test.url + " worked?: " + res)
+            if (res) {
+                Log.d(WTAG, "SUCCESSFUL URL: " + test)
+                // direct connection, enable this even if something else
+                // tested as working first
+                if (test.testType == ENVOY_PROXY_DIRECT) {
+                    EnvoyNetworking.connected(ENVOY_PROXY_DIRECT, test.url)
+                }
+
+                // did someone else win?
+                if (!EnvoyNetworking.envoyConnected) {
+                    EnvoyNetworking.connected(test.testType, test.url)
+                }
+
+                // we're done
+                // XXX it's technically possible for a proxy to "win" this
+                // race while a direct connection works
+                stopWorkers()
+            }
+
+
+            Log.d(WTAG, "FAILED URL: " + test)
             test = envoyTests.removeFirstOrNull()
         }
 
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
+    }
+
+    // the worker ends up stopping itself this way, that seems bad?
+    private suspend fun stopWorkers() {
+        for (j in jobs) {
+            j.cancel()
+        }
+        for (j in jobs) {
+            j.join()
+        }
     }
 
     private fun startWorkers() = runBlocking {
@@ -87,7 +117,7 @@ class EnvoyConnectWorker(
         // test direct connection first
         if (EnvoyNetworking.directUrl != "") {
             // testUrls.add(EnvoyNetworking.directUrl)
-            val test = EnvoyTest(ENVOY_TEST_DIRECT, EnvoyNetworking.directUrl)
+            val test = EnvoyTest(ENVOY_PROXY_DIRECT, EnvoyNetworking.directUrl)
             envoyTests.add(test)
         }
         // shuffle the rest of the URLs

@@ -19,17 +19,21 @@ class EnvoyInterceptor : Interceptor {
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
+        val req = chain.request()
+
         if (EnvoyNetworking.envoyConnected) {
             if (EnvoyNetworking.useDirect) {
+                Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
                 return chain.proceed(chain.request())
             } else {
                 // proxy via Envoy
+                Log.d(TAG, "Proxy Via Envoy: " + req.url)
                 val res = when (EnvoyNetworking.activeType) {
-                    ENVOY_ACTIVE_OKHTTP_ENVOY -> {
+                    ENVOY_PROXY_OKHTTP_ENVOY -> {
                         proxyToEnvoy(chain)
                     }
-                    ENVOY_ACTIVE_OKHTTP_PROXY -> {
+                    ENVOY_PROXY_OKHTTP_PROXY -> {
                         useStandardProxy(chain)
                     }
                     else -> {
@@ -44,6 +48,7 @@ class EnvoyInterceptor : Interceptor {
                 return res
             }
         } else {
+            Log.d(TAG, "Observing: " + req.url)
             // let requests pass though and see record if they succeed
             // failures are likely to be timeouts, so don't wait for that
             return observingInterceptor(chain)
@@ -89,8 +94,6 @@ class EnvoyInterceptor : Interceptor {
         }
 
         val resp = chain.proceed(requestBuilder.build())
-
-        Log.d(TAG, "proxyToEnvoy code: " + resp.code)
 
         return resp
     }
