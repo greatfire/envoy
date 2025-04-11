@@ -98,6 +98,10 @@ class EnvoyConnectWorker(
                 EnvoyServiceType.V2WECHAT -> {
                     tests.testV2RayWechat(test)
                 }
+                ENVOY_PROXY_HYSTERIA2 -> {
+                    Log.d(WTAG, "Testing Hysteria")
+                    EnvoyNetworking.testHysteria2(proxyUri)
+                }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
                     false

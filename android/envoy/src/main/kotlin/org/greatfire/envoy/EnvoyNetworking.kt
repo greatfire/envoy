@@ -3,6 +3,8 @@ package org.greatfire.envoy
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+// Go library
+import plenipotentiary.Plenipotentiary
 
 /*
     This object provides an external interface for setting up network connections with Envoy.
