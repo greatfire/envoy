@@ -63,6 +63,8 @@ const val ENVOY_PROXY_OKHTTP_ENVOY = "org.greatfire.envoy.proxy.OKHTTP_ENVOY"
 const val ENVOY_PROXY_CRONET_ENVOY = "org.greatfire.envoy.proxy.CRONET_ENVOY"
 const val ENVOY_PROXY_OKHTTP_PROXY = "org.greatfire.envoy.proxy.OKHTTP_PROXY"
 const val ENVOY_PROXY_CRONET_PROXY = "org.greatfire.envoy.proxy.CRONET_PROXY"
+const val ENVOY_PROXY_HTTP_ECH = "org.greatfire.envoy.prpxy.HTTP_ECH"
 const val ENVOY_PROXY_HYSTERIA2 = "org.greatfire.envoy.proxy.HYSTERIA2"
+
 
 class Constants {}
