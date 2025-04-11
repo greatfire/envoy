@@ -7,6 +7,7 @@ package org.greatfire.envoy
 */
 
 // import android.content.Context
+import android.net.UrlQuerySanitizer
 import android.util.Log
 import okhttp3.*
 import okhttp3.dnsoverhttps.DnsOverHttps
@@ -18,6 +19,8 @@ import java.net.InetSocketAddress
 import java.net.InetAddress
 import java.io.IOException
 import androidx.work.*
+// Go library
+import plenipotentiary.Plenipotentiary
 
 data class EnvoyTest(
     var testType: String,
@@ -46,15 +49,40 @@ class EnvoyNetworking {
         var directUrl = ""
         var concurrency = 2 // XXX
 
+        private val plen = Plenipotentiary.newPlenipotentiary()
+
         // and an Envoy proxy URL to the list to test
         @JvmStatic
         fun addEnvoyUrl(url: String): Companion {
             val uri = URI(url)
 
             when (uri.getScheme()) {
-                "http", "https" -> {
-                    envoyTests.add(
-                        EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, url))
+                "http", "https", "envoy+https" -> {
+                    with(envoyTests) {
+                        // XXX should we always test both?
+                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, url))
+                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, url))
+                    }
+                }
+                "socks5", "proxy+https" -> {
+                    with (envoyTests) {
+                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, url))
+                        // add(EnvoyTest(ENVOY_PROXY_CRONET_PROXY, url))
+                    }
+                }
+                "envoy" -> {
+                    val san = UrlQuerySanitizer()
+                    san.setAllowUnregisteredParamaters(true)
+                    san.parseUrl(url)
+
+                    // https://github.com/greatfire/envoy/blob/master/native/README.md
+                    val eUrl = san.getValue("url")
+                    // we don't support the other values with OkHttp (yet?)
+                    // only Cronet
+                    with(envoyTests) {
+                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, eUrl))
+                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, url))
+                    }
                 }
                 "hysteria2" -> {
                     envoyTests.add(EnvoyTest(ENVOY_PROXY_HYSTERIA2, url))
@@ -182,6 +210,12 @@ class EnvoyNetworking {
         }
 
         @JvmStatic
+        private fun getProxy(proxyType: Proxy.Type, host: String, port: Int): Proxy {
+            val addr = InetSocketAddress(host, port)
+            return Proxy(proxyType, addr)
+        }
+
+        @JvmStatic
         // Test a standard SOCKS or HTTP(S) proxy
         fun testStandardProxy(proxyUrl: URI): Boolean {
             Log.d(TAG, "Testing standard proxy")
@@ -190,8 +224,7 @@ class EnvoyNetworking {
             if (proxyUrl.getScheme() == "socks5") {
                 proxyType = Proxy.Type.SOCKS
             }
-            val addr = InetSocketAddress(proxyUrl.getHost(), proxyUrl.getPort())
-            val proxy = Proxy(proxyType, addr)
+            val proxy = getProxy(proxyType, proxyUrl.getHost(), proxyUrl.getPort())
             val request = Request.Builder().url(testUrl).build()
 
             return runTest(request, proxy)
@@ -217,6 +250,25 @@ class EnvoyNetworking {
                     .build()
 
                 return runTest(request, null)
+            }
+        }
+
+        @JvmStatic
+        fun testHysteria2(proxyUrl: URI): Boolean {
+            plen.controller.hysteriaServer(proxyUrl)
+            plen.controller.start(plen.controller.Hysteria2)
+            val port = plen.controller.getPort(plen.controller.Hysteria2)
+            val proxy = getProxy(Proxy.Type.SOCKS, "localhost", port)
+
+            val request = Request.Builder().url(testUrl).build()
+
+            res = runTest(request, proxy)
+
+            if (res) {
+                // leave Hysteria running if it was successful
+                // XXX should probably manage this better
+            } else {
+                plen.controller.stop(plen.controller.Hysteria2)
             }
         }
     }
