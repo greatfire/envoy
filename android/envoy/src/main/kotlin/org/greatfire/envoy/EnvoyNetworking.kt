@@ -7,101 +7,44 @@ package org.greatfire.envoy
 */
 
 // import android.content.Context
-import android.net.UrlQuerySanitizer
 import android.util.Log
-import okhttp3.*
-import okhttp3.dnsoverhttps.DnsOverHttps
+// import okhttp3.dnsoverhttps.DnsOverHttps
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import java.net.Proxy
-import java.net.URI
-import java.net.URL
-import java.net.InetSocketAddress
-import java.net.InetAddress
-import java.io.IOException
+// import java.net.InetAddress
 import androidx.work.*
 // Go library
 import plenipotentiary.Plenipotentiary
 
-data class EnvoyTest(
-    var testType: String,
-    var url: String,
-)
 
 class EnvoyNetworking {
 
     companion object {
         private const val TAG = "EnvoyNetworking"
 
+        // Is Envoy enabled - enable the EnvoyInterceptor
         var envoyEnabled = false
+        // Internal state: are we connected
         var envoyConnected = false
+        // Internal state: if true, the interceptor passes requets through
         var useDirect = false
+        // Internal state: active Envoy or Proxy URL
+        // XXX in some cases we need to use both a proxy and an Envoy URL
         var activeUrl: String = ""
         // this value is essentially meaningless before we try connecting
         var activeType: String = ENVOY_PROXY_DIRECT
 
         var appConnectionsWorking = false
 
-        // var envoyUrls = mutableListOf<String>()
-        var envoyTests = mutableListOf<EnvoyTest>()
-
-        var testUrl = "https://www.google.com/generate_204"
-        var testResponseCode = 204
-        var directUrl = ""
+        // How many coroutines to use to test URLs
         var concurrency = 2 // XXX
 
         private val plen = Plenipotentiary.newPlenipotentiary()
 
-        // and an Envoy proxy URL to the list to test
         @JvmStatic
         fun addEnvoyUrl(url: String): Companion {
-            val uri = URI(url)
+            EnvoyConnectionTests.addEnvoyUrl(url)
 
-            when (uri.getScheme()) {
-                "http", "https", "envoy+https" -> {
-                    with(envoyTests) {
-                        // XXX should we always test both?
-                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, url))
-                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, url))
-                    }
-                }
-                "socks5", "proxy+https" -> {
-                    with (envoyTests) {
-                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, url))
-                        // add(EnvoyTest(ENVOY_PROXY_CRONET_PROXY, url))
-                    }
-                }
-                "envoy" -> {
-                    val san = UrlQuerySanitizer()
-                    san.setAllowUnregisteredParamaters(true)
-                    san.parseUrl(url)
-
-                    // https://github.com/greatfire/envoy/blob/master/native/README.md
-                    val eUrl = san.getValue("url")
-                    // we don't support the other values with OkHttp (yet?)
-                    // only Cronet
-                    with(envoyTests) {
-                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, eUrl))
-                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, url))
-                    }
-                }
-                "hysteria2" -> {
-                    envoyTests.add(EnvoyTest(ENVOY_PROXY_HYSTERIA2, url))
-                }
-                else -> {
-                    Log.e(TAG, "Unsupported URL: " + url)
-                }
-            }
-
-            return Companion
-        }
-
-        // add a standard SOCKS5 or HTTPS proxy to the list to test
-        @JvmStatic
-        fun addProxyUrl(url: String): Companion {
-
-            val test = EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, url)
-            envoyTests.add(test)
-
+            // let Java callers chain
             return Companion
         }
 
@@ -109,8 +52,8 @@ class EnvoyNetworking {
         // default is ("https://www.google.com/generate_204", 204)
         @JvmStatic
         fun setTestUrl(url: String, responseCode: Int): Companion {
-            testUrl = url
-            testResponseCode = responseCode
+            EnvoyConnectionTests.testUrl = url
+            EnvoyConnectionTests.testResponseCode = responseCode
 
             return Companion
         }
@@ -118,7 +61,7 @@ class EnvoyNetworking {
         // Set the direct URL to the site, if this one works, Envoy is disabled
         @JvmStatic
         fun setDirectUrl(newVal: String): Companion {
-            directUrl = newVal
+            EnvoyConnectionTests.directUrl = newVal
 
             return Companion
         }
@@ -136,6 +79,7 @@ class EnvoyNetworking {
 
         @JvmStatic
         fun connect() {
+            // sets envoyEnabled = true as a side effect
             reset()
             Log.d(TAG, "Starting Envoy connect...")
 
@@ -165,111 +109,6 @@ class EnvoyNetworking {
         //
         // Test related methods... these should probably live in their own class
         //
-        private fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
-            val builder = OkHttpClient.Builder();
-            if (proxy != null) {
-                builder.proxy(proxy)
-            }
-            // val bootstrapClient = builder.build()
-            // val dns = DnsOverHttps.Builder().client(bootstrapClient)
-            //     .url("https://dns.google/dns-query".toHttpUrl())
-            //     .bootstrapDnsHosts(InetAddress.getByName("8.8.4.4"), InetAddress.getByName("8.8.8.8"))
-            //     .build()
 
-            // val client = bootstrapClient.newBuilder().dns(dns).build()
-
-            val client = builder.build()
-
-            Log.d(TAG, "testing request to: " + request.url)
-
-            try {
-                val response = client.newCall(request).execute()
-                val code = response.code
-                Log.d(TAG, "request: " + request + ", got code: " + code)
-                return(code == testResponseCode)
-            } catch (e: IOException) {
-                Log.e(TAG, "Test threw an error for request" + request)
-                Log.e(TAG, "error: " + e)
-                return false
-            }
-        }
-
-        @JvmStatic
-        // Test a direct connection to the target site
-        fun testDirectConnection(): Boolean {
-            Log.d(TAG, "Testing direct connection")
-
-            // We could just skip this?
-            if (appConnectionsWorking) {
-                Log.d(TAG, "App Connection are working already")
-            }
-
-            val request = Request.Builder().url(testUrl).head().build()
-
-            return runTest(request, null)
-        }
-
-        @JvmStatic
-        private fun getProxy(proxyType: Proxy.Type, host: String, port: Int): Proxy {
-            val addr = InetSocketAddress(host, port)
-            return Proxy(proxyType, addr)
-        }
-
-        @JvmStatic
-        // Test a standard SOCKS or HTTP(S) proxy
-        fun testStandardProxy(proxyUrl: URI): Boolean {
-            Log.d(TAG, "Testing standard proxy")
-
-            var proxyType = Proxy.Type.HTTP
-            if (proxyUrl.getScheme() == "socks5") {
-                proxyType = Proxy.Type.SOCKS
-            }
-            val proxy = getProxy(proxyType, proxyUrl.getHost(), proxyUrl.getPort())
-            val request = Request.Builder().url(testUrl).build()
-
-            return runTest(request, proxy)
-        }
-
-        @JvmStatic
-        // Test using an Envoy HTTP(s) proxy
-        // see examples at https://github.com/greatfire/envoy/
-        fun testEnvoyOkHttp(proxyUrl: URI): Boolean {
-            if (proxyUrl.getScheme() == "envoy") {
-                // XXX handle envoy:// URLs
-                Log.e(TAG, "envoy:// URLs aren't supported yet ☹️")
-                return false
-            } else {
-                // assume this is an http(s) Evnoy proxy
-                val host = URL(testUrl).getHost()
-                // XXX cache param, this is hacky :)
-                val t = System.currentTimeMillis()
-                val url = proxyUrl.toString() + "?test=" + t
-                val request = Request.Builder().url(url).head()
-                    .addHeader("Url-Orig", testUrl)
-                    .addHeader("Host-Orig", host)
-                    .build()
-
-                return runTest(request, null)
-            }
-        }
-
-        @JvmStatic
-        fun testHysteria2(proxyUrl: URI): Boolean {
-            plen.controller.hysteriaServer(proxyUrl)
-            plen.controller.start(plen.controller.Hysteria2)
-            val port = plen.controller.getPort(plen.controller.Hysteria2)
-            val proxy = getProxy(Proxy.Type.SOCKS, "localhost", port)
-
-            val request = Request.Builder().url(testUrl).build()
-
-            res = runTest(request, proxy)
-
-            if (res) {
-                // leave Hysteria running if it was successful
-                // XXX should probably manage this better
-            } else {
-                plen.controller.stop(plen.controller.Hysteria2)
-            }
-        }
     }
 }

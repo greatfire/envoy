@@ -18,6 +18,7 @@ class EnvoyConnectWorker(
         private const val TAG = "EnvoyConnectWorker"
     }
 
+    // this ArrayDeque is our working copy of the tests
     private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
 
@@ -38,19 +39,19 @@ class EnvoyConnectWorker(
             val res = when(test.testType) {
                 ENVOY_PROXY_DIRECT -> {
                     Log.d(WTAG, "Testing Direct Connection")
-                    EnvoyNetworking.testDirectConnection()
+                    EnvoyConnectionTests.testDirectConnection()
                 }
                 ENVOY_PROXY_OKHTTP_ENVOY -> {
                     Log.d(WTAG, "Testing Envoy URL: " + test.url)
-                    EnvoyNetworking.testEnvoyOkHttp(proxyUri)
+                    EnvoyConnectionTests.testEnvoyOkHttp(proxyUri)
                 }
                 ENVOY_PROXY_OKHTTP_PROXY -> {
                     Log.d(WTAG, "Testing Proxyed: " + test.url)
-                    EnvoyNetworking.testStandardProxy(proxyUri)
+                    EnvoyConnectionTests.testStandardProxy(proxyUri)
                 }
                 ENVOY_PROXY_HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
-                    EnvoyNetworking.testHysteria2(proxyUri)
+                    EnvoyConnectionTests.testHysteria2(proxyUri)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
@@ -119,13 +120,13 @@ class EnvoyConnectWorker(
         jobs.clear()
 
         // test direct connection first
-        if (EnvoyNetworking.directUrl != "") {
+        if (EnvoyConnectionTests.directUrl != "") {
             // testUrls.add(EnvoyNetworking.directUrl)
-            val test = EnvoyTest(ENVOY_PROXY_DIRECT, EnvoyNetworking.directUrl)
+            val test = EnvoyTest(ENVOY_PROXY_DIRECT, EnvoyConnectionTests.directUrl)
             envoyTests.add(test)
         }
         // shuffle the rest of the URLs
-        envoyTests.addAll(EnvoyNetworking.envoyTests.shuffled())
+        envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
                 + envoyTests.size
