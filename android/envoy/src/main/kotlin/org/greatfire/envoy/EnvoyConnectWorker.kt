@@ -98,6 +98,9 @@ class EnvoyConnectWorker(
                 EnvoyServiceType.V2WECHAT -> {
                     tests.testV2RayWechat(test)
                 }
+                ENVOY_PROXY_HTTP_ECH -> {
+                    EnvoyConnectionTests.testECHProxy(test)
+                }
                 ENVOY_PROXY_HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
                     EnvoyConnectionTests.testHysteria2(proxyUri)
