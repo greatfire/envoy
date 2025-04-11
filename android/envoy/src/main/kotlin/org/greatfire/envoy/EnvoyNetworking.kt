@@ -38,7 +38,7 @@ class EnvoyNetworking {
         // How many coroutines to use to test URLs
         var concurrency = 2 // XXX
 
-        private val plen = Plenipotentiary.newPlenipotentiary()
+        val plen = Plenipotentiary.newPlenipotentiary()
 
         @JvmStatic
         fun addEnvoyUrl(url: String): Companion {

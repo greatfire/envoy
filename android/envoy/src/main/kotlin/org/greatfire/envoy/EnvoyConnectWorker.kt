@@ -34,20 +34,22 @@ class EnvoyConnectWorker(
 
         while (test != null) {
             val proxyUri = URI(test.url)
-            Log.d(WTAG, "Test: " + test)
+            Log.d(WTAG, "Test job: " + test)
 
+            // is there some better way to structure this? It's going to
+            // get ungainly
             val res = when(test.testType) {
                 ENVOY_PROXY_DIRECT -> {
-                    Log.d(WTAG, "Testing Direct Connection")
                     EnvoyConnectionTests.testDirectConnection()
                 }
                 ENVOY_PROXY_OKHTTP_ENVOY -> {
-                    Log.d(WTAG, "Testing Envoy URL: " + test.url)
                     EnvoyConnectionTests.testEnvoyOkHttp(proxyUri)
                 }
                 ENVOY_PROXY_OKHTTP_PROXY -> {
-                    Log.d(WTAG, "Testing Proxyed: " + test.url)
                     EnvoyConnectionTests.testStandardProxy(proxyUri)
+                }
+                ENVOY_PROXY_HTTP_ECH -> {
+                    EnvoyConnectionTests.testECHProxy(test)
                 }
                 ENVOY_PROXY_HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
@@ -69,7 +71,14 @@ class EnvoyConnectWorker(
 
                 // did someone else win?
                 if (!EnvoyNetworking.envoyConnected) {
-                    EnvoyNetworking.connected(test.testType, test.url)
+                    if (test.testType == ENVOY_PROXY_HTTP_ECH) {
+                        // proxying ECH connections through the Go code
+                        // is a little weird for now
+                        EnvoyNetworking.connected(
+                            ENVOY_PROXY_OKHTTP_ENVOY, test.extra!!)
+                    } else {
+                        EnvoyNetworking.connected(test.testType, test.url)
+                    }
                 }
 
                 // we're done
@@ -97,6 +106,9 @@ class EnvoyConnectWorker(
     }
 
     private fun startWorkers() = runBlocking {
+        Log.i(TAG,
+            "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
+
         for (i in 1..EnvoyNetworking.concurrency) {
             Log.d(TAG, "Launching worker: " + i)
             var job = launch(Dispatchers.IO) {
@@ -111,7 +123,7 @@ class EnvoyConnectWorker(
             j.join()
         }
 
-        Log.d(TAG, "coroutines done?")
+        Log.d(TAG, "EnvoyConnectWorker is done")
     }
 
     override suspend fun doWork(): Result {

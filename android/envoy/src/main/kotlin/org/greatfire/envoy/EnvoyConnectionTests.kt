@@ -17,7 +17,9 @@ import okhttp3.*
 data class EnvoyTest(
     var testType: String,
     var url: String,
-)
+) {
+    var extra: String? = null
+}
 
 class EnvoyConnectionTests {
     companion object {
@@ -35,6 +37,10 @@ class EnvoyConnectionTests {
         var directUrl = ""
 
         // and an Envoy proxy URL to the list to test
+        //
+        // XXX I'm making up some new schemes here, so we can tell between
+        // an HTTPS proxy and an HTTPS Envoy URL (though for the latter
+        // we could just require the use for envoy:// urls?)
         @JvmStatic
         fun addEnvoyUrl(url: String) {
             val uri = URI(url)
@@ -50,7 +56,7 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, tempUrl))
+                        // add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, tempUrl))
                         // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, tempUrl))
                         add(EnvoyTest(ENVOY_PROXY_HTTP_ECH, tempUrl))
                     }
@@ -90,6 +96,7 @@ class EnvoyConnectionTests {
             }
         }
 
+        // helper, given a request and optional proxy, test the connection
         private fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
             val builder = OkHttpClient.Builder();
             if (proxy != null) {
@@ -176,6 +183,18 @@ class EnvoyConnectionTests {
 
                 return runTest(request, null)
             }
+        }
+
+        @JvmStatic
+        fun testECHProxy(test: EnvoyTest): Boolean {
+            Log.d(TAG, "Testing Envoy URL with Plenipotentiary: " + test.url)
+            val url = EnvoyNetworking.plen.findEnvoyUrl(test.url)
+            // XXX this is a weird case, plenipotentiary returns a new
+            // URL to use
+            // if it comes back, it's tested and working
+            test.extra = url
+            Log.d(TAG, "Plen URL: " + url)
+            return true
         }
 
         @JvmStatic
