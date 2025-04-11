@@ -97,12 +97,8 @@ class EnvoyConnectWorker(
 
     // the worker ends up stopping itself this way, that seems bad?
     private suspend fun stopWorkers() {
-        for (j in jobs) {
-            j.cancel()
-        }
-        for (j in jobs) {
-            j.join()
-        }
+        jobs.forEach { it.cancel() }
+        jobs.joinAll()
     }
 
     private fun startWorkers() = runBlocking {
@@ -119,9 +115,7 @@ class EnvoyConnectWorker(
 
         Log.d(TAG, "Go coroutines...")
 
-        for (j in jobs) {
-            j.join()
-        }
+        jobs.joinAll()
 
         Log.d(TAG, "EnvoyConnectWorker is done")
     }
