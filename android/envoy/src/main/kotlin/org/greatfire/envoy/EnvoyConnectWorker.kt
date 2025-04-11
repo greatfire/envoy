@@ -100,7 +100,7 @@ class EnvoyConnectWorker(
                 }
                 ENVOY_PROXY_HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
-                    EnvoyNetworking.testHysteria2(proxyUri)
+                    EnvoyConnectionTests.testHysteria2(proxyUri)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
