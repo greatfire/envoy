@@ -27,11 +27,11 @@ if [ ! -e $sdkmanager ]; then
     rm -f android-cmdline-tools.zip
 fi
 # $sdkmanager --list|grep -i ndk
-echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-${ANDROID_COMPILE_SDK}"
-echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools"
-echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "build-tools;${ANDROID_BUILD_TOOLS}"
-echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "ndk;${NDK_VERSION}"
-echo y | $sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "cmake;${CMAKE_VERSION}"
+$sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-${ANDROID_COMPILE_SDK}"
+$sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools"
+$sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "build-tools;${ANDROID_BUILD_TOOLS}"
+$sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "ndk;${NDK_VERSION}"
+$sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "cmake;${CMAKE_VERSION}"
 
 set +o pipefail # sdkmanager --licenses "fails" if all licenses are already accepted
 yes | $sdkmanager  --sdk_root=${ANDROID_SDK_ROOT} --sdk_root=${ANDROID_SDK_ROOT} --licenses

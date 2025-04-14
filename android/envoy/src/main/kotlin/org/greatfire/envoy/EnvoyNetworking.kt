@@ -8,21 +8,13 @@ package org.greatfire.envoy
 
 // import android.content.Context
 import android.util.Log
-import okhttp3.*
-import okhttp3.dnsoverhttps.DnsOverHttps
+// import okhttp3.dnsoverhttps.DnsOverHttps
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import java.net.Proxy
-import java.net.URI
-import java.net.URL
-import java.net.InetSocketAddress
-import java.net.InetAddress
-import java.io.IOException
+// import java.net.InetAddress
 import androidx.work.*
+// Go library
+import plenipotentiary.Plenipotentiary
 
-data class EnvoyTest(
-    var testType: String,
-    var url: String,
-)
 
 class EnvoyNetworking {
 
@@ -30,53 +22,38 @@ class EnvoyNetworking {
         private const val TAG = "EnvoyNetworking"
 
         // MNB: make private because of various companion methods?
+
+        // Settings
+        //
+        // How many coroutines to use to test URLs
+        var concurrency = 2 // XXX
+
+        // this stuff is "internal" but public because
+        // the connection worker and tests mess with it
+        //
+        // Is Envoy enabled - enable the EnvoyInterceptor
         var envoyEnabled = false
+        // Internal state: are we connected
         var envoyConnected = false
+        // Internal state: if true, the interceptor passes requets through
         var useDirect = false
+        // Internal state: active Envoy or Proxy URL
+        // XXX in some cases we need to use both a proxy and an Envoy URL
         var activeUrl: String = ""
         // this value is essentially meaningless before we try connecting
         var activeType: String = ENVOY_PROXY_DIRECT // MNB: maybe add "none" option
 
         var appConnectionsWorking = false
 
-        // var envoyUrls = mutableListOf<String>()
-        var envoyTests = mutableListOf<EnvoyTest>()
-
-        var testUrl = "https://www.google.com/generate_204"
-        var testResponseCode = 204
-        var directUrl = ""
-        var concurrency = 2 // XXX
+        val plen = Plenipotentiary.newPlenipotentiary()
 
         // MNB: does it make sense for these to be in companion?
 
-        // and an Envoy proxy URL to the list to test
         @JvmStatic
-        fun addEnvoyUrl(url: String): Companion { // MNB: if supports all tests, maybe addTestUrl()?
-            val uri = URI(url) // MNB: try/catch?  Companion syntax?
+        fun addEnvoyUrl(url: String): Companion {
+            EnvoyConnectionTests.addEnvoyUrl(url)
 
-            when (uri.getScheme()) {
-                "http", "https" -> {
-                    envoyTests.add(
-                        EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, url))
-                }
-                "hysteria2" -> {
-                    envoyTests.add(EnvoyTest(ENVOY_PROXY_HYSTERIA2, url))
-                }
-                else -> {
-                    Log.e(TAG, "Unsupported URL: " + url)
-                }
-            }
-
-            return Companion
-        }
-
-        // add a standard SOCKS5 or HTTPS proxy to the list to test
-        @JvmStatic
-        fun addProxyUrl(url: String): Companion { // MNB: why separate from above?
-
-            val test = EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, url)
-            envoyTests.add(test)
-
+            // let Java callers chain
             return Companion
         }
 
@@ -84,8 +61,8 @@ class EnvoyNetworking {
         // default is ("https://www.google.com/generate_204", 204)
         @JvmStatic
         fun setTestUrl(url: String, responseCode: Int): Companion {
-            testUrl = url
-            testResponseCode = responseCode // MNB: some way to make this a range? (maybe just 200 = 200s)
+            EnvoyConnectionTests.testUrl = url
+            EnvoyConnectionTests.testResponseCode = responseCode
 
             return Companion
         }
@@ -93,7 +70,7 @@ class EnvoyNetworking {
         // Set the direct URL to the site, if this one works, Envoy is disabled
         @JvmStatic
         fun setDirectUrl(newVal: String): Companion {
-            directUrl = newVal
+            EnvoyConnectionTests.directUrl = newVal
 
             return Companion
         }
@@ -111,6 +88,7 @@ class EnvoyNetworking {
 
         @JvmStatic
         fun connect() {
+            // sets envoyEnabled = true as a side effect
             reset()
             Log.d(TAG, "Starting Envoy connect...")
 
@@ -135,6 +113,8 @@ class EnvoyNetworking {
             activeType = newActiveType
             activeUrl = newActiveUrl
         }
+
+        /* REMOVED?
 
         //////
         //
@@ -223,5 +203,7 @@ class EnvoyNetworking {
                 return runTest(request, null)
             }
         }
+
+        */
     }
 }

@@ -11,15 +11,19 @@ import kotlinx.coroutines.*
     Establish a connection to an Envoy Proxy
 */
 class EnvoyConnectWorker(
-    context: Context, params: WorkerParameters
+    val context: Context, val params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+
     // MNB read about workers
+
+    val tests = EnvoyConnectionTests()
 
     companion object {
         private const val TAG = "EnvoyConnectWorker"
     }
 
+    // this ArrayDeque is our working copy of the tests
     private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
 
@@ -35,20 +39,29 @@ class EnvoyConnectWorker(
 
         while (test != null) {
             val proxyUri = URI(test.url)
-            Log.d(WTAG, "Test: " + test)
+            Log.d(WTAG, "Test job: " + test)
 
+            // is there some better way to structure this? It's going to
+            // get ungainly
             val res = when(test.testType) {
                 ENVOY_PROXY_DIRECT -> {
-                    Log.d(WTAG, "Testing Direct Connection")
-                    EnvoyNetworking.testDirectConnection()
+                    tests.testDirectConnection()
                 }
                 ENVOY_PROXY_OKHTTP_ENVOY -> {
-                    Log.d(WTAG, "Testing Envoy URL: " + test.url)
-                    EnvoyNetworking.testEnvoyOkHttp(proxyUri)
+                    tests.testEnvoyOkHttp(proxyUri)
+                }
+                ENVOY_PROXY_CRONET_ENVOY -> {
+                    tests.testCronetEnvoy(test, context)
                 }
                 ENVOY_PROXY_OKHTTP_PROXY -> {
-                    Log.d(WTAG, "Testing Proxyed: " + test.url)
-                    EnvoyNetworking.testStandardProxy(proxyUri)
+                    tests.testStandardProxy(proxyUri)
+                }
+                ENVOY_PROXY_HTTP_ECH -> {
+                    tests.testECHProxy(test)
+                }
+                ENVOY_PROXY_HYSTERIA2 -> {
+                    Log.d(WTAG, "Testing Hysteria")
+                    tests.testHysteria2(proxyUri)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
@@ -66,7 +79,14 @@ class EnvoyConnectWorker(
 
                 // did someone else win?
                 if (!EnvoyNetworking.envoyConnected) {
-                    EnvoyNetworking.connected(test.testType, test.url)
+                    if (test.testType == ENVOY_PROXY_HTTP_ECH) {
+                        // proxying ECH connections through the Go code
+                        // is a little weird for now
+                        EnvoyNetworking.connected(
+                            ENVOY_PROXY_OKHTTP_ENVOY, test.extra!!)
+                    } else {
+                        EnvoyNetworking.connected(test.testType, test.url)
+                    }
                 }
 
                 // we're done
@@ -85,16 +105,14 @@ class EnvoyConnectWorker(
 
     // the worker ends up stopping itself this way, that seems bad?
     private suspend fun stopWorkers() {
-        for (j in jobs) {
-            j.cancel()
-        }
-        for (j in jobs) {
-            j.join()
-        }
-        // MNB: uh...?  sop on first success, else don't stop
+        jobs.forEach { it.cancel() }
+        jobs.joinAll()
     }
 
     private fun startWorkers() = runBlocking {
+        Log.i(TAG,
+            "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
+
         for (i in 1..EnvoyNetworking.concurrency) {
             Log.d(TAG, "Launching worker: " + i)
             var job = launch(Dispatchers.IO) {
@@ -107,11 +125,9 @@ class EnvoyConnectWorker(
 
         Log.d(TAG, "Go coroutines...")
 
-        for (j in jobs) {
-            j.join() // MNB: i think this blocks on one then blocks on the next, etc.
-        }
+        jobs.joinAll()
 
-        Log.d(TAG, "coroutines done?")
+        Log.d(TAG, "EnvoyConnectWorker is done")
     }
 
     override suspend fun doWork(): Result {
@@ -120,13 +136,13 @@ class EnvoyConnectWorker(
         jobs.clear()
 
         // test direct connection first
-        if (EnvoyNetworking.directUrl != "") {
+        if (EnvoyConnectionTests.directUrl != "") {
             // testUrls.add(EnvoyNetworking.directUrl)
-            val test = EnvoyTest(ENVOY_PROXY_DIRECT, EnvoyNetworking.directUrl)
+            val test = EnvoyTest(ENVOY_PROXY_DIRECT, EnvoyConnectionTests.directUrl)
             envoyTests.add(test)
         }
         // shuffle the rest of the URLs
-        envoyTests.addAll(EnvoyNetworking.envoyTests.shuffled())
+        envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
                 + envoyTests.size
