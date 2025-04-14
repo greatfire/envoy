@@ -215,6 +215,7 @@ class EnvoyConnectionTests {
                 }
             }
         }
+    }
 
         // helper, some services return "host:port"
         suspend fun isItUpYet(addr: String): Boolean {
