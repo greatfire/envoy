@@ -226,6 +226,7 @@ class EnvoyConnectionTests {
                 }
             }
         }
+    }
 
         // helper, some services return "host:port"
         suspend fun isItUpYet(addr: String): Boolean {
@@ -351,6 +352,7 @@ class EnvoyConnectionTests {
                 else  -> 80 // ? error?
             }
         }
+    }
 
         Log.d(TAG, "🦐🦐 proxy ${proxyUri.host}:$port")
 
