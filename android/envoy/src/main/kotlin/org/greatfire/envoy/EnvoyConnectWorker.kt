@@ -17,6 +17,8 @@ class EnvoyConnectWorker(
     val params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    val tests = EnvoyConnectionTests()
+
     companion object {
         private const val TAG = "EnvoyConnectWorker"
         // MNB retry/timeout logic moved to util class
@@ -99,11 +101,11 @@ class EnvoyConnectWorker(
                     tests.testV2RayWechat(test)
                 }
                 ENVOY_PROXY_HTTP_ECH -> {
-                    EnvoyConnectionTests.testECHProxy(test)
+                    tests.testECHProxy(test)
                 }
                 ENVOY_PROXY_HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
-                    EnvoyConnectionTests.testHysteria2(proxyUri)
+                    tests.testHysteria2(proxyUri)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
