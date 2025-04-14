@@ -29,12 +29,13 @@ class EnvoyNetworking {
     companion object {
         private const val TAG = "EnvoyNetworking"
 
+        // MNB: make private because of various companion methods?
         var envoyEnabled = false
         var envoyConnected = false
         var useDirect = false
         var activeUrl: String = ""
         // this value is essentially meaningless before we try connecting
-        var activeType: String = ENVOY_PROXY_DIRECT
+        var activeType: String = ENVOY_PROXY_DIRECT // MNB: maybe add "none" option
 
         var appConnectionsWorking = false
 
@@ -46,10 +47,12 @@ class EnvoyNetworking {
         var directUrl = ""
         var concurrency = 2 // XXX
 
+        // MNB: does it make sense for these to be in companion?
+
         // and an Envoy proxy URL to the list to test
         @JvmStatic
-        fun addEnvoyUrl(url: String): Companion {
-            val uri = URI(url)
+        fun addEnvoyUrl(url: String): Companion { // MNB: if supports all tests, maybe addTestUrl()?
+            val uri = URI(url) // MNB: try/catch?  Companion syntax?
 
             when (uri.getScheme()) {
                 "http", "https" -> {
@@ -69,7 +72,7 @@ class EnvoyNetworking {
 
         // add a standard SOCKS5 or HTTPS proxy to the list to test
         @JvmStatic
-        fun addProxyUrl(url: String): Companion {
+        fun addProxyUrl(url: String): Companion { // MNB: why separate from above?
 
             val test = EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, url)
             envoyTests.add(test)
@@ -82,7 +85,7 @@ class EnvoyNetworking {
         @JvmStatic
         fun setTestUrl(url: String, responseCode: Int): Companion {
             testUrl = url
-            testResponseCode = responseCode
+            testResponseCode = responseCode // MNB: some way to make this a range? (maybe just 200 = 200s)
 
             return Companion
         }
@@ -157,7 +160,7 @@ class EnvoyNetworking {
             try {
                 val response = client.newCall(request).execute()
                 val code = response.code
-                Log.d(TAG, "request: " + request + ", got code: " + code)
+                Log.d(TAG, "request: " + request + ", got code: " + code) // MNB: i think requests have non-exception failure states, ie: 404
                 return(code == testResponseCode)
             } catch (e: IOException) {
                 Log.e(TAG, "Test threw an error for request" + request)
@@ -174,9 +177,10 @@ class EnvoyNetworking {
             // We could just skip this?
             if (appConnectionsWorking) {
                 Log.d(TAG, "App Connection are working already")
+                // MNB: just return true?
             }
 
-            val request = Request.Builder().url(testUrl).head().build()
+            val request = Request.Builder().url(testUrl).head().build() // MNB: use directUrl?
 
             return runTest(request, null)
         }

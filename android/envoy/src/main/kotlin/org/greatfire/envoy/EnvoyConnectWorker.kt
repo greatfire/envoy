@@ -14,6 +14,8 @@ class EnvoyConnectWorker(
     context: Context, params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    // MNB read about workers
+
     companion object {
         private const val TAG = "EnvoyConnectWorker"
     }
@@ -24,7 +26,7 @@ class EnvoyConnectWorker(
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
-        var test = envoyTests.removeFirstOrNull()
+        var test = envoyTests.removeFirstOrNull() // MNB: thread safe?
 
         val WTAG = TAG + "-" + id
 
@@ -71,7 +73,7 @@ class EnvoyConnectWorker(
                 // XXX it's technically possible for a proxy to "win" this
                 // race while a direct connection works
                 stopWorkers()
-            }
+            } // MNB: no stop on failure?
 
 
             Log.d(WTAG, "FAILED URL: " + test)
@@ -89,6 +91,7 @@ class EnvoyConnectWorker(
         for (j in jobs) {
             j.join()
         }
+        // MNB: uh...?  sop on first success, else don't stop
     }
 
     private fun startWorkers() = runBlocking {
@@ -99,11 +102,13 @@ class EnvoyConnectWorker(
             }
             jobs.add(job)
         }
+        // MNB: do urls > concurrency ever get tested <- concurrency is thread count not tests run
+        // MNB: launch all then join all?
 
         Log.d(TAG, "Go coroutines...")
 
         for (j in jobs) {
-            j.join()
+            j.join() // MNB: i think this blocks on one then blocks on the next, etc.
         }
 
         Log.d(TAG, "coroutines done?")

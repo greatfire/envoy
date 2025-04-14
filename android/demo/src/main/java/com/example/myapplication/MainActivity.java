@@ -376,16 +376,16 @@ public class MainActivity extends FragmentActivity {
 
         ArrayList<String> emptyList = new ArrayList<String>();
 
-        NetworkIntentService.submit(
-                this,
-                testUrls,
-                directUrls,
-                testCert,
-                emptyList,
-                1,
-                1,
-                1
-        );
+        //NetworkIntentService.submit(
+        //        this,
+        //        testUrls,
+        //        directUrls,
+        //        testCert,
+        //        emptyList,
+        //        1,
+        //        1,
+        //        1
+        //);
     }
 
     void resetResults() {
