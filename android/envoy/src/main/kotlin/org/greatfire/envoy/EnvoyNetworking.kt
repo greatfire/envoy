@@ -21,6 +21,14 @@ class EnvoyNetworking {
     companion object {
         private const val TAG = "EnvoyNetworking"
 
+        // Settings
+        //
+        // How many coroutines to use to test URLs
+        var concurrency = 2 // XXX
+
+        // this stuff is "internal" but public because
+        // the connection worker and tests mess with it
+        //
         // Is Envoy enabled - enable the EnvoyInterceptor
         var envoyEnabled = false
         // Internal state: are we connected
@@ -34,9 +42,6 @@ class EnvoyNetworking {
         var activeType: String = ENVOY_PROXY_DIRECT
 
         var appConnectionsWorking = false
-
-        // How many coroutines to use to test URLs
-        var concurrency = 2 // XXX
 
         val plen = Plenipotentiary.newPlenipotentiary()
 
@@ -104,11 +109,5 @@ class EnvoyNetworking {
             activeType = newActiveType
             activeUrl = newActiveUrl
         }
-
-        //////
-        //
-        // Test related methods... these should probably live in their own class
-        //
-
     }
 }

@@ -11,8 +11,10 @@ import kotlinx.coroutines.*
     Establish a connection to an Envoy Proxy
 */
 class EnvoyConnectWorker(
-    context: Context, params: WorkerParameters
+    val context: Context, val params: WorkerParameters
 ) : CoroutineWorker(context, params) {
+
+    val tests = EnvoyConnectionTests()
 
     companion object {
         private const val TAG = "EnvoyConnectWorker"
@@ -40,20 +42,23 @@ class EnvoyConnectWorker(
             // get ungainly
             val res = when(test.testType) {
                 ENVOY_PROXY_DIRECT -> {
-                    EnvoyConnectionTests.testDirectConnection()
+                    tests.testDirectConnection()
                 }
                 ENVOY_PROXY_OKHTTP_ENVOY -> {
-                    EnvoyConnectionTests.testEnvoyOkHttp(proxyUri)
+                    tests.testEnvoyOkHttp(proxyUri)
+                }
+                ENVOY_PROXY_CRONET_ENVOY -> {
+                    tests.testCronetEnvoy(test, context)
                 }
                 ENVOY_PROXY_OKHTTP_PROXY -> {
-                    EnvoyConnectionTests.testStandardProxy(proxyUri)
+                    tests.testStandardProxy(proxyUri)
                 }
                 ENVOY_PROXY_HTTP_ECH -> {
-                    EnvoyConnectionTests.testECHProxy(test)
+                    tests.testECHProxy(test)
                 }
                 ENVOY_PROXY_HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
-                    EnvoyConnectionTests.testHysteria2(proxyUri)
+                    tests.testHysteria2(proxyUri)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
