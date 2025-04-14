@@ -148,6 +148,8 @@ class EnvoyConnectWorker(
             }
             jobs.add(job)
         }
+        // MNB: do urls > concurrency ever get tested <- concurrency is thread count not tests run
+        // MNB: launch all then join all?
 
         // wait for jobs to complete
         jobs.joinAll()
