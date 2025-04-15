@@ -3,9 +3,12 @@ package org.greatfire.envoy
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.preference.PreferenceManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 import IEnvoyProxy.IEnvoyProxy
 
@@ -268,5 +271,33 @@ class EnvoyConnectWorker(
         }
         // if we return failure, the job is re-run, I think?
         return Result.success()
+    }
+
+    private fun shouldSubmitUrl(url: String): Boolean {
+
+        // disable this feature for debugging
+        if (BuildConfig.BUILD_TYPE == "debug") {
+            Log.d(TAG, "debug build, ignore time limit and submit")
+            return true
+        } else {
+            Log.d(TAG, "release build, check time limit before submitting")
+        }
+
+        val currentTime = System.currentTimeMillis()
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
+        val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
+
+        val sanitizedUrl = UrlUtil.sanitizeUrl(url)
+
+        if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
+            || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
+            || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
+            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
+            return false
+        } else {
+            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
+            return true
+        }
     }
 }
