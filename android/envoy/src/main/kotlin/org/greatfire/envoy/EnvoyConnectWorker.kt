@@ -97,6 +97,8 @@ class EnvoyConnectWorker(
             test = envoyTests.removeFirstOrNull()
         }
 
+        // TODO: this is an opportunity to fetch more URLs
+        // to try
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
     }
 
@@ -106,6 +108,8 @@ class EnvoyConnectWorker(
         jobs.joinAll()
     }
 
+    // Launch EnvoyNetworking.concurrency number of coroutines
+    // to test connection methods
     private fun startWorkers() = runBlocking {
         Log.i(TAG,
             "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
