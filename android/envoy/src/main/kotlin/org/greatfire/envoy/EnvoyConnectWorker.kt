@@ -2,18 +2,20 @@ package org.greatfire.envoy
 
 import android.content.Context
 import android.util.Log
+import androidx.preference.PreferenceManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.net.URI
 import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /*
     Establish a connection to an Envoy Proxy
 */
 class EnvoyConnectWorker(
-    val context: Context, val params: WorkerParameters
+    val context: Context, val params: WorkerParameters, val callback: EnvoyTestCallback
 ) : CoroutineWorker(context, params) {
-
 
     // MNB read about workers
 
@@ -21,11 +23,25 @@ class EnvoyConnectWorker(
 
     companion object {
         private const val TAG = "EnvoyConnectWorker"
+
+        private const val TIME_LIMIT = 60000 // make configurable?
+        private const val ONE_HOUR_MS = 3600000
+        private const val ONE_DAY_MS = 86400000
+        private const val ONE_WEEK_MS = 604800000
+        private const val TIME_SUFFIX = "_time"
+        private const val COUNT_SUFFIX = "_count"
     }
 
     // this ArrayDeque is our working copy of the tests
     private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
+
+    // simple counters to infer status
+    private var testCount = AtomicInteger();
+    private var blockedCount = AtomicInteger();
+    private var failedCount = AtomicInteger();
+
+    private var startTime = AtomicLong();
 
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
@@ -150,5 +166,33 @@ class EnvoyConnectWorker(
 
         startWorkers()
         return Result.success()
+    }
+
+    private fun shouldSubmitUrl(url: String): Boolean {
+
+        // disable this feature for debugging
+        if (BuildConfig.BUILD_TYPE == "debug") {
+            Log.d(TAG, "debug build, ignore time limit and submit")
+            return true
+        } else {
+            Log.d(TAG, "release build, check time limit before submitting")
+        }
+
+        val currentTime = System.currentTimeMillis()
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
+        val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
+
+        val sanitizedUrl = UrlUtil.sanitizeUrl(url)
+
+        if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
+            || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
+            || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
+            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
+            return false
+        } else {
+            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
+            return true
+        }
     }
 }
