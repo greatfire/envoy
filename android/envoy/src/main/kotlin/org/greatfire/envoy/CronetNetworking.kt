@@ -113,7 +113,7 @@ object CronetNetworking {
         val requestBuilder = cronetEngine.newUrlRequestBuilder(envoyUrl, callback, executorService)
         requestBuilder.setHttpMethod(request.method)
         request.headers.forEach {
-            if (it.first.toLowerCase(Locale.ENGLISH) != "accept-encoding") {
+            if (it.first.lowercase(Locale.ENGLISH) != "accept-encoding") {
                 requestBuilder.addHeader(it.first, it.second)
             }
         }
