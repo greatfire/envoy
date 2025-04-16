@@ -136,7 +136,7 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
         private const val TAG = "UrlRequestCallback"
         private const val MAX_FOLLOW_COUNT = 20
         private fun protocolFromNegotiatedProtocol(responseInfo: UrlResponseInfo): Protocol {
-            val negotiatedProtocol = responseInfo.negotiatedProtocol.toLowerCase(Locale.ENGLISH)
+            val negotiatedProtocol = responseInfo.negotiatedProtocol.lowercase(Locale.ENGLISH)
             return when {
                 negotiatedProtocol.contains("quic") -> {
                     Protocol.QUIC
