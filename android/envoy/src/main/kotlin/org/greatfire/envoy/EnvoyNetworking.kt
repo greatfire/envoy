@@ -7,6 +7,7 @@ package org.greatfire.envoy
 */
 
 // import android.content.Context
+import android.content.Context
 import android.util.Log
 // import okhttp3.dnsoverhttps.DnsOverHttps
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -87,7 +88,7 @@ class EnvoyNetworking {
 
 
         @JvmStatic
-        fun connect() {
+        fun connect(context: Context, callback: EnvoyTestCallback) {
             // sets envoyEnabled = true as a side effect
             reset()
             Log.d(TAG, "Starting Envoy connect...")
@@ -97,6 +98,12 @@ class EnvoyNetworking {
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
 
+
+            val config = Configuration.Builder()
+                .setWorkerFactory(EnvoyConnectWorkerFactory(callback))
+                .build()
+
+            WorkManager.initialize(context, config)
             WorkManager
                 // .getInstance(myContext)
                 .getInstance()
