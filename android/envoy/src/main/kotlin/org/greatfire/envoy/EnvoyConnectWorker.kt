@@ -7,6 +7,8 @@ import androidx.preference.PreferenceManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.*
+import org.greatfire.envoy.NetworkIntentService.Companion
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
@@ -144,6 +146,8 @@ class EnvoyConnectWorker(
                 }
             }
 
+            val timeElapsed = System.currentTimeMillis() - loopStart
+
             if (res) {
                 // We found a working connection!
 
@@ -173,6 +177,7 @@ class EnvoyConnectWorker(
 
         // TODO: this is an opportunity to fetch more URLs to try
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
+        reportEndState()
     }
 
     // the worker ends up stopping itself this way, that seems bad?
@@ -197,8 +202,6 @@ class EnvoyConnectWorker(
             }
             jobs.add(job)
         }
-        // MNB: do urls > concurrency ever get tested <- concurrency is thread count not tests run
-        // MNB: launch all then join all?
 
         // wait for jobs to complete
         jobs.joinAll()
@@ -273,12 +276,12 @@ class EnvoyConnectWorker(
         return Result.success()
     }
 
-    private fun shouldSubmitUrl(url: String): Boolean {
+    private fun isUrlBlocked(url: String): Boolean {
 
         // disable this feature for debugging
         if (BuildConfig.BUILD_TYPE == "debug") {
             Log.d(TAG, "debug build, ignore time limit and submit")
-            return true
+            return false
         } else {
             Log.d(TAG, "release build, check time limit before submitting")
         }
@@ -294,10 +297,56 @@ class EnvoyConnectWorker(
             || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
             || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
             Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
-            return false
+            return true
         } else {
             Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
+            return false
+        }
+    }
+
+    private fun isTimeExpired(): Boolean {
+        val timeElapsed = System.currentTimeMillis() - startTime.get()
+        if (timeElapsed > TIME_LIMIT) {
+            Log.d(TAG, "time expired, end test")
             return true
+        } else {
+            Log.d(TAG, "time remaining, continue test")
+            return false
+        }
+    }
+
+    private fun reportEndState() {
+        if (testComplete.compareAndSet(false, true)) {
+            Log.d(TAG, "need to report status")
+        } else {
+            Log.d(TAG, "status already reported")
+            return
+        }
+        val timeElapsed = System.currentTimeMillis() - startTime.get()
+        if (foundUrl.get()) {
+            // url found
+            Log.d(TAG, "RESULT: PASSED - " + timeElapsed / 1000)
+            callback.reportTestStatus(EnvoyTestStatus.PASSED, timeElapsed)
+        } else if (testCount.get() < 1) {
+            // nothing to test
+            Log.d(TAG, "RESULT: EMPTY - " + timeElapsed / 1000)
+            callback.reportTestStatus(EnvoyTestStatus.EMPTY, timeElapsed)
+        } else if (testCount.get() == blockedCount.get()) {
+            // all tests blocked
+            Log.d(TAG, "RESULT: BLOCKED - " + timeElapsed / 1000)
+            callback.reportTestStatus(EnvoyTestStatus.BLOCKED, timeElapsed)
+        } else if (testCount.get() == (blockedCount.get() + failedCount.get())) {
+            // all tests blocked or failed
+            Log.d(TAG, "RESULT: FAILED - " + timeElapsed / 1000)
+            callback.reportTestStatus(EnvoyTestStatus.FAILED, timeElapsed)
+        } else if (testCount.get() > (blockedCount.get() + failedCount.get())) {
+            // testing incomplete, timeout?
+            Log.d(TAG, "RESULT: TIMEOUT - " + timeElapsed / 1000)
+            callback.reportTestStatus(EnvoyTestStatus.TIMEOUT, timeElapsed)
+        } else {
+            // unknown?
+            Log.d(TAG, "RESULT: UNKNOWN - " + timeElapsed / 1000)
+            callback.reportTestStatus(EnvoyTestStatus.UNKNOWN, timeElapsed)
         }
     }
 }
