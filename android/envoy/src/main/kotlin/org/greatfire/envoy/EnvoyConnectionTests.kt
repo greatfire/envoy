@@ -19,6 +19,9 @@ import org.chromium.net.UrlResponseInfo
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 
+// Go library
+import emissary.Emissary
+
 /*
     Class to hold all the test functions for testing various
     proxy and connection types

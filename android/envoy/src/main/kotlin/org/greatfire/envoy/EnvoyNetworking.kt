@@ -3,6 +3,7 @@ package org.greatfire.envoy
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 // Go library
 import plenipotentiary.Plenipotentiary
 
