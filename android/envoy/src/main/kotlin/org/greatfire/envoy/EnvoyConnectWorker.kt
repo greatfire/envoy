@@ -54,12 +54,7 @@ class EnvoyConnectWorker(
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
-        // var test = envoyTests.removeFirstOrNull() // MNB: thread safe?
-
         val WTAG = TAG + "-" + id
-
-        // Log.d(WTAG, "worker: " + id)
-        // Log.d(WTAG, "Thread: " + Thread.currentThread().name)
 
         while (true) {
             val test = envoyTests.removeFirstOrNull()
@@ -157,9 +152,9 @@ class EnvoyConnectWorker(
                 // we're done
                 // XXX it's technically possible for a proxy to "win" this
                 // race while a direct connection works
-                // stopWorkers()
-                // MNB: with flags and checks to break loop, do we need to force a stop?
-                //   only concern i can think of would be if a single test kept running too long
+
+                // we have a working connection, stop wasting resources ;-)
+                stopWorkers()
                 break;
 
             } else {
@@ -202,7 +197,7 @@ class EnvoyConnectWorker(
 
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
-    private fun startWorkers() {
+    private suspend fun startWorkers() {
         Log.i(TAG,
             "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
 
@@ -221,7 +216,7 @@ class EnvoyConnectWorker(
         // MNB: ...or do we report end state here?
     }
 
-    private fun startWork() = coroutineScope {
+    private suspend fun startWork() = coroutineScope {
         launch {
             // Pick a working DoH server
             EnvoyNetworking.dns.init()
