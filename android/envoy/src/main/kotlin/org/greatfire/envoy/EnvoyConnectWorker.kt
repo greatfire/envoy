@@ -203,6 +203,19 @@ class EnvoyConnectWorker(
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
     private fun startWorkers() = runBlocking {
+
+        // XXX move this out of startWorkers
+        launch {
+            // Pick a working DoH server
+            EnvoyNetworking.dns.init()
+
+            // initialize the go code
+
+            // should we use a subdir? This is (mostly?) used for
+            // the PT state directory in Lyrebird
+            EnvoyNetworking.emissary.init(context.filesDir.path)
+        }
+
         Log.i(TAG,
             "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
 
@@ -213,8 +226,6 @@ class EnvoyConnectWorker(
             }
             jobs.add(job)
         }
-
-        Log.d(TAG, "Go coroutines...")
 
         jobs.joinAll()
 

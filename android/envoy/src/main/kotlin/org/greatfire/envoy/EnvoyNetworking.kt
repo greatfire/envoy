@@ -6,16 +6,12 @@ package org.greatfire.envoy
     EnvoyInterceptor
 */
 
-// import android.content.Context
 import android.content.Context
 import android.util.Log
-// import okhttp3.dnsoverhttps.DnsOverHttps
-import okhttp3.HttpUrl.Companion.toHttpUrl
-// import java.net.InetAddress
 import androidx.work.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 // Go library
-import plenipotentiary.Plenipotentiary
-
+import emissary.Emissary
 
 class EnvoyNetworking {
 
@@ -46,7 +42,11 @@ class EnvoyNetworking {
 
         var appConnectionsWorking = false
 
-        val plen = Plenipotentiary.newPlenipotentiary()
+        // val plen = Plenipotentiary.newPlenipotentiary()
+
+        val emissary = Emissary.newEmissary()
+
+        val dns = EnvoyDns()
 
         // MNB: does it make sense for these to be in companion?
 
@@ -105,7 +105,7 @@ class EnvoyNetworking {
 
             WorkManager.initialize(context, config)
             WorkManager
-                // .getInstance(myContext)
+                // .getInstance(getApplicationContext())
                 .getInstance()
                 .enqueue(workRequest)
         }

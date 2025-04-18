@@ -1,6 +1,6 @@
 package org.greatfire.envoy
 
-import plenipotentiary.Plenipotentiary
+// import plenipotentiary.Plenipotentiary
 import android.app.IntentService
 import android.content.Context
 import android.content.Intent
@@ -473,9 +473,10 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
     ) {
         Log.d(TAG, "submit http(s) url")
 
-        val p = Plenipotentiary.newPlenipotentiary()
-        p.envoyUrl = url
-        var newUrl = p.findEnvoyUrl(filesDir.path)
+        // val p = Plenipotentiary.newPlenipotentiary()
+        // p.envoyUrl = url
+        // var newUrl = p.findEnvoyUrl(filesDir.path)
+        val newUrl = ""
         httpsUrls.add(newUrl)
 
         Log.d(TAG, "using Envoy URL: " + newUrl)

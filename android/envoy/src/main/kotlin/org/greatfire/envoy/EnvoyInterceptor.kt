@@ -48,7 +48,7 @@ class EnvoyInterceptor : Interceptor {
                 return res
             }
         } else {
-            Log.d(TAG, "Observing: " + req.url)
+            // Log.d(TAG, "Observing: " + req.url)
             // let requests pass though and see record if they succeed
             // failures are likely to be timeouts, so don't wait for that
             return observingInterceptor(chain)

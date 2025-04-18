@@ -15,6 +15,9 @@ import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
 
+// Go library
+import emissary.Emissary
+
 /*
     Class to hold all the test functions for testing various
     proxy and connection types
@@ -66,8 +69,8 @@ class EnvoyConnectionTests {
                     with(envoyTests) {
                         // XXX should we always test both?
                         // add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, tempUrl))
-                        add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, tempUrl))
-                        // add(EnvoyTest(ENVOY_PROXY_HTTP_ECH, tempUrl))
+                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, tempUrl))
+                        add(EnvoyTest(ENVOY_PROXY_HTTP_ECH, tempUrl))
                     }
                 }
                 "socks5", "proxy+https" -> {
@@ -156,7 +159,7 @@ class EnvoyConnectionTests {
     }
 
     // Test a standard SOCKS or HTTP(S) proxy
-    fun testStandardProxy(proxyUrl: URI): Boolean {
+    suspend fun testStandardProxy(proxyUrl: URI): Boolean {
         Log.d(TAG, "Testing standard proxy")
 
         var proxyType = Proxy.Type.HTTP
@@ -171,7 +174,7 @@ class EnvoyConnectionTests {
 
     // Test using an Envoy HTTP(s) proxy
     // see examples at https://github.com/greatfire/envoy/
-    fun testEnvoyOkHttp(proxyUrl: URI): Boolean {
+    suspend fun testEnvoyOkHttp(proxyUrl: URI): Boolean {
         if (proxyUrl.getScheme() == "envoy") {
             // XXX handle envoy:// URLs
             Log.e(TAG, "envoy:// URLs aren't supported yet ☹️")
@@ -191,18 +194,27 @@ class EnvoyConnectionTests {
         }
     }
 
-    fun testECHProxy(test: EnvoyTest): Boolean {
-        Log.d(TAG, "Testing Envoy URL with Plenipotentiary: " + test.url)
-        val url = EnvoyNetworking.plen.findEnvoyUrl(test.url)
-        // XXX this is a weird case, plenipotentiary returns a new
+    // ECH
+    suspend fun testECHProxy(test: EnvoyTest): Boolean {
+        Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
+
+        // XXX ECH config list
+
+        val hostname = URI(test.url).getHost()
+        val echConfigList = EnvoyNetworking.dns.getECHConfig(hostname)
+        EnvoyNetworking.emissary.setEnvoyUrl(test.url, echConfigList)
+
+        val url = EnvoyNetworking.emissary.findEnvoyUrl()
+        // XXX this is a weird case, emissary returns a new
         // URL to use
         // if it comes back, it's tested and working
         test.extra = url
-        Log.d(TAG, "Plen URL: " + url)
+        Log.d(TAG, "Emissary URL: " + url)
         return true
     }
 
-    fun testHysteria2(proxyUrl: URI): Boolean {
+    // IEnvoyProxy PTs
+    suspend fun testHysteria2(proxyUrl: URI): Boolean {
         // XXX the Go code needs some improvement
         return false
 
@@ -296,7 +308,7 @@ class EnvoyConnectionTests {
         }
     }
 
-    fun testCronetEnvoy(test: EnvoyTest, context: Context): Boolean {
+    suspend fun testCronetEnvoy(test: EnvoyTest, context: Context): Boolean {
         val cronetEngine = CronetNetworking.buildEngine(
             context = context,
             cacheFolder = null, // no cache XXX?
