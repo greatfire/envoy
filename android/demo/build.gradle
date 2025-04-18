@@ -83,6 +83,8 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
+    debugApi(name: 'Emissary', ext: 'aar')
+    releaseApi(name: 'Emissary', ext: 'aar')
     //debugApi(name: 'cronet-debug', ext: 'aar')
     //releaseApi(name: 'cronet-release', ext: 'aar')
 }
