@@ -39,7 +39,7 @@ class EnvoyInterceptor : Interceptor {
                     else -> {
                         Log.e(TAG, "unsupported activeType: " + EnvoyNetworking.activeType)
                         // pass the request through
-                        chain.proceed(chain.request())
+                        chain.proceed(chain.request()) // MNB: should this be an error state?
                     }
                 }
 

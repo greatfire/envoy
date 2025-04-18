@@ -1,2 +1,2 @@
-include ':envoy', ':cronet'
+include ':envoy', ':cronet', ':demo'
 rootProject.name = 'Envoy'
