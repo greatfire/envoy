@@ -202,20 +202,7 @@ class EnvoyConnectWorker(
 
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
-    private fun startWorkers() = runBlocking {
-
-        // XXX move this out of startWorkers
-        launch {
-            // Pick a working DoH server
-            EnvoyNetworking.dns.init()
-
-            // initialize the go code
-
-            // should we use a subdir? This is (mostly?) used for
-            // the PT state directory in Lyrebird
-            EnvoyNetworking.emissary.init(context.filesDir.path)
-        }
-
+    private fun startWorkers() {
         Log.i(TAG,
             "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
 
@@ -232,6 +219,22 @@ class EnvoyConnectWorker(
         Log.d(TAG, "EnvoyConnectWorker is done")
 
         // MNB: ...or do we report end state here?
+    }
+
+    private fun startWork() = coroutineScope {
+        launch {
+            // Pick a working DoH server
+            EnvoyNetworking.dns.init()
+
+            // initialize the go code
+
+            // should we use a subdir? This is (mostly?) used for
+            // the PT state directory in Lyrebird
+            EnvoyNetworking.emissary.init(context.filesDir.path)
+
+            // start test workers
+            startWorkers()
+        }
     }
 
     override suspend fun doWork(): Result {
@@ -267,7 +270,7 @@ class EnvoyConnectWorker(
                 + envoyTests.size
                 + " URLs to test")
 
-        startWorkers()
+        startWork()
         return Result.success()
     }
 
