@@ -197,7 +197,7 @@ class EnvoyConnectWorker(
 
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
-    private suspend fun startWorkers() {
+    private suspend fun startWorkers() = coroutineScope {
         Log.i(TAG,
             "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
 
@@ -216,7 +216,7 @@ class EnvoyConnectWorker(
         // MNB: ...or do we report end state here?
     }
 
-    private suspend fun startWork() = coroutineScope {
+    private suspend fun start() = coroutineScope {
         launch {
             // Pick a working DoH server
             EnvoyNetworking.dns.init()
@@ -265,7 +265,7 @@ class EnvoyConnectWorker(
                 + envoyTests.size
                 + " URLs to test")
 
-        startWork()
+        start()
         return Result.success()
     }
 

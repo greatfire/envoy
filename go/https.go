@@ -112,7 +112,7 @@ func (e *Emissary) doTestHttps(ctx context.Context, useHttp3 bool, resultChan ch
 		return false, err
 	}
 
-	if resp.StatusCode == e.TargetRespose {
+	if resp.StatusCode == e.TargetResponse {
 		// clear out digest param
 		resultChan <- EnvoyResonse{
 			EnvoyUrl: testUrl.String(),

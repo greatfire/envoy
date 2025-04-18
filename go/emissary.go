@@ -22,7 +22,7 @@ type Emissary struct {
 	LogLevel		string
 
 	TestTarget		string
-	TargetRespose	int
+	TargetResponse	int
 
 	DOHServer		string
 
@@ -57,7 +57,7 @@ func NewEmissary() (*Emissary) {
 		LogLevel: "DEBUG",
 
 		TestTarget: "https://www.google.com/generate_204",
-	    TargetRespose: 204,
+	    TargetResposne: 204,
 
 	    DOHServer: "9.9.9.9",
 
