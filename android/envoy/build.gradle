@@ -48,7 +48,7 @@ dependencies {
 
     implementation('androidx.work:work-runtime-ktx:2.10.0')
 
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation('androidx.work:work-runtime-ktx:2.10.0')
 
     //testImplementation 'junit:junit:4.12'
     //androidTestImplementation 'androidx.test:runner:1.1.1'
