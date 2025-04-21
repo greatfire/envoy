@@ -72,6 +72,9 @@ class EnvoyConnectWorker(
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
+
+        // XXX split this up in to like 3 functions
+
         val WTAG = TAG + "-" + id
 
         while (true) {
