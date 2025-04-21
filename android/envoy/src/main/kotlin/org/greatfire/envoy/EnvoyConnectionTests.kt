@@ -154,6 +154,8 @@ class EnvoyConnectionTests {
 
             Log.d(TAG, "&&& addEnvoyUrl type: " + uri.getScheme())
 
+            Log.d(TAG, "&&& addEnvoyUrl type: " + uri.getScheme())
+
             when (uri.getScheme()) {
                 "http", "https", "envoy+https" -> {
 
@@ -438,6 +440,63 @@ class EnvoyConnectionTests {
         val res = testStandardProxy(Uri.parse(test.proxyUrl))
         if (res == false) {
             test.stopService()
+        }
+        return res
+    }
+
+    private fun getV2RayUuid(url: String): String {
+        val san = UrlQuerySanitizer()
+        san.setAllowUnregisteredParamaters(true)
+        san.parseUrl(url)
+        return san.getValue("id")
+    }
+
+    suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
+        val server = URI(test.url)
+        val host = server.getHost()
+        val port = server.getPort().toString()
+        val uuid = getV2RayUuid(test.url)
+
+        val addr = EnvoyNetworking.emissary.startV2RaySrtp(host, port, uuid)
+
+        if (addr == "") {
+            // The go code doesn't handle failures well, but an empty
+            // string here indicates failure
+            EnvoyNetworking.emissary.stopV2RaySrtp() // probably unnecessary
+            return false
+        }
+
+        test.proxyUrl = "socks5://$addr"
+        Log.d(TAG, "Testing V2Ray SRTP ${test.proxyUrl}")
+
+        val res = testStandardProxy(URI(test.proxyUrl))
+        if (res == false) {
+            EnvoyNetworking.emissary.stopV2RaySrtp()
+        }
+        return res
+    }
+
+    suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
+        val server = URI(test.url)
+        val host = server.getHost()
+        val port = server.getPort().toString()
+        val uuid = getV2RayUuid(test.url)
+
+        val addr = EnvoyNetworking.emissary.startV2RayWechat(host, port, uuid)
+
+        if (addr == "") {
+            // The go code doesn't handle failures well, but an empty
+            // string here indicates failure
+            EnvoyNetworking.emissary.stopV2RayWechat() // probably unnecessary
+            return false
+        }
+
+        test.proxyUrl = "socks5://$addr"
+        Log.d(TAG, "testing V2Ray WeChat at ${test.proxyUrl}")
+
+        val res = testStandardProxy(URI(test.proxyUrl))
+        if (res == false) {
+            EnvoyNetworking.emissary.stopV2RayWechat()
         }
         return res
     }
