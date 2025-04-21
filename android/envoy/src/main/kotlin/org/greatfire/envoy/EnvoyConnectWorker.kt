@@ -49,6 +49,25 @@ class EnvoyConnectWorker(
     private var testComplete = AtomicBoolean()
 
 
+    // helper to time things
+    inner class Timer() {
+        private val startTime = System.currentTimeMillis()
+        private val stopTime?: Long = null
+
+        fun stop(): Long {
+            stopTime = System.currentTimeMillis()
+            return stopTime!! - startTime
+        }
+
+        fun timeSpent(): Long {
+            if (stopTime == null) {
+                Log.e(TAG, "timeSpent called before stop()!")
+                return 0
+            }
+            return stopTime!! - startTime
+        }
+    }
+
 
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
@@ -58,13 +77,9 @@ class EnvoyConnectWorker(
         while (true) {
             val test = envoyTests.removeFirstOrNull()
             if (test == null) {
-                Log.d(WTAG, "TESTS COMPLETE, BREAK")
                 break
             }  else if (isTimeExpired()) {
                 Log.d(WTAG, "TIME EXPIRED, BREAK")
-                break
-            } else if (EnvoyNetworking.envoyConnected) {
-                Log.d(WTAG, "ALREADY FOUND A URL, BREAK")
                 break
             } else if (isUrlBlocked(test.url)) {
                 val blocked = blockedCount.incrementAndGet()
@@ -72,7 +87,7 @@ class EnvoyConnectWorker(
                 continue
             }
 
-            val loopStart = System.currentTimeMillis()
+            val loopTimer = Timer()
 
             Log.d(WTAG, "CONTINUE TESTING URL " + test.url)
 
@@ -116,7 +131,7 @@ class EnvoyConnectWorker(
                 }
             }
 
-            val timeElapsed = System.currentTimeMillis() - loopStart
+            val timeElapsed = loopTimer.stop()
 
             if (res) {
                 // Test was successful
