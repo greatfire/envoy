@@ -19,6 +19,7 @@ class EnvoyNetworking {
         private const val TAG = "EnvoyNetworking"
 
         // MNB: make private because of various companion methods?
+        // How do we make them private and accessible from the worker and the interceptor?
 
         // Settings
         //
@@ -39,6 +40,12 @@ class EnvoyNetworking {
         var activeUrl: String = ""
         // this value is essentially meaningless before we try connecting
         var activeType: String = ENVOY_PROXY_DIRECT // MNB: maybe add "none" option
+
+        // XXX these are dumb names, but currently activeType needs to be a
+        // generic SOCKS5 proxy for most protocols, so store the "real" one
+        // here for now
+        var realActiveType: String = ""
+        var realActiveUrl: String = ""
 
         var appConnectionsWorking = false
 
@@ -111,14 +118,33 @@ class EnvoyNetworking {
         }
 
         // The connection worker found a successful connection
-        fun connected(newActiveType: String, newActiveUrl: String) {
+        fun connected(test: EnvoyTest) {
             Log.i(TAG, "Envoy Connected!")
-            Log.d(TAG, "activeType: " + activeType)
-            Log.d(TAG, "URL: " + newActiveUrl)
+            Log.d(TAG, "service: " + test.testType)
+            Log.d(TAG, "URL: " + test.url)
+            Log.d(TAG, "proxyUrl: " + test.proxyUrl)
+
+            realActiveUrl = test.url
+            realActiveType = test.testType
+
+            when (test.testType) {
+                ENVOY_PROXY_HTTP_ECH -> {
+                    // upstream is an Envoy proxy
+                    activeType = ENVOY_PROXY_OKHTTP_ENVOY
+                    activeUrl = test.proxyUrl!!
+                }
+                ENVOY_PROXY_HYSTERIA2 -> {
+                    // we have a SOCKS (or HTTP) proxy at proxy URL
+                    activeType = ENVOY_PROXY_OKHTTP_PROXY
+                    activeUrl = test.proxyUrl!!
+                }
+                else -> {
+                    activeType = test.testType
+                    activeUrl = test.url
+                }
+            }
 
             envoyConnected = true // 🎉
-            activeType = newActiveType
-            activeUrl = newActiveUrl
         }
     }
 }

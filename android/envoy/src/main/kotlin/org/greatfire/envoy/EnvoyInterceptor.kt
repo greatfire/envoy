@@ -28,12 +28,14 @@ class EnvoyInterceptor : Interceptor {
                 return chain.proceed(chain.request())
             } else {
                 // proxy via Envoy
-                Log.d(TAG, "Proxy Via Envoy: " + req.url)
+                Log.d(TAG, "Proxy Via Envoy: " + EnvoyNetworking.activeType)
                 val res = when (EnvoyNetworking.activeType) {
                     ENVOY_PROXY_OKHTTP_ENVOY -> {
+                        Log.d(TAG, "Passing request to Envoy server")
                         proxyToEnvoy(chain)
                     }
                     ENVOY_PROXY_OKHTTP_PROXY -> {
+                        Log.d(TAG, "Passing request to standard proxy")
                         useStandardProxy(chain)
                     }
                     else -> {
@@ -101,6 +103,8 @@ class EnvoyInterceptor : Interceptor {
     private fun setupProxy() {
         val uri = URI(EnvoyNetworking.activeUrl)
         var proxyType = Proxy.Type.HTTP
+        val scheme = uri.getScheme()
+        Log.d(TAG, "SCHEME: $scheme")
         if (uri.getScheme() == "socks5") {
             proxyType = Proxy.Type.SOCKS
         }

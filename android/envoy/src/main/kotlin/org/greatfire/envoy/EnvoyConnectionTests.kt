@@ -27,7 +27,7 @@ data class EnvoyTest(
     var testType: String,
     var url: String,
 ) {
-    var extra: String? = null
+    var proxyUrl: String? = null
 }
 
 class EnvoyConnectionTests {
@@ -198,8 +198,6 @@ class EnvoyConnectionTests {
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
         Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
 
-        // XXX ECH config list
-
         val hostname = URI(test.url).getHost()
         val echConfigList = EnvoyNetworking.dns.getECHConfig(hostname)
         EnvoyNetworking.emissary.setEnvoyUrl(test.url, echConfigList)
@@ -208,33 +206,24 @@ class EnvoyConnectionTests {
         // XXX this is a weird case, emissary returns a new
         // URL to use
         // if it comes back, it's tested and working
-        test.extra = url
+        test.proxyUrl = url
         Log.d(TAG, "Emissary URL: " + url)
         return true
     }
 
     // IEnvoyProxy PTs
-    suspend fun testHysteria2(proxyUrl: URI): Boolean {
-        // XXX the Go code needs some improvement
-        return false
+    suspend fun testHysteria2(test: EnvoyTest): Boolean {
+        val addr = EnvoyNetworking.emissary.startHysteria2(test.url)
 
-        /*
-        plen.controller.hysteriaServer(proxyUrl)
-        plen.controller.start(plen.controller.Hysteria2)
-        val port = plen.controller.getPort(plen.controller.Hysteria2)
-        val proxy = getProxy(Proxy.Type.SOCKS, "localhost", port)
+        test.proxyUrl = "socks5://$addr"
 
-        val request = Request.Builder().url(testUrl).build()
+        Log.d(TAG, "testing hysteria2 at $addr")
 
-        res = runTest(request, proxy)
-
-        if (res) {
-            // leave Hysteria running if it was successful
-            // XXX should probably manage this better
-        } else {
-            plen.controller.stop(plen.controller.Hysteria2)
+        val res = testStandardProxy(URI(test.proxyUrl))
+        if (res == false) {
+            EnvoyNetworking.emissary.stopHysteria2()
         }
-        */
+        return res
     }
 
     /////////////////

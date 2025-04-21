@@ -10,6 +10,7 @@ class EnvoyDns() {
 
     companion object {
         private const val TAG = "EnvoyDns"
+        private const val CLOUDFLARE_ECH = "AEX+DQBBCwAgACBozL6Jw4kX2IzWVC3KpnxYOat5ln6RtIWLTlTAptuNAgAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA="
 
         private val CLOUDFLARE_SERVERS = listOf<String>("1.1.1.1", "1.0.0.1", "[2606:4700:4700::1111]", "[2606:4700:4700::1001]")
         private val QUAD9_SERVERS = listOf<String>("9.9.9.9", "149.112.112.112", "[2620:fe::fe]", "[2620:fe::fe:9]")
@@ -101,12 +102,18 @@ class EnvoyDns() {
             try {
                 val ans = doh.lookUp(host, "HTTPS").data
                 echRecord = ans[0]
-                Log.d(TAG, "ECH: $echRecord")
             } catch (e: Error) {
                 Log.e(TAG, "ECH Config lookup failed for $host $e")
+                // we're probably talking to cloudflare, so try their key
+                return CLOUDFLARE_ECH
             }
         }
-        return echRecord!!
+
+        val re = Regex("ech=([^ ]+)")
+        val matchResult = re.find(echRecord!!)
+        val ech = matchResult?.groups[1]?.value
+
+        return ech!!
     }
 
     suspend fun init() {

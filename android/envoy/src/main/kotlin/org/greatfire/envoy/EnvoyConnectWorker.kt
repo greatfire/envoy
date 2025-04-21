@@ -46,7 +46,6 @@ class EnvoyConnectWorker(
 
     private var startTime = AtomicLong()
 
-    private var foundUrl = AtomicBoolean()
     private var testComplete = AtomicBoolean()
 
 
@@ -64,7 +63,7 @@ class EnvoyConnectWorker(
             }  else if (isTimeExpired()) {
                 Log.d(WTAG, "TIME EXPIRED, BREAK")
                 break
-            } else if (foundUrl.get()) {
+            } else if (EnvoyNetworking.envoyConnected) {
                 Log.d(WTAG, "ALREADY FOUND A URL, BREAK")
                 break
             } else if (isUrlBlocked(test.url)) {
@@ -109,7 +108,7 @@ class EnvoyConnectWorker(
                 ENVOY_PROXY_HYSTERIA2 -> {
                     serviceType = EnvoyServiceType.HYSTERIA2
                     Log.d(WTAG, "Testing Hysteria")
-                    tests.testHysteria2(proxyUri)
+                    tests.testHysteria2(test)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
@@ -120,34 +119,26 @@ class EnvoyConnectWorker(
             val timeElapsed = System.currentTimeMillis() - loopStart
 
             if (res) {
-                Log.d(WTAG, "SUCCESSFUL URL: " + test)
-                foundUrl.set(true)
-                callback.reportUrlSuccess(proxyUri, serviceType, timeElapsed)
+                // Test was successful
+
                 // direct connection, enable this even if something else
                 // tested as working first
                 if (test.testType == ENVOY_PROXY_DIRECT) {
-                    Log.d(WTAG, "DIRECT WORKS, USE THAT: " + test.url)
-                    EnvoyNetworking.connected(ENVOY_PROXY_DIRECT, test.url)
+                    EnvoyNetworking.connected(test)
                 }
 
                 // did someone else win?
                 if (!EnvoyNetworking.envoyConnected) {
-                    Log.d(WTAG, "NOT CONNECTED YET, USE URL: " + test.url)
-                    if (test.testType == ENVOY_PROXY_HTTP_ECH) {
-                        // proxying ECH connections through the Go code
-                        // is a little weird for now
-                        EnvoyNetworking.connected(
-                            ENVOY_PROXY_OKHTTP_ENVOY, test.extra!!)
-                    } else {
-                        EnvoyNetworking.connected(test.testType, test.url)
-                    }
+                    EnvoyNetworking.connected(test)
                 } else {
                     if (test.testType == ENVOY_PROXY_DIRECT) {
                         Log.d(WTAG, "USING DIRECT URL")
                     } else {
-                        Log.d(WTAG, "CONNECTED ALREADY, SKIP URL: " + test.url)
+                        Log.d(WTAG, "CONNECTED ALREADY, SKIP URL: " + test)
                     }
                 }
+
+                callback.reportUrlSuccess(proxyUri, serviceType, timeElapsed)
 
                 // we're done
                 // XXX it's technically possible for a proxy to "win" this
@@ -216,7 +207,7 @@ class EnvoyConnectWorker(
         // MNB: ...or do we report end state here?
     }
 
-    private suspend fun start() = coroutineScope {
+    private suspend fun startEnvoy() = coroutineScope {
         launch {
             // Pick a working DoH server
             EnvoyNetworking.dns.init()
@@ -239,7 +230,6 @@ class EnvoyConnectWorker(
         testCount.set(EnvoyConnectionTests.envoyTests.size) // don't count direct test
         blockedCount.set(0)
         failedCount.set(0)
-        foundUrl.set(false)
         testComplete.set(false)
 
         envoyTests.clear()
@@ -265,7 +255,7 @@ class EnvoyConnectWorker(
                 + envoyTests.size
                 + " URLs to test")
 
-        start()
+        startEnvoy()
         return Result.success()
     }
 
@@ -316,7 +306,7 @@ class EnvoyConnectWorker(
             return
         }
         val timeElapsed = System.currentTimeMillis() - startTime.get()
-        if (foundUrl.get()) {
+        if (EnvoyNetworking.envoyConnected) {
             // url found
             Log.d(TAG, "RESULT: PASSED - " + timeElapsed / 1000)
             callback.reportTestStatus(EnvoyTestStatus.PASSED, timeElapsed)
