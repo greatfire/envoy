@@ -146,7 +146,7 @@ class EnvoyConnectWorker(
                 }
             }
 
-            val timeElapsed = System.currentTimeMillis() - loopStart
+            val timeElapsed = loopTimer.stop()
 
             if (res) {
                 // We found a working connection!
