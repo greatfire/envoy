@@ -113,7 +113,6 @@ class EnvoyConnectWorker(
                     tests.testECHProxy(test)
                 }
                 EnvoyServiceType.HYSTERIA2 -> {
-                    serviceType = EnvoyServiceType.HYSTERIA2
                     Log.d(WTAG, "Testing Hysteria")
                     tests.testHysteria2(test)
                 }
