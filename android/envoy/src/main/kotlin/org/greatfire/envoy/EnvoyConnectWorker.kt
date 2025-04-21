@@ -115,7 +115,7 @@ class EnvoyConnectWorker(
                 ENVOY_PROXY_HYSTERIA2 -> {
                     serviceType = EnvoyServiceType.HYSTERIA2
                     Log.d(WTAG, "Testing Hysteria")
-                    tests.testHysteria2(proxyUri)
+                    tests.testHysteria2(test)
                 }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
@@ -287,7 +287,7 @@ class EnvoyConnectWorker(
             return
         }
         val timeElapsed = System.currentTimeMillis() - startTime.get()
-        if (foundUrl.get()) {
+        if (EnvoyNetworking.envoyConnected) {
             // url found
             Log.d(TAG, "RESULT: PASSED - " + timeElapsed / 1000)
             callback.reportTestStatus(EnvoyTestStatus.PASSED, timeElapsed)
