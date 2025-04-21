@@ -74,16 +74,43 @@ func NewEmissary() (*Emissary) {
 	return e
 }
 
+// Helpers because the JVM code apparently can't access e.Controller directly
+
 func (e *Emissary) StartHysteria2(url string) string {
 	e.Controller.Hysteria2Server = url
 	e.Controller.Start(IEnvoyProxy.Hysteria2, "")
 	return e.Controller.LocalAddress(IEnvoyProxy.Hysteria2)
 }
 
-
 func (e *Emissary) StopHysteria2() {
 	e.Controller.Stop(IEnvoyProxy.Hysteria2)
 }
+
+func (e *Emissary) StartV2RaySrtp(server, port, uuid string) string {
+	e.Controller.V2RayServerAddress = server
+	e.Controller.V2RayServerPort = port
+	e.Controller.V2RayId = uuid
+	e.Controller.Start(IEnvoyProxy.V2RaySrtp, "")
+
+	return e.Controller.LocalAddress(IEnvoyProxy.V2RaySrtp)
+}
+
+func (e *Emissary) StopV2RaySrtp() {
+	e.Controller.Stop(IEnvoyProxy.V2RaySrtp)
+}
+
+func (e *Emissary) StartV2RayWechat(server, port, uuid string) string {
+	e.Controller.V2RayServerAddress = server
+	e.Controller.V2RayServerPort = port
+	e.Controller.V2RayId = uuid
+	e.Controller.Start(IEnvoyProxy.V2RayWechat, "")
+	return e.Controller.LocalAddress(IEnvoyProxy.V2RayWechat)
+}
+
+func (e *Emissary) StopV2RayWechat() {
+	e.Controller.Stop(IEnvoyProxy.V2RayWechat)
+}
+
 
 // Set the Envoy URL used by the proxy
 // echConfigList must be looked up from DNS
