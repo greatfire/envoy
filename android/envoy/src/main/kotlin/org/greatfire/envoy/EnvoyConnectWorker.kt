@@ -119,6 +119,12 @@ class EnvoyConnectWorker(
                     Log.d(WTAG, "Testing Hysteria")
                     tests.testHysteria2(test)
                 }
+                EnvoyServiceType.V2SRTP -> {
+                    tests.testV2RaySrtp(test)
+                }
+                EnvoyServiceType.V2WECHAT -> {
+                    tests.testV2RayWechat(test)
+                }
                 else -> {
                     Log.e(WTAG, "Unsupported test type: " + test.testType)
                     false

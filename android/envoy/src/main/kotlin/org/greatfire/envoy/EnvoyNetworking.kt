@@ -71,7 +71,10 @@ class EnvoyNetworking {
                     activeType = EnvoyServiceType.OKHTTP_ENVOY
                     activeUrl = test.proxyUrl!!
                 }
-                EnvoyServiceType.HYSTERIA2 -> {
+                // all these services provice a SOCKS5 proxy
+                EnvoyServiceType.HYSTERIA2,
+                EnvoyServiceType.V2SRTP,
+                EnvoyServiceType.V2WECHAT -> {
                     // we have a SOCKS (or HTTP) proxy at proxy URL
                     activeType = EnvoyServiceType.OKHTTP_PROXY
                     activeUrl = test.proxyUrl!!

@@ -45,8 +45,6 @@ class EnvoyInterceptor : Interceptor {
                     }
                 }
 
-                // Log.d(TAG, "")
-
                 return res
             }
         } else {
