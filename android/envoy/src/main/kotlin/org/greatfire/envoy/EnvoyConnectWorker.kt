@@ -323,7 +323,7 @@ class EnvoyConnectWorker(
             return
         }
         val timeElapsed = System.currentTimeMillis() - startTime.get()
-        if (foundUrl.get()) {
+        if (EnvoyNetworking.envoyConnected) {
             // url found
             Log.d(TAG, "RESULT: PASSED - " + timeElapsed / 1000)
             callback.reportTestStatus(EnvoyTestStatus.PASSED, timeElapsed)
