@@ -103,27 +103,27 @@ class EnvoyConnectWorker(
             // is there some better way to structure this? It's going to
             // get ungainly
             val res = when(test.testType) {
-                ENVOY_PROXY_DIRECT -> {
+                EnvoyServiceType.DIRECT -> {
                     serviceType = EnvoyServiceType.DIRECT
                     tests.testDirectConnection()
                 }
-                ENVOY_PROXY_OKHTTP_ENVOY -> {
+                EnvoyServiceType.OKHTTP_ENVOY -> {
                     serviceType = EnvoyServiceType.OKHTTP_ENVOY
                     tests.testEnvoyOkHttp(proxyUri)
                 }
-                ENVOY_PROXY_CRONET_ENVOY -> {
+                EnvoyServiceType.CRONET_ENVOY -> {
                     serviceType = EnvoyServiceType.CRONET_ENVOY
                     tests.testCronetEnvoy(test, context)
                 }
-                ENVOY_PROXY_OKHTTP_PROXY -> {
+                EnvoyServiceType.OKHTTP_PROXY -> {
                     serviceType = EnvoyServiceType.OKHTTP_PROXY
                     tests.testStandardProxy(proxyUri)
                 }
-                ENVOY_PROXY_HTTP_ECH -> {
+                EnvoyServiceType.HTTP_ECH -> {
                     serviceType = EnvoyServiceType.HTTP_ECH
                     tests.testECHProxy(test)
                 }
-                ENVOY_PROXY_HYSTERIA2 -> {
+                EnvoyServiceType.HYSTERIA2 -> {
                     serviceType = EnvoyServiceType.HYSTERIA2
                     Log.d(WTAG, "Testing Hysteria")
                     tests.testHysteria2(test)
@@ -141,7 +141,7 @@ class EnvoyConnectWorker(
 
                 // direct connection, enable this even if something else
                 // tested as working first
-                if (test.testType == ENVOY_PROXY_DIRECT) {
+                if (test.testType == EnvoyServiceType.DIRECT) {
                     EnvoyNetworking.connected(test)
                 }
 
@@ -167,7 +167,7 @@ class EnvoyConnectWorker(
                 callback.reportUrlFailure(proxyUri, serviceType, timeElapsed)
 
                 // failed?
-                if (test.testType == ENVOY_PROXY_DIRECT) {
+                if (test.testType == EnvoyServiceType.DIRECT) {
                     Log.d(WTAG, "DIRECT FAILED - " + test.url)
                 } else {
                     val failed = failedCount.incrementAndGet()
@@ -257,7 +257,8 @@ class EnvoyConnectWorker(
         // test direct connection first
         if (EnvoyConnectionTests.directUrl != "") {
             // testUrls.add(EnvoyNetworking.directUrl)
-            val test = EnvoyTest(ENVOY_PROXY_DIRECT, EnvoyConnectionTests.directUrl)
+            val test = EnvoyTest(
+                EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
             envoyTests.add(test)
         }
         // shuffle the rest of the URLs

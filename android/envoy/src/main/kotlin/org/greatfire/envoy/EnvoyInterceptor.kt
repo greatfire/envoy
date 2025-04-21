@@ -30,11 +30,11 @@ class EnvoyInterceptor : Interceptor {
                 // proxy via Envoy
                 Log.d(TAG, "Proxy Via Envoy: " + EnvoyNetworking.activeType)
                 val res = when (EnvoyNetworking.activeType) {
-                    ENVOY_PROXY_OKHTTP_ENVOY -> {
+                    EnvoyServiceType.OKHTTP_ENVOY -> {
                         Log.d(TAG, "Passing request to Envoy server")
                         proxyToEnvoy(chain)
                     }
-                    ENVOY_PROXY_OKHTTP_PROXY -> {
+                    EnvoyServiceType.OKHTTP_PROXY -> {
                         Log.d(TAG, "Passing request to standard proxy")
                         useStandardProxy(chain)
                     }

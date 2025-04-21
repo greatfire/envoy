@@ -39,12 +39,12 @@ class EnvoyNetworking {
         // XXX in some cases we need to use both a proxy and an Envoy URL
         var activeUrl: String = ""
         // this value is essentially meaningless before we try connecting
-        var activeType: String = ENVOY_PROXY_DIRECT // MNB: maybe add "none" option
+        var activeType = EnvoyServiceType.UNKNOWN
 
         // XXX these are dumb names, but currently activeType needs to be a
         // generic SOCKS5 proxy for most protocols, so store the "real" one
         // here for now
-        var realActiveType: String = ""
+        var realActiveType = EnvoyServiceType.UNKNOWN
         var realActiveUrl: String = ""
 
         var appConnectionsWorking = false
@@ -66,14 +66,14 @@ class EnvoyNetworking {
             realActiveType = test.testType
 
             when (test.testType) {
-                ENVOY_PROXY_HTTP_ECH -> {
+                EnvoyServiceType.HTTP_ECH -> {
                     // upstream is an Envoy proxy
-                    activeType = ENVOY_PROXY_OKHTTP_ENVOY
+                    activeType = EnvoyServiceType.OKHTTP_ENVOY
                     activeUrl = test.proxyUrl!!
                 }
-                ENVOY_PROXY_HYSTERIA2 -> {
+                EnvoyServiceType.HYSTERIA2 -> {
                     // we have a SOCKS (or HTTP) proxy at proxy URL
-                    activeType = ENVOY_PROXY_OKHTTP_PROXY
+                    activeType = EnvoyServiceType.OKHTTP_PROXY
                     activeUrl = test.proxyUrl!!
                 }
                 else -> {
@@ -143,8 +143,8 @@ class EnvoyNetworking {
         envoyConnected = false
         useDirect = false
         activeUrl = ""
-        activeType = ENVOY_PROXY_DIRECT
+        activeType = EnvoyServiceType.UNKNOWN
         realActiveUrl = ""
-        realActiveType = ENVOY_PROXY_DIRECT
+        realActiveType = EnvoyServiceType.UNKNOWN
     }
 }

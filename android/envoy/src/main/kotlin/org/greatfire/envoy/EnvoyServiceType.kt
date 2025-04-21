@@ -1,15 +1,15 @@
 package org.greatfire.envoy
 
 enum class EnvoyServiceType {
-    DIRECT,
-    OKHTTP_ENVOY,
-    CRONET_ENVOY,
-    OKHTTP_PROXY,
-    CRONET_PROXY,
-    HTTP_ECH,
-    HYSTERIA2,
-    V2WS,
-    V2SRTP,
-    V2WECHAT,
-    UNKNOWN
+    DIRECT,         // direct connection, no proxy
+    OKHTTP_ENVOY,   // Use OkHttp via an Envoy proxy
+    CRONET_ENVOY,   // Use Cronet via an Envoy proxy
+    OKHTTP_PROXY,   // use OkHttp via a standard (HTTP/SOCKS) proxy
+    CRONET_PROXY,   // use Cronet via a standard (HTTP/SOCKS) proxy
+    HTTP_ECH,       // use ECH Envoy proxy (provided by Go code for now)
+    HYSTERIA2,      // Hysteria2
+    V2WS,           // V2Ray via WebSocket
+    V2SRTP,         // V2Ray via fake RSTP
+    V2WECHAT,       // V2Ray via fake WeChat
+    UNKNOWN         // unknown/undefined, used as an initial value
 }

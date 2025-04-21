@@ -24,7 +24,7 @@ import emissary.Emissary
 */
 
 data class EnvoyTest(
-    var testType: String,
+    var testType: EnvoyServiceType,
     var url: String,
 ) {
     var proxyUrl: String? = null
@@ -68,9 +68,9 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        // add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, tempUrl))
-                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, tempUrl))
-                        add(EnvoyTest(ENVOY_PROXY_HTTP_ECH, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
                 "socks5", "proxy+https" -> {
@@ -81,8 +81,8 @@ class EnvoyConnectionTests {
                     }
 
                     with (envoyTests) {
-                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_PROXY, tempUrl))
-                        // add(EnvoyTest(ENVOY_PROXY_CRONET_PROXY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
                     }
                 }
                 "envoy" -> {
@@ -95,12 +95,12 @@ class EnvoyConnectionTests {
                     // we don't support the other values with OkHttp (yet?)
                     // only Cronet
                     with(envoyTests) {
-                        add(EnvoyTest(ENVOY_PROXY_OKHTTP_ENVOY, eUrl))
-                        // add(EnvoyTest(ENVOY_PROXY_CRONET_ENVOY, url))
+                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, eUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, url))
                     }
                 }
                 "hysteria2" -> {
-                    envoyTests.add(EnvoyTest(ENVOY_PROXY_HYSTERIA2, url))
+                    envoyTests.add(EnvoyTest(EnvoyServiceType.HYSTERIA2, url))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
