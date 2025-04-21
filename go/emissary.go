@@ -5,11 +5,13 @@ package emissary
 */
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	ndns "github.com/ncruces/go-dns"
 	"go.uber.org/zap"
@@ -35,6 +37,8 @@ type Emissary struct {
 	envoyUrl		string
 	envoyHost		string
 	echConfigList	[]byte
+
+	initialized		bool
 }
 
 type EnvoyResonse struct {
@@ -57,17 +61,28 @@ func NewEmissary() (*Emissary) {
 		LogLevel: "DEBUG",
 
 		TestTarget: "https://www.google.com/generate_204",
-	    TargetResposne: 204,
+	    TargetResponse: 204,
 
 	    DOHServer: "9.9.9.9",
 
 	    // XXX should we re-use the code in IEP to find a free port?
-	    ProxyListen: "27629",
+	    ProxyListen: "127.0.0.1:27629",
 
 		Salt: randStringBytes(16),
 	}
 
 	return e
+}
+
+func (e *Emissary) StartHysteria2(url string) string {
+	e.Controller.Hysteria2Server = url
+	e.Controller.Start(IEnvoyProxy.Hysteria2, "")
+	return e.Controller.LocalAddress(IEnvoyProxy.Hysteria2)
+}
+
+
+func (e *Emissary) StopHysteria2() {
+	e.Controller.Stop(IEnvoyProxy.Hysteria2)
 }
 
 // Set the Envoy URL used by the proxy
@@ -80,7 +95,7 @@ func NewEmissary() (*Emissary) {
 func (e *Emissary) SetEnvoyUrl(envoyUrl, echConfigListStr string) {
 	// TODO support envoy:// urls?
 
-	zap.S().Debugf("Setting envoyUrl: %s echConfigListStr: %s")
+	zap.S().Debugf("Setting envoyUrl: %s echConfigListStr: %s", envoyUrl, echConfigListStr)
 
     echConfigList, err := base64.StdEncoding.DecodeString(echConfigListStr)
     if err != nil {
@@ -115,6 +130,8 @@ func (e *Emissary) setDOHServer() {
 // start up the web server for the Envoy proxy proxy
 //
 func (e *Emissary) startWebServer() {
+	zap.S().Debugf("starting web server...")
+
 	http.HandleFunc("/envoy", e.envoyHandler)
 	http.HandleFunc("/envoy3", e.envoy3Handler)
 
@@ -132,6 +149,15 @@ func (e *Emissary) startWebServer() {
 //
 func (e *Emissary) Init(tempDir string) {
 
+	zap.S().Debugf("Init called with tempDir %s", tempDir)
+
+	// XXX WTF is going on here?
+	if (e.initialized) {
+		zap.S().Errorf("we're being Initialized twice")
+		return
+	}
+	e.initialized = true
+
 	// this is some hacky log configuration 😆 XXX
 	cfg := zap.NewDevelopmentConfig()
 	// cfg.Development = false
@@ -147,6 +173,7 @@ func (e *Emissary) Init(tempDir string) {
 
     // Set the default DNS server for Go stuff
     e.setDOHServer()
+    e.startWebServer()
 }
 
 func (e *Emissary) FindEnvoyUrl() (string) {
@@ -157,4 +184,35 @@ func (e *Emissary) FindEnvoyUrl() (string) {
 
     proxyEnvoyUrl := e.testHttps()
     return proxyEnvoyUrl
+}
+
+///
+// Attempt a basic TCP connection to see if a service is up yet
+// blocks and polls until the connection is made
+//
+// XXX this probably should have some kind of timeout for the service
+// failing to start
+//
+func (e *Emissary) isItUpYet(addr string) (bool, error) {
+
+	var d net.Dialer
+
+	// poll every 2 seconds until the service is listening
+	up := false
+	for !up {
+		ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second)
+		conn, err := d.DialContext(ctx, "tcp", addr)
+		// This can throw timeout and connection refused... probably more
+		// just ignore it all ;-)
+		zap.S().Debugf("&&&& isItUpYet %s", err)
+		if err == nil {
+			conn.Close()
+			cancel()
+			return true, nil
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+
+	return false, nil
 }

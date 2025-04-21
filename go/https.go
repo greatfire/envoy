@@ -135,6 +135,9 @@ func (e *Emissary) testHttps() (string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	resultChan := make(chan EnvoyResonse, 1)
 
+	zap.S().Debugf("waiting for proxy to start...")
+	e.isItUpYet(e.ProxyListen)
+
 
 	zap.S().Debug("testing HTTPS...")
 	go e.doTestHttps(ctx, true, resultChan)
