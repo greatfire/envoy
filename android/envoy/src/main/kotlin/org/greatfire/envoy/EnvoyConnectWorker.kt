@@ -287,30 +287,22 @@ class EnvoyConnectWorker(
             return
         }
         val timeElapsed = System.currentTimeMillis() - startTime.get()
-        if (EnvoyNetworking.envoyConnected) {
-            // url found
-            Log.d(TAG, "RESULT: PASSED - " + timeElapsed / 1000)
-            callback.reportTestStatus(EnvoyTestStatus.PASSED, timeElapsed)
-        } else if (testCount.get() < 1) {
-            // nothing to test
-            Log.d(TAG, "RESULT: EMPTY - " + timeElapsed / 1000)
-            callback.reportTestStatus(EnvoyTestStatus.EMPTY, timeElapsed)
-        } else if (testCount.get() == blockedCount.get()) {
-            // all tests blocked
-            Log.d(TAG, "RESULT: BLOCKED - " + timeElapsed / 1000)
-            callback.reportTestStatus(EnvoyTestStatus.BLOCKED, timeElapsed)
-        } else if (testCount.get() == (blockedCount.get() + failedCount.get())) {
-            // all tests blocked or failed
-            Log.d(TAG, "RESULT: FAILED - " + timeElapsed / 1000)
-            callback.reportTestStatus(EnvoyTestStatus.FAILED, timeElapsed)
-        } else if (testCount.get() > (blockedCount.get() + failedCount.get())) {
-            // testing incomplete, timeout?
-            Log.d(TAG, "RESULT: TIMEOUT - " + timeElapsed / 1000)
-            callback.reportTestStatus(EnvoyTestStatus.TIMEOUT, timeElapsed)
-        } else {
-            // unknown?
-            Log.d(TAG, "RESULT: UNKNOWN - " + timeElapsed / 1000)
-            callback.reportTestStatus(EnvoyTestStatus.UNKNOWN, timeElapsed)
+
+        val runCount = blockedCount.get() + failedCount.get()
+        val allBlocked = (testCount.get() < 1)
+        val allFailed = (testCount.get() == runCount)
+        val timeout = (testCount.get() > runCount)
+
+        val result = when {
+            EnvoyNetworking.envoyConnected -> EnvoyTestStatus.PASSED
+            (testCount.get() < 1) -> EnvoyTestStatus.EMPTY
+            allBlocked -> EnvoyTestStatus.BLOCKED
+            allFailed -> EnvoyTestStatus.FAILED
+            timeout -> EnvoyTestStatus.TIMEOUT
+            else -> EnvoyTestStatus.UNKNOWN
         }
+
+        Log.d(TAG, "Result: $result time: " + timeElapsed / 1000)
+        callback.reportTestStatus(result, timeElapsed)
     }
 }
