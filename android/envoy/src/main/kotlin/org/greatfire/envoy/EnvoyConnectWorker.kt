@@ -97,34 +97,25 @@ class EnvoyConnectWorker(
             val proxyUri = URI(test.url)
             Log.d(WTAG, "Test job: " + test)
 
-            // MNB: temp, replace test.testType string with enum?
-            var serviceType = EnvoyServiceType.UNKNOWN
-
             // is there some better way to structure this? It's going to
             // get ungainly
             val res = when(test.testType) {
                 EnvoyServiceType.DIRECT -> {
-                    serviceType = EnvoyServiceType.DIRECT
                     tests.testDirectConnection()
                 }
                 EnvoyServiceType.OKHTTP_ENVOY -> {
-                    serviceType = EnvoyServiceType.OKHTTP_ENVOY
                     tests.testEnvoyOkHttp(proxyUri)
                 }
                 EnvoyServiceType.CRONET_ENVOY -> {
-                    serviceType = EnvoyServiceType.CRONET_ENVOY
                     tests.testCronetEnvoy(test, context)
                 }
                 EnvoyServiceType.OKHTTP_PROXY -> {
-                    serviceType = EnvoyServiceType.OKHTTP_PROXY
                     tests.testStandardProxy(proxyUri)
                 }
                 EnvoyServiceType.HTTP_ECH -> {
-                    serviceType = EnvoyServiceType.HTTP_ECH
                     tests.testECHProxy(test)
                 }
                 EnvoyServiceType.HYSTERIA2 -> {
-                    serviceType = EnvoyServiceType.HYSTERIA2
                     Log.d(WTAG, "Testing Hysteria")
                     tests.testHysteria2(test)
                 }
@@ -152,7 +143,7 @@ class EnvoyConnectWorker(
                 }
 
                 // report status
-                callback.reportUrlSuccess(proxyUri, serviceType, timeElapsed)
+                callback.reportUrlSuccess(proxyUri, test.testType, timeElapsed)
 
                 // we're done
                 // XXX it's technically possible for a proxy to "win" this
@@ -164,7 +155,7 @@ class EnvoyConnectWorker(
 
             } else {
                 // report failure
-                callback.reportUrlFailure(proxyUri, serviceType, timeElapsed)
+                callback.reportUrlFailure(proxyUri, test.testType, timeElapsed)
 
                 // failed?
                 if (test.testType == EnvoyServiceType.DIRECT) {
