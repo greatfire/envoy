@@ -87,40 +87,31 @@ class EnvoyNetworking {
 
     }
 
-    fun addEnvoyUrl(url: String): Companion {
+    // Public functions, this is the primary public interface for Envoy
+    fun addEnvoyUrl(url: String): EnvoyNetworking {
         EnvoyConnectionTests.addEnvoyUrl(url)
 
         // let Java callers chain
-        return Companion
+        return this
     }
 
     // use a custom test URL and response code
     // default is ("https://www.google.com/generate_204", 204)
-    fun setTestUrl(url: String, responseCode: Int): Companion {
+    fun setTestUrl(url: String, responseCode: Int): EnvoyNetworking {
         EnvoyConnectionTests.testUrl = url
         EnvoyConnectionTests.testResponseCode = responseCode
 
-        return Companion
+        return this
     }
 
     // Set the direct URL to the site, if this one works, Envoy is disabled
-    fun setDirectUrl(newVal: String): Companion {
+    fun setDirectUrl(newVal: String): EnvoyNetworking {
         EnvoyConnectionTests.directUrl = newVal
 
-        return Companion
+        return this
     }
 
-    // Clear out everything for suspequent runs
-    private fun reset() {
-        // reset state variables
-        envoyEnabled = true
-        envoyConnected = false
-        useDirect = false
-        activeUrl = ""
-    }
-
-
-    fun connect(context: Context, callback: EnvoyTestCallback) {
+    fun connect(context: Context, callback: EnvoyTestCallback): EnvoyNetworking {
         // sets envoyEnabled = true as a side effect
         reset()
         Log.d(TAG, "Starting Envoy connect...")
@@ -140,5 +131,20 @@ class EnvoyNetworking {
             // .getInstance(getApplicationContext())
             .getInstance()
             .enqueue(workRequest)
+
+        return this
+    }
+
+
+    // Clear out everything for suspequent runs
+    private fun reset() {
+        // reset state variables
+        envoyEnabled = true
+        envoyConnected = false
+        useDirect = false
+        activeUrl = ""
+        activeType = ENVOY_PROXY_DIRECT
+        realActiveUrl = ""
+        realActiveType = ENVOY_PROXY_DIRECT
     }
 }
