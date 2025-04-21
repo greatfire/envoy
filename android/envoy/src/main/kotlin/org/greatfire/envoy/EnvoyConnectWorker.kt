@@ -143,7 +143,7 @@ class EnvoyConnectWorker(
                 }
 
                 // do we already have a working connection?
-                // if so, no need to do anything
+                // if so, no need to do anything (but report)
                 if (!EnvoyNetworking.envoyConnected) {
                     EnvoyNetworking.connected(test)
                 }

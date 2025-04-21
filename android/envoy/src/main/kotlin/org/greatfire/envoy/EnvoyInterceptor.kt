@@ -30,9 +30,13 @@ class EnvoyInterceptor : Interceptor {
                 // proxy via Envoy
                 Log.d(TAG, "Proxy Via Envoy: " + EnvoyNetworking.activeType)
                 val res = when (EnvoyNetworking.activeType) {
+                    EnvoyServiceType.CRONET_ENVOY -> {
+                        Log.d(TAG, "Cronet request to Envoy server")
+                        cronetToEnvoy(chain)
+                    }
                     EnvoyServiceType.OKHTTP_ENVOY -> {
-                        Log.d(TAG, "Passing request to Envoy server")
-                        proxyToEnvoy(chain)
+                        Log.d(TAG, "OkHttp request to Envoy server")
+                        okHttpToEnvoy(chain)
                     }
                     EnvoyServiceType.OKHTTP_PROXY -> {
                         Log.d(TAG, "Passing request to standard proxy")
@@ -40,15 +44,18 @@ class EnvoyInterceptor : Interceptor {
                     }
                     else -> {
                         Log.e(TAG, "unsupported activeType: " + EnvoyNetworking.activeType)
-                        // pass the request through
-                        chain.proceed(chain.request()) // MNB: should this be an error state?
+                        // MNB: should this be an error state?
+                        // It's a bug if this happens. Rather than error out
+                        // the request, we might as well try a direct connection
+
+                        // pass the request through and hope for the best?
+                        chain.proceed(chain.request())
                     }
                 }
 
                 return res
             }
         } else {
-            // Log.d(TAG, "Observing: " + req.url)
             // let requests pass though and see record if they succeed
             // failures are likely to be timeouts, so don't wait for that
             return observingInterceptor(chain)
@@ -56,46 +63,56 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun observingInterceptor(chain: Interceptor.Chain): Response {
-        val req = chain.request()
-
-        // Log.d(TAG, "obs URL: " + req.url)
-
-        val res = chain.proceed(req)
+        val res = chain.proceed(chain.request())
 
         if (res.isSuccessful) {
             // signal that things appear to be working without our help
             EnvoyNetworking.appConnectionsWorking = true
+            if (EnvoyNetworking.passivelyTestDirect) {
+                // XXX is a single 200 enough to say it's working?
+                Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
+                // XXX we probably shouldn't need to make an EnvoyTest
+                // instance here :)
+                //
+                // the URL param is not used for direct connctions
+                EnvoyNetworking.connected(EnvoyTest(
+                    EnvoyServiceType.DIRECT, "direct://"))
+            }
         }
-
-        // Log.d(TAG, "obs code: " + res.code)
 
         return res
     }
 
-    // Proxy though the Envoy HTTPS proxy
-    //
-    // XXX socks5?
-    private fun proxyToEnvoy(chain: Interceptor.Chain): Response {
-        val origRequest = chain.request()
+    // Given an OkHttp Request, return a new one pointed at the Envoy
+    // URL with the original request moved in to headers
+    private fun getEnvoyRequest(origRequest: Request): Request {
         val requestBuilder = origRequest.newBuilder()
 
         val t = System.currentTimeMillis()
         val url = origRequest.url
 
-        Log.d(TAG, "proxyToEnvoy: " + url)
-        // Log.d(TAG, "headers:" + origRequest.headers)
-
         with (requestBuilder) {
-            addHeader("X-Envoy", "Interceptor")
+            // addHeader("X-Envoy", "Interceptor")
             addHeader("Host-Orig", url.host)
             addHeader("Url-Orig", url.toString())
             // XXX do the cache param correctly
             url(EnvoyNetworking.activeUrl + "?test=" + t)
         }
 
-        val resp = chain.proceed(requestBuilder.build())
+        return requestBuilder.build()
+    }
 
-        return resp
+
+    // Proxy though the Envoy HTTPS proxy
+    //
+    // XXX socks5? some services require the Envoy rewrites AND a
+    // SOCKS proxy
+    private fun okHttpToEnvoy(chain: Interceptor.Chain): Response {
+        val origRequest = chain.request()
+
+        Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
+
+        return chain.proceed(getEnvoyRequest(origRequest))
     }
 
     private fun setupProxy() {
@@ -125,33 +142,16 @@ class EnvoyInterceptor : Interceptor {
         return client.newCall(req).execute()
     }
 
-    /*
-    // Proxy to SOCKS5 without the Envoy rewrites
-    private fun proxyViaSocks5(chain: Interceptor.Chain, proxy: String): Response {
+    // Use cronet to make the request to an Envoy proxy
+    private fun cronetToEnvoy(chain: Interceptor.Chain): Response {
 
-        val requestBuilder = chain.request().newBuilder()
+        val req = getEnvoyRequest(chain.request())
 
-        val purl = URL(proxy)
-
-        var proxyType: Proxy.Type
-
-        val proto = purl.getProtocol()
-        if (proto == "socks5") {
-            proxyType = Proxy.Type.SOCKS
-        } else if(proto == "http" || proto == "https") {
-            proxyType = Proxy.Type.HTTP
-        } else {
-            Log.e(TAG, "Unsupported proxy protocol" + proto)
-            // Throw an error?
-            proxyType = Proxy.Type.DIRECT
-        }
-        val addr = InetSocketAddress(purl.getHost(), purl.getPort())
-        val proxy = Proxy(proxyType, addr)
-
-        requestBuilder.proxy(proxy)
-
-        return chain.proceed(requestBuilder.build())
+        val callback = CronetUrlRequestCallback(req, chain.call())
+        val urlRequest = CronetNetworking.buildRequest(
+            req, callback, EnvoyNetworking.cronetEngine!!
+        )
+        urlRequest.start()
+        return callback.blockForResponse()
     }
-
-     */
 }

@@ -9,7 +9,10 @@ package org.greatfire.envoy
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import java.io.File
 import okhttp3.HttpUrl.Companion.toHttpUrl
+// Cronet
+import org.chromium.net.CronetEngine
 // Go library
 import emissary.Emissary
 
@@ -24,13 +27,21 @@ class EnvoyNetworking {
         // Settings
         //
         // How many coroutines to use to test URLs
-        var concurrency = 2 // XXX
+        var concurrency = 6 // XXX
+
+        // Should the Interceptor enable a direct connection if the app
+        // requests appear to be working (i.e. returning 200 codes)
+        var passivelyTestDirect = true
+
+        // Is Envoy enabled - enable the EnvoyInterceptor
+        // This gets set to `true` when Envoy is initialized, but the caller
+        // could set it back to `false` if the want to disable Envoy for
+        // some reason
+        var envoyEnabled = false
 
         // this stuff is "internal" but public because
         // the connection worker and tests mess with it
         //
-        // Is Envoy enabled - enable the EnvoyInterceptor
-        var envoyEnabled = false
         // Internal state: are we connected
         var envoyConnected = false
         // Internal state: if true, the interceptor passes requets through
@@ -49,11 +60,33 @@ class EnvoyNetworking {
 
         var appConnectionsWorking = false
 
-        // val plen = Plenipotentiary.newPlenipotentiary()
+        // our Cronet instance
+        var cronetEngine: CronetEngine? = null
 
+        // Go library
         val emissary = Emissary.newEmissary()
 
+        // DNS related code
         val dns = EnvoyDns()
+
+        private var ctx: Context? = null
+
+
+        private fun createCronetEngine() {
+            // I think we can reuse the cache dir between runs?
+            val cacheDir = File(ctx!!.cacheDir, "cronet-cache")
+            if (!cacheDir.exists()) {
+                cacheDir.mkdirs()
+            }
+
+            cronetEngine = CronetNetworking.buildEngine(
+                context = ctx!!,
+                cacheFolder = cacheDir.absolutePath,
+                envoyUrl = null,
+                strategy = 0,
+                cacheSize = 10, // What unit is this? MB?
+            )
+        }
 
         // The connection worker found a successful connection
         fun connected(test: EnvoyTest) {
@@ -66,6 +99,15 @@ class EnvoyNetworking {
             realActiveType = test.testType
 
             when (test.testType) {
+                EnvoyServiceType.DIRECT -> {
+                    useDirect = true
+                }
+                EnvoyServiceType.CRONET_ENVOY -> {
+                    // Cronet is selected, create the cronet engine
+                    createCronetEngine()
+                    activeType = test.testType
+                    activeUrl = test.url
+                }
                 EnvoyServiceType.HTTP_ECH -> {
                     // upstream is an Envoy proxy
                     activeType = EnvoyServiceType.OKHTTP_ENVOY
@@ -107,7 +149,11 @@ class EnvoyNetworking {
         return this
     }
 
-    // Set the direct URL to the site, if this one works, Envoy is disabled
+    // Set the direct URL to the site, if this one works, Envoy is bypassed
+    //
+    // The caller should either pass a URL here or set passivelyTestDirect
+    // direct to true. It's not a problem to do both, but probably not
+    // necessary. Doing neither will disable direct connections
     fun setDirectUrl(newVal: String): EnvoyNetworking {
         EnvoyConnectionTests.directUrl = newVal
 
@@ -116,6 +162,8 @@ class EnvoyNetworking {
 
     fun connect(context: Context, callback: EnvoyTestCallback): EnvoyNetworking {
         // sets envoyEnabled = true as a side effect
+        ctx = context // this probably makes me a bad person ;-)
+
         reset()
         Log.d(TAG, "Starting Envoy connect...")
 

@@ -70,8 +70,8 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
-                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
@@ -101,7 +101,7 @@ class EnvoyConnectionTests {
                     // only Cronet
                     with(envoyTests) {
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, eUrl))
-                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, url))
+                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, url))
                     }
                 }
                 "hysteria2" -> {
