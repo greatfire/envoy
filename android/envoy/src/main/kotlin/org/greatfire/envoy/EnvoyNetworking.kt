@@ -55,68 +55,6 @@ class EnvoyNetworking {
 
         val dns = EnvoyDns()
 
-        // MNB: does it make sense for these to be in companion?
-
-        @JvmStatic
-        fun addEnvoyUrl(url: String): Companion {
-            EnvoyConnectionTests.addEnvoyUrl(url)
-
-            // let Java callers chain
-            return Companion
-        }
-
-        // use a custom test URL and response code
-        // default is ("https://www.google.com/generate_204", 204)
-        @JvmStatic
-        fun setTestUrl(url: String, responseCode: Int): Companion {
-            EnvoyConnectionTests.testUrl = url
-            EnvoyConnectionTests.testResponseCode = responseCode
-
-            return Companion
-        }
-
-        // Set the direct URL to the site, if this one works, Envoy is disabled
-        @JvmStatic
-        fun setDirectUrl(newVal: String): Companion {
-            EnvoyConnectionTests.directUrl = newVal
-
-            return Companion
-        }
-
-        // Clear out everything for suspequent runs
-        @JvmStatic
-        private fun reset() {
-            // reset state variables
-            envoyEnabled = true
-            envoyConnected = false
-            useDirect = false
-            activeUrl = ""
-        }
-
-
-        @JvmStatic
-        fun connect(context: Context, callback: EnvoyTestCallback) {
-            // sets envoyEnabled = true as a side effect
-            reset()
-            Log.d(TAG, "Starting Envoy connect...")
-
-            val workRequest = OneTimeWorkRequestBuilder<EnvoyConnectWorker>()
-                // connecting to the proxy is a high priority task
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
-
-
-            val config = Configuration.Builder()
-                .setWorkerFactory(EnvoyConnectWorkerFactory(callback))
-                .build()
-
-            WorkManager.initialize(context, config)
-            WorkManager
-                // .getInstance(getApplicationContext())
-                .getInstance()
-                .enqueue(workRequest)
-        }
-
         // The connection worker found a successful connection
         fun connected(test: EnvoyTest) {
             Log.i(TAG, "Envoy Connected!")
@@ -146,5 +84,61 @@ class EnvoyNetworking {
 
             envoyConnected = true // 🎉
         }
+
+    }
+
+    fun addEnvoyUrl(url: String): Companion {
+        EnvoyConnectionTests.addEnvoyUrl(url)
+
+        // let Java callers chain
+        return Companion
+    }
+
+    // use a custom test URL and response code
+    // default is ("https://www.google.com/generate_204", 204)
+    fun setTestUrl(url: String, responseCode: Int): Companion {
+        EnvoyConnectionTests.testUrl = url
+        EnvoyConnectionTests.testResponseCode = responseCode
+
+        return Companion
+    }
+
+    // Set the direct URL to the site, if this one works, Envoy is disabled
+    fun setDirectUrl(newVal: String): Companion {
+        EnvoyConnectionTests.directUrl = newVal
+
+        return Companion
+    }
+
+    // Clear out everything for suspequent runs
+    private fun reset() {
+        // reset state variables
+        envoyEnabled = true
+        envoyConnected = false
+        useDirect = false
+        activeUrl = ""
+    }
+
+
+    fun connect(context: Context, callback: EnvoyTestCallback) {
+        // sets envoyEnabled = true as a side effect
+        reset()
+        Log.d(TAG, "Starting Envoy connect...")
+
+        val workRequest = OneTimeWorkRequestBuilder<EnvoyConnectWorker>()
+            // connecting to the proxy is a high priority task
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+
+
+        val config = Configuration.Builder()
+            .setWorkerFactory(EnvoyConnectWorkerFactory(callback))
+            .build()
+
+        WorkManager.initialize(context, config)
+        WorkManager
+            // .getInstance(getApplicationContext())
+            .getInstance()
+            .enqueue(workRequest)
     }
 }

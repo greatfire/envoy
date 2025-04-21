@@ -52,7 +52,7 @@ class EnvoyConnectWorker(
     // helper to time things
     inner class Timer() {
         private val startTime = System.currentTimeMillis()
-        private val stopTime?: Long = null
+        private var stopTime: Long? = null
 
         fun stop(): Long {
             stopTime = System.currentTimeMillis()
