@@ -151,7 +151,7 @@ class EnvoyConnectWorker(
 
         for (i in 1..EnvoyNetworking.concurrency) {
             Log.d(TAG, "Launching worker: " + i)
-            var job = launch(Dispatchers.IO) {
+            var job = launch {
                 testUrls(i)
             }
             jobs.add(job)
