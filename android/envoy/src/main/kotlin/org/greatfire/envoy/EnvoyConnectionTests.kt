@@ -23,13 +23,6 @@ import emissary.Emissary
     proxy and connection types
 */
 
-data class EnvoyTest(
-    var testType: EnvoyServiceType,
-    var url: String,
-) {
-    var proxyUrl: String? = null
-}
-
 class EnvoyConnectionTests {
     companion object {
         private const val TAG = "EnvoyConnectionTests"

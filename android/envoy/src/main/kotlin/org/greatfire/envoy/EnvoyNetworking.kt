@@ -69,7 +69,7 @@ class EnvoyNetworking {
         // DNS related code
         val dns = EnvoyDns()
 
-        private var ctx: Context? = null
+        var ctx: Context? = null
 
 
         private fun createCronetEngine() {
