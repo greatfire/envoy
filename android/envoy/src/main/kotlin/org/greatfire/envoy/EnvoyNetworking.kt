@@ -1,78 +1,18 @@
 package org.greatfire.envoy
 /*
-    This object hold "global" data for Envoy
-
-    It's used to pass settings from the EnvoyConnectWorker to the
-    EnvoyInterceptor
+    This object provides an external interface for setting up network connections with Envoy.
+    It can also be accessed from the EnvoyConnectWorker and the EnvoyInterceptor.
 */
 
 import android.content.Context
 import android.util.Log
 import androidx.work.*
 import java.io.File
-import okhttp3.HttpUrl.Companion.toHttpUrl
-// Cronet
-import org.chromium.net.CronetEngine
-// Go library
-import emissary.Emissary
 
 class EnvoyNetworking {
 
     companion object {
         private const val TAG = "EnvoyNetworking"
-
-        /*
-        // MNB: make private because of various companion methods?
-        // How do we make them private and accessible from the worker and the interceptor?
-
-        // Settings
-        //
-        // How many coroutines to use to test URLs
-        var concurrency = 6 // XXX
-
-        // Should the Interceptor enable a direct connection if the app
-        // requests appear to be working (i.e. returning 200 codes)
-        var passivelyTestDirect = true
-
-        // Is Envoy enabled - enable the EnvoyInterceptor
-        // This gets set to `true` when Envoy is initialized, but the caller
-        // could set it back to `false` if the want to disable Envoy for
-        // some reason
-        var envoyEnabled = false
-
-        // this stuff is "internal" but public because
-        // the connection worker and tests mess with it
-        //
-        // Internal state: are we connected
-        var envoyConnected = false
-        // Internal state: if true, the interceptor passes requets through
-        var useDirect = false
-        // Internal state: active Envoy or Proxy URL
-        // XXX in some cases we need to use both a proxy and an Envoy URL
-        var activeUrl: String = ""
-        // this value is essentially meaningless before we try connecting
-        var activeType = EnvoyServiceType.UNKNOWN
-
-        // XXX these are dumb names, but currently activeType needs to be a
-        // generic SOCKS5 proxy for most protocols, so store the "real" one
-        // here for now
-        var realActiveType = EnvoyServiceType.UNKNOWN
-        var realActiveUrl: String = ""
-
-        var appConnectionsWorking = false
-
-        // our Cronet instance
-        var cronetEngine: CronetEngine? = null
-
-        // Go library
-        val emissary = Emissary.newEmissary()
-
-        // DNS related code
-        val dns = EnvoyDns()
-
-        var ctx: Context? = null
-        */
-
 
         private fun createCronetEngine() {
 
@@ -89,7 +29,7 @@ class EnvoyNetworking {
                 cacheFolder = cacheDir.absolutePath,
                 envoyUrl = null,
                 strategy = 0,
-                cacheSize = 10, // What unit is this? MB?
+                cacheSize = 10, // cache size in MB
             )
         }
 
@@ -168,14 +108,29 @@ class EnvoyNetworking {
         return this
     }
 
-    fun connect(context: Context, callback: EnvoyTestCallback): EnvoyNetworking {
+    // Set the callback for reporting status to the main application
+    fun setCallback(callback: EnvoyTestCallback): EnvoyNetworking {
+        val settings = EnvoyNetworkingSettings.getInstance()
+        settings.callback = callback
+
+        return this
+    }
+
+    // Provide a context reference from the main application
+    fun setContext(context: Context): EnvoyNetworking {
+        val settings = EnvoyNetworkingSettings.getInstance()
+        settings.ctx = context
+
+        return this
+    }
+
+    fun connect(): EnvoyNetworking {
+
+        // sets envoyEnabled = true as a side effect
 
         val settings = EnvoyNetworkingSettings.getInstance()
 
-        // sets envoyEnabled = true as a side effect
-        settings.ctx = context // this probably makes me a bad person ;-)
-
-        reset()
+        settings.resetState()
         Log.d(TAG, "Starting Envoy connect...")
 
         val workRequest = OneTimeWorkRequestBuilder<EnvoyConnectWorker>()
@@ -183,33 +138,10 @@ class EnvoyNetworking {
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
-
-        val config = Configuration.Builder()
-            .setWorkerFactory(EnvoyConnectWorkerFactory(callback))
-            .build()
-
-        WorkManager.initialize(context, config)
         WorkManager
-            // .getInstance(getApplicationContext())
             .getInstance()
             .enqueue(workRequest)
 
         return this
-    }
-
-
-    // Clear out everything for suspequent runs
-    private fun reset() {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
-        // reset state variables
-        settings.envoyEnabled = true
-        settings.envoyConnected = false
-        settings.useDirect = false
-        settings.activeUrl = ""
-        settings.activeType = EnvoyServiceType.UNKNOWN
-        settings.realActiveUrl = ""
-        settings.realActiveType = EnvoyServiceType.UNKNOWN
     }
 }

@@ -38,13 +38,16 @@ class EnvoyTestReporter() {
     }
 
     private fun reportFailure(test: EnvoyTest) {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         if (test.testType != EnvoyServiceType.DIRECT) {
             // store failed urls so they are not attempted again
             // XXX Ever? When? Why? What are the rules here?
             val currentTime = System.currentTimeMillis()
             // XXX this needs a context, but probably needs to move anyway
             // so grab one for now
-            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(EnvoyNetworking.ctx!!)
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(settings.ctx!!)
             val failureCount = sharedPreferences.getInt(test.url + COUNT_SUFFIX, 0)
             val editor: SharedPreferences.Editor = sharedPreferences.edit()
             editor.putLong(test.url + TIME_SUFFIX, currentTime)
@@ -71,6 +74,9 @@ class EnvoyTestReporter() {
     }
 
     fun reportEndState() {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val timeElapsed = System.currentTimeMillis() - startTime
 
         val runCount = blockedCount + failedCount
@@ -79,7 +85,7 @@ class EnvoyTestReporter() {
         val timeout = (testCount > runCount)
 
         val result = when {
-            EnvoyNetworking.envoyConnected -> EnvoyTestStatus.PASSED
+            settings.envoyConnected -> EnvoyTestStatus.PASSED
             (testCount < 1) -> EnvoyTestStatus.EMPTY
             allBlocked -> EnvoyTestStatus.BLOCKED
             allFailed -> EnvoyTestStatus.FAILED

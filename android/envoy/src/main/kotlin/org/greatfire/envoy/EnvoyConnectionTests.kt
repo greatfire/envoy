@@ -15,9 +15,6 @@ import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
 
-// Go library
-import emissary.Emissary
-
 /*
     Class to hold all the test functions for testing various
     proxy and connection types
@@ -27,7 +24,6 @@ class EnvoyConnectionTests {
     companion object {
         private const val TAG = "EnvoyConnectionTests"
 
-        // var envoyUrls = mutableListOf<String>()
         // This list of tests persists
         var envoyTests = mutableListOf<EnvoyTest>()
 
