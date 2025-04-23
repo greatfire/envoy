@@ -146,7 +146,9 @@ class EnvoyConnectWorker(
                 }
             }
 
-            val timeElapsed = loopTimer.stop()
+            // report test results, keep track of things, etc
+            // calls the user provided callback
+            reporter.testComplete(test, res, false)
 
             if (res) {
                 // We found a working connection!
@@ -177,7 +179,7 @@ class EnvoyConnectWorker(
 
         // TODO: this is an opportunity to fetch more URLs to try
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
-        reportEndState()
+        reporter.reportEndState()
     }
 
     // the worker ends up stopping itself this way, that seems bad?
@@ -276,6 +278,7 @@ class EnvoyConnectWorker(
         return Result.success()
     }
 
+    // this doesn't belong inside the connect worker? maybe in the reporter?
     private fun isUrlBlocked(url: String): Boolean {
 
         // disable this feature for debugging
@@ -305,7 +308,7 @@ class EnvoyConnectWorker(
     }
 
     private fun isTimeExpired(): Boolean {
-        val timeElapsed = System.currentTimeMillis() - startTime.get()
+        val timeElapsed = reporter.timeElapsed()
         if (timeElapsed > TIME_LIMIT) {
             Log.d(TAG, "time expired, end test")
             return true
@@ -313,32 +316,5 @@ class EnvoyConnectWorker(
             Log.d(TAG, "time remaining, continue test")
             return false
         }
-    }
-
-    private fun reportEndState() {
-        if (testComplete.compareAndSet(false, true)) {
-            Log.d(TAG, "need to report status")
-        } else {
-            Log.d(TAG, "status already reported")
-            return
-        }
-        val timeElapsed = System.currentTimeMillis() - startTime.get()
-
-        val runCount = blockedCount.get() + failedCount.get()
-        val allBlocked = (testCount.get() < 1)
-        val allFailed = (testCount.get() == runCount)
-        val timeout = (testCount.get() > runCount)
-
-        val result = when {
-            EnvoyNetworking.envoyConnected -> EnvoyTestStatus.PASSED
-            (testCount.get() < 1) -> EnvoyTestStatus.EMPTY
-            allBlocked -> EnvoyTestStatus.BLOCKED
-            allFailed -> EnvoyTestStatus.FAILED
-            timeout -> EnvoyTestStatus.TIMEOUT
-            else -> EnvoyTestStatus.UNKNOWN
-        }
-
-        Log.d(TAG, "Result: $result time: " + timeElapsed / 1000)
-        callback.reportTestStatus(result, timeElapsed)
     }
 }

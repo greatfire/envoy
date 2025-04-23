@@ -21,9 +21,6 @@ import org.chromium.net.UrlResponseInfo
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 
-// Go library
-import emissary.Emissary
-
 /*
     Class to hold all the test functions for testing various
     proxy and connection types
@@ -346,6 +343,9 @@ class EnvoyConnectionTests {
 
     // Test a direct connection to the target site
     fun testDirectConnection(): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         Log.d(TAG, "Testing direct connection")
 
         val request = Request.Builder().url(testUrl).head().build()
