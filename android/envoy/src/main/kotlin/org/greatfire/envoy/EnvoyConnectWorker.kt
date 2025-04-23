@@ -26,6 +26,7 @@ class EnvoyConnectWorker(
 
     companion object {
         private const val TAG = "EnvoyConnectWorker"
+        private val settings = EnvoyNetworkingSettings.getInstance()
 
         // these seem to be related to the "blocked" logic
         private const val TIME_LIMIT = 60000 // make configurable?
@@ -45,9 +46,6 @@ class EnvoyConnectWorker(
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         // XXX split this up in to like 3 functions
 
         val WTAG = TAG + "-" + id
@@ -88,6 +86,9 @@ class EnvoyConnectWorker(
                 EnvoyServiceType.HTTP_ECH -> {
                     tests.testECHProxy(test)
                 }
+                EnvoyServiceType.SHADOWSOCKS -> {
+                    tests.testShadowsocks(test)
+                }
                 EnvoyServiceType.HYSTERIA2 -> {
                     Log.d(WTAG, "Testing Hysteria")
                     tests.testHysteria2(test)
@@ -114,13 +115,13 @@ class EnvoyConnectWorker(
                 // direct connection, enable this even if something else
                 // tested as working first
                 if (test.testType == EnvoyServiceType.DIRECT) {
-                    EnvoyNetworking.connected(test)
+                    settings.connected(test)
                 }
 
                 // do we already have a working connection?
                 // if so, no need to do anything (but report)
                 if (!settings.envoyConnected) {
-                    EnvoyNetworking.connected(test)
+                    settings.connected(test)
                 }
 
                 // we're done
@@ -148,9 +149,6 @@ class EnvoyConnectWorker(
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         Log.i(TAG,
             "Launching ${settings.concurrency} coroutines for ${envoyTests.size} tests")
 
@@ -170,8 +168,6 @@ class EnvoyConnectWorker(
     }
 
     private suspend fun startEnvoy() = coroutineScope {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
 
         launch {
             // Pick a working DoH server

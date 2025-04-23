@@ -21,6 +21,8 @@ import org.chromium.net.UrlResponseInfo
 */
 
 class EnvoyConnectionTests {
+    private val settings = EnvoyNetworkingSettings.getInstance()
+
     companion object {
         private const val TAG = "EnvoyConnectionTests"
 
@@ -134,15 +136,7 @@ class EnvoyConnectionTests {
 
     // Test a direct connection to the target site
     fun testDirectConnection(): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         Log.d(TAG, "Testing direct connection")
-
-        // We could just skip this?
-        if (settings.appConnectionsWorking) {
-            Log.d(TAG, "App Connection are working already")
-        }
 
         val request = Request.Builder().url(testUrl).head().build()
 
@@ -192,9 +186,6 @@ class EnvoyConnectionTests {
 
     // ECH
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
 
         val hostname = URI(test.url).getHost()
@@ -212,9 +203,6 @@ class EnvoyConnectionTests {
 
     // IEnvoyProxy PTs
     suspend fun testHysteria2(test: EnvoyTest): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val addr = settings.emissary.startHysteria2(test.url)
 
         test.proxyUrl = "socks5://$addr"
@@ -228,6 +216,17 @@ class EnvoyConnectionTests {
         return res
     }
 
+    // Shadowsocks
+    suspend fun testShadowsocks(test: EnvoyTest): Boolean {
+        Log.d(TAG, "Testing Shadowsocks " + test)
+
+        // XXX this needs to be in shared state so we can
+        // keep it running
+        val shadow = EnvoyShadowsocks(test.url, settings.ctx!!)
+        shadow.start()
+        return testStandardProxy(URI("socks5://127.0.0.1:25627"))
+    }
+
     private fun getV2RayUuid(url: String): String {
         val san = UrlQuerySanitizer()
         san.setAllowUnregisteredParamaters(true)
@@ -236,9 +235,6 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
@@ -264,9 +260,6 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()

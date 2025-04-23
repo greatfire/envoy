@@ -7,77 +7,17 @@ package org.greatfire.envoy
 import android.content.Context
 import android.util.Log
 import androidx.work.*
-import java.io.File
 
 class EnvoyNetworking {
+
+    private val settings = EnvoyNetworkingSettings.getInstance()
 
     companion object {
         private const val TAG = "EnvoyNetworking"
 
-        private fun createCronetEngine() {
-
-            val settings = EnvoyNetworkingSettings.getInstance()
-
-            // I think we can reuse the cache dir between runs?
-            val cacheDir = File(settings.ctx!!.cacheDir, "cronet-cache")
-            if (!cacheDir.exists()) {
-                cacheDir.mkdirs()
-            }
-
-            settings.cronetEngine = CronetNetworking.buildEngine(
-                context = settings.ctx!!,
-                cacheFolder = cacheDir.absolutePath,
-                envoyUrl = null,
-                strategy = 0,
-                cacheSize = 10, // cache size in MB
-            )
-        }
-
-        // The connection worker found a successful connection
-        fun connected(test: EnvoyTest) {
-
-            val settings = EnvoyNetworkingSettings.getInstance()
-
-            Log.i(TAG, "Envoy Connected!")
-            Log.d(TAG, "service: " + test.testType)
-            Log.d(TAG, "URL: " + test.url)
-            Log.d(TAG, "proxyUrl: " + test.proxyUrl)
-
-            settings.realActiveUrl = test.url
-            settings.realActiveType = test.testType
-
-            when (test.testType) {
-                EnvoyServiceType.DIRECT -> {
-                    settings.useDirect = true
-                }
-                EnvoyServiceType.CRONET_ENVOY -> {
-                    // Cronet is selected, create the cronet engine
-                    createCronetEngine()
-                    settings.activeType = test.testType
-                    settings.activeUrl = test.url
-                }
-                EnvoyServiceType.HTTP_ECH -> {
-                    // upstream is an Envoy proxy
-                    settings.activeType = EnvoyServiceType.OKHTTP_ENVOY
-                    settings.activeUrl = test.proxyUrl!!
-                }
-                // all these services provice a SOCKS5 proxy
-                EnvoyServiceType.HYSTERIA2,
-                EnvoyServiceType.V2SRTP,
-                EnvoyServiceType.V2WECHAT -> {
-                    // we have a SOCKS (or HTTP) proxy at proxy URL
-                    settings.activeType = EnvoyServiceType.OKHTTP_PROXY
-                    settings.activeUrl = test.proxyUrl!!
-                }
-                else -> {
-                    settings.activeType = test.testType
-                    settings.activeUrl = test.url
-                }
-            }
-
-            settings.envoyConnected = true // 🎉
-        }
-
+        // Should the Interceptor enable a direct connection if the app
+        // requests appear to be working (i.e. returning 200 codes)
+        var passivelyTestDirect = true
     }
 
     // Public functions, this is the primary public interface for Envoy
@@ -110,7 +50,6 @@ class EnvoyNetworking {
 
     // Set the callback for reporting status to the main application
     fun setCallback(callback: EnvoyTestCallback): EnvoyNetworking {
-        val settings = EnvoyNetworkingSettings.getInstance()
         settings.callback = callback
 
         return this
@@ -118,18 +57,12 @@ class EnvoyNetworking {
 
     // Provide a context reference from the main application
     fun setContext(context: Context): EnvoyNetworking {
-        val settings = EnvoyNetworkingSettings.getInstance()
         settings.ctx = context
 
         return this
     }
 
     fun connect(): EnvoyNetworking {
-
-        // sets envoyEnabled = true as a side effect
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         settings.resetState()
         Log.d(TAG, "Starting Envoy connect...")
 
@@ -139,7 +72,7 @@ class EnvoyNetworking {
             .build()
 
         WorkManager
-            .getInstance()
+            .getInstance(settings.ctx!!)
             .enqueue(workRequest)
 
         return this

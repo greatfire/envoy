@@ -16,11 +16,10 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private var proxy: Proxy? = null
+    private val settings = EnvoyNetworkingSettings.getInstance()
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
 
         val req = chain.request()
 
@@ -67,21 +66,17 @@ class EnvoyInterceptor : Interceptor {
 
     private fun observingInterceptor(chain: Interceptor.Chain): Response {
 
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val res = chain.proceed(chain.request())
 
         if (res.isSuccessful) {
-            // signal that things appear to be working without our help
-            settings.appConnectionsWorking = true
-            if (settings.passivelyTestDirect) {
+            if (EnvoyNetworking.passivelyTestDirect) {
                 // XXX is a single 200 enough to say it's working?
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX we probably shouldn't need to make an EnvoyTest
                 // instance here :)
                 //
                 // the URL param is not used for direct connctions
-                EnvoyNetworking.connected(EnvoyTest(
+                settings.connected(EnvoyTest(
                     EnvoyServiceType.DIRECT, "direct://"))
             }
         }
@@ -92,9 +87,6 @@ class EnvoyInterceptor : Interceptor {
     // Given an OkHttp Request, return a new one pointed at the Envoy
     // URL with the original request moved in to headers
     private fun getEnvoyRequest(origRequest: Request): Request {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val requestBuilder = origRequest.newBuilder()
 
         val t = System.currentTimeMillis()
@@ -125,9 +117,6 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun setupProxy() {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val uri = URI(settings.activeUrl)
         var proxyType = Proxy.Type.HTTP
         val scheme = uri.getScheme()
@@ -156,9 +145,6 @@ class EnvoyInterceptor : Interceptor {
 
     // Use cronet to make the request to an Envoy proxy
     private fun cronetToEnvoy(chain: Interceptor.Chain): Response {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val req = getEnvoyRequest(chain.request())
 
         val callback = CronetUrlRequestCallback(req, chain.call())
