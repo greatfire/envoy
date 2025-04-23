@@ -343,9 +343,6 @@ class EnvoyConnectionTests {
 
     // Test a direct connection to the target site
     fun testDirectConnection(): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         Log.d(TAG, "Testing direct connection")
 
         val request = Request.Builder().url(testUrl).head().build()
