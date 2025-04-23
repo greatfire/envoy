@@ -33,6 +33,7 @@ class EnvoyConnectWorker(
 
     companion object {
         private const val TAG = "EnvoyConnectWorker"
+        private val settings = EnvoyNetworkingSettings.getInstance()
 
         // these seem to be related to the "blocked" logic
         private const val TIME_LIMIT = 60000 // make configurable?

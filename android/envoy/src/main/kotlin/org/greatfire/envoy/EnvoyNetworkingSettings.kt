@@ -1,34 +1,24 @@
 package org.greatfire.envoy
 
 import android.content.Context
-import emissary.Emissary
+import android.util.Log
+import emissary.Emissary // Envoy Go library
+import java.io.File
 import org.chromium.net.CronetEngine
 
 class EnvoyNetworkingSettings private constructor() {
-
     // Settings
     //
     // How many coroutines to use to test URLs
+    // this effectively limits the number of requests we can make at once
+    // while testing
     var concurrency = 6 // XXX
 
-    // Should the Interceptor enable a direct connection if the app
-    // requests appear to be working (i.e. returning 200 codes)
-    var passivelyTestDirect = true
-
-    // Is Envoy enabled - enable the EnvoyInterceptor
-    // This gets set to `true` when Envoy is initialized, but the caller
-    // could set it back to `false` if the want to disable Envoy for
-    // some reason
-    var envoyEnabled = false
-
-    // this stuff is "internal" but public because
-    // the connection worker and tests mess with it
-    //
-    // Internal state: are we connected
+    // are we connected
     var envoyConnected = false
-    // Internal state: if true, the interceptor passes requets through
+    // if true, the interceptor passes requets through
     var useDirect = false
-    // Internal state: active Envoy or Proxy URL
+    // active Envoy or Proxy URL
     // XXX in some cases we need to use both a proxy and an Envoy URL
     var activeUrl: String = ""
     // this value is essentially meaningless before we try connecting
@@ -40,9 +30,7 @@ class EnvoyNetworkingSettings private constructor() {
     var realActiveType = EnvoyServiceType.UNKNOWN
     var realActiveUrl: String = ""
 
-    var appConnectionsWorking = false
-
-    // our Cronet instance
+    // our Cronet engine
     var cronetEngine: CronetEngine? = null
 
     // interface with application
@@ -58,8 +46,12 @@ class EnvoyNetworkingSettings private constructor() {
     // DNS related code
     val dns = EnvoyDns()
 
-    companion object {
+    val shadowsocks: ShadowsocksService? = null
 
+    companion object {
+        private const val TAG = "EnvoyNetworkingSettings"
+
+        // Singleton
         @Volatile
         private var instance: EnvoyNetworkingSettings? = null
 
@@ -70,12 +62,71 @@ class EnvoyNetworkingSettings private constructor() {
 
     fun resetState() {
         // reset state variables for a new set of tests
-        envoyEnabled = true
         envoyConnected = false
         useDirect = false
         activeUrl = ""
         activeType = EnvoyServiceType.UNKNOWN
         realActiveUrl = ""
         realActiveType = EnvoyServiceType.UNKNOWN
+    }
+
+    private fun createCronetEngine() {
+        // I think we can reuse the cache dir between runs?
+        // XXX we used to have multiple tests cronet based tests
+        // running in parallel...
+        val cacheDir = File(ctx!!.cacheDir, "cronet-cache")
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs()
+        }
+
+        cronetEngine = CronetNetworking.buildEngine(
+            context = ctx!!,
+            cacheFolder = cacheDir.absolutePath,
+            envoyUrl = null,
+            strategy = 0,
+            cacheSize = 10, // cache size in MB
+        )
+    }
+
+    // The connection worker found a successful connection
+    fun connected(test: EnvoyTest) {
+        Log.i(TAG, "Envoy Connected!")
+        Log.d(TAG, "service: " + test.testType)
+        Log.d(TAG, "URL: " + test.url)
+        Log.d(TAG, "proxyUrl: " + test.proxyUrl)
+
+        realActiveUrl = test.url
+        realActiveType = test.testType
+
+        when (test.testType) {
+            EnvoyServiceType.DIRECT -> {
+                useDirect = true
+            }
+            EnvoyServiceType.CRONET_ENVOY -> {
+                // Cronet is selected, create the cronet engine
+                createCronetEngine()
+                activeType = test.testType
+                activeUrl = test.url
+            }
+            EnvoyServiceType.HTTP_ECH -> {
+                // upstream is an Envoy proxy
+                activeType = EnvoyServiceType.OKHTTP_ENVOY
+                activeUrl = test.proxyUrl!!
+            }
+            // all these services provice a SOCKS5 proxy
+            EnvoyServiceType.HYSTERIA2,
+            EnvoyServiceType.V2SRTP,
+            EnvoyServiceType.V2WECHAT -> {
+                // we have a SOCKS (or HTTP) proxy at proxy URL
+                activeType = EnvoyServiceType.OKHTTP_PROXY
+                activeUrl = test.proxyUrl!!
+            }
+            else -> {
+                activeType = test.testType
+                activeUrl = test.url
+            }
+        }
+
+        envoyConnected = true // 🎉
     }
 }

@@ -308,9 +308,6 @@ class EnvoyConnectionTests {
 
     // Test a direct connection to the target site
     fun testDirectConnection(): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         Log.d(TAG, "Testing direct connection")
 
         val request = Request.Builder().url(testUrl).head().build()
@@ -513,6 +510,17 @@ class EnvoyConnectionTests {
         return res
     }
 
+    // Shadowsocks
+    suspend fun testShadowsocks(test: EnvoyTest): Boolean {
+        Log.d(TAG, "Testing Shadowsocks " + test)
+
+        // XXX this needs to be in shared state so we can
+        // keep it running
+        val shadow = EnvoyShadowsocks(test.url, settings.ctx!!)
+        shadow.start()
+        return testStandardProxy(URI("socks5://127.0.0.1:25627"))
+    }
+
     private fun getV2RayUuid(url: String): String {
         val san = UrlQuerySanitizer()
         san.setAllowUnregisteredParamaters(true)
@@ -521,9 +529,6 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
@@ -549,9 +554,6 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
-
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
