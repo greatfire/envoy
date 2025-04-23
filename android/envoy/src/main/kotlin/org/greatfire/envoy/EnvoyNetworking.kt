@@ -21,6 +21,7 @@ class EnvoyNetworking {
     companion object {
         private const val TAG = "EnvoyNetworking"
 
+        /*
         // MNB: make private because of various companion methods?
         // How do we make them private and accessible from the worker and the interceptor?
 
@@ -70,17 +71,21 @@ class EnvoyNetworking {
         val dns = EnvoyDns()
 
         var ctx: Context? = null
+        */
 
 
         private fun createCronetEngine() {
+
+            val settings = EnvoyNetworkingSettings.getInstance()
+
             // I think we can reuse the cache dir between runs?
-            val cacheDir = File(ctx!!.cacheDir, "cronet-cache")
+            val cacheDir = File(settings.ctx!!.cacheDir, "cronet-cache")
             if (!cacheDir.exists()) {
                 cacheDir.mkdirs()
             }
 
-            cronetEngine = CronetNetworking.buildEngine(
-                context = ctx!!,
+            settings.cronetEngine = CronetNetworking.buildEngine(
+                context = settings.ctx!!,
                 cacheFolder = cacheDir.absolutePath,
                 envoyUrl = null,
                 strategy = 0,
@@ -90,44 +95,47 @@ class EnvoyNetworking {
 
         // The connection worker found a successful connection
         fun connected(test: EnvoyTest) {
+
+            val settings = EnvoyNetworkingSettings.getInstance()
+
             Log.i(TAG, "Envoy Connected!")
             Log.d(TAG, "service: " + test.testType)
             Log.d(TAG, "URL: " + test.url)
             Log.d(TAG, "proxyUrl: " + test.proxyUrl)
 
-            realActiveUrl = test.url
-            realActiveType = test.testType
+            settings.realActiveUrl = test.url
+            settings.realActiveType = test.testType
 
             when (test.testType) {
                 EnvoyServiceType.DIRECT -> {
-                    useDirect = true
+                    settings.useDirect = true
                 }
                 EnvoyServiceType.CRONET_ENVOY -> {
                     // Cronet is selected, create the cronet engine
                     createCronetEngine()
-                    activeType = test.testType
-                    activeUrl = test.url
+                    settings.activeType = test.testType
+                    settings.activeUrl = test.url
                 }
                 EnvoyServiceType.HTTP_ECH -> {
                     // upstream is an Envoy proxy
-                    activeType = EnvoyServiceType.OKHTTP_ENVOY
-                    activeUrl = test.proxyUrl!!
+                    settings.activeType = EnvoyServiceType.OKHTTP_ENVOY
+                    settings.activeUrl = test.proxyUrl!!
                 }
                 // all these services provice a SOCKS5 proxy
                 EnvoyServiceType.HYSTERIA2,
                 EnvoyServiceType.V2SRTP,
                 EnvoyServiceType.V2WECHAT -> {
                     // we have a SOCKS (or HTTP) proxy at proxy URL
-                    activeType = EnvoyServiceType.OKHTTP_PROXY
-                    activeUrl = test.proxyUrl!!
+                    settings.activeType = EnvoyServiceType.OKHTTP_PROXY
+                    settings.activeUrl = test.proxyUrl!!
                 }
                 else -> {
-                    activeType = test.testType
-                    activeUrl = test.url
+                    settings.activeType = test.testType
+                    settings.activeUrl = test.url
                 }
             }
 
-            envoyConnected = true // 🎉
+            settings.envoyConnected = true // 🎉
         }
 
     }
@@ -161,8 +169,11 @@ class EnvoyNetworking {
     }
 
     fun connect(context: Context, callback: EnvoyTestCallback): EnvoyNetworking {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         // sets envoyEnabled = true as a side effect
-        ctx = context // this probably makes me a bad person ;-)
+        settings.ctx = context // this probably makes me a bad person ;-)
 
         reset()
         Log.d(TAG, "Starting Envoy connect...")
@@ -189,13 +200,16 @@ class EnvoyNetworking {
 
     // Clear out everything for suspequent runs
     private fun reset() {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         // reset state variables
-        envoyEnabled = true
-        envoyConnected = false
-        useDirect = false
-        activeUrl = ""
-        activeType = EnvoyServiceType.UNKNOWN
-        realActiveUrl = ""
-        realActiveType = EnvoyServiceType.UNKNOWN
+        settings.envoyEnabled = true
+        settings.envoyConnected = false
+        settings.useDirect = false
+        settings.activeUrl = ""
+        settings.activeType = EnvoyServiceType.UNKNOWN
+        settings.realActiveUrl = ""
+        settings.realActiveType = EnvoyServiceType.UNKNOWN
     }
 }

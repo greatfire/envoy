@@ -1,13 +1,16 @@
 package org.greatfire.envoy
 
+import android.content.Context
 import java.net.URI
 
 interface EnvoyTestCallback {
 
-    fun reportUrlSuccess(testedUri: URI, testedService: EnvoyServiceType, timeElapsed: Long)
+    fun reportTestSuccess(testedUri: URI, testedService: EnvoyServiceType, timeElapsed: Long)
 
-    fun reportUrlFailure(testedUri: URI, testedService: EnvoyServiceType, timeElapsed: Long)
+    fun reportTestFailure(testedUri: URI, testedService: EnvoyServiceType, timeElapsed: Long)
 
-    fun reportTestStatus(testStatus: EnvoyTestStatus, timeElapsed: Long)
+    fun reportOverallStatus(testStatus: EnvoyTestStatus, timeElapsed: Long)
 
+    //is this viable?
+    fun getContext(): Context
 }

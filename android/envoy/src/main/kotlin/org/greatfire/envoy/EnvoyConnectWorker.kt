@@ -46,6 +46,8 @@ class EnvoyConnectWorker(
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
 
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         // XXX split this up in to like 3 functions
 
         val WTAG = TAG + "-" + id
@@ -117,7 +119,7 @@ class EnvoyConnectWorker(
 
                 // do we already have a working connection?
                 // if so, no need to do anything (but report)
-                if (!EnvoyNetworking.envoyConnected) {
+                if (!settings.envoyConnected) {
                     EnvoyNetworking.connected(test)
                 }
 
@@ -146,10 +148,13 @@ class EnvoyConnectWorker(
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
-        Log.i(TAG,
-            "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
 
-        for (i in 1..EnvoyNetworking.concurrency) {
+        val settings = EnvoyNetworkingSettings.getInstance()
+
+        Log.i(TAG,
+            "Launching ${settings.concurrency} coroutines for ${envoyTests.size} tests")
+
+        for (i in 1..settings.concurrency) {
             Log.d(TAG, "Launching worker: " + i)
             var job = launch {
                 testUrls(i)
@@ -165,15 +170,18 @@ class EnvoyConnectWorker(
     }
 
     private suspend fun startEnvoy() = coroutineScope {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         launch {
             // Pick a working DoH server
-            EnvoyNetworking.dns.init()
+            settings.dns.init()
 
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
             // the PT state directory in Lyrebird
-            EnvoyNetworking.emissary.init(context.filesDir.path)
+            settings.emissary.init(context.filesDir.path)
 
             // start test workers
             startWorkers()
