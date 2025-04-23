@@ -27,6 +27,7 @@ class EnvoyConnectWorker(
     companion object {
         private const val TAG = "EnvoyConnectWorker"
 
+        // these seem to be related to the "blocked" logic
         private const val TIME_LIMIT = 60000 // make configurable?
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
@@ -39,39 +40,13 @@ class EnvoyConnectWorker(
     private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
 
-    // simple counters to infer status
-    private var testCount = AtomicInteger()
-    private var blockedCount = AtomicInteger()
-    private var failedCount = AtomicInteger()
-
-    private var startTime = AtomicLong()
-
-    private var testComplete = AtomicBoolean()
-
-
-    // helper to time things
-    inner class Timer() {
-        private val startTime = System.currentTimeMillis()
-        private var stopTime: Long? = null
-
-        fun stop(): Long {
-            stopTime = System.currentTimeMillis()
-            return stopTime!! - startTime
-        }
-
-        fun timeSpent(): Long {
-            if (stopTime == null) {
-                Log.e(TAG, "timeSpent called before stop()!")
-                return 0
-            }
-            return stopTime!! - startTime
-        }
-    }
-
+    private val reporter = EnvoyTestReporter()
 
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
 
         // XXX split this up in to like 3 functions
 
@@ -83,16 +58,14 @@ class EnvoyConnectWorker(
                 break
             }  else if (isTimeExpired()) {
                 Log.d(WTAG, "TIME EXPIRED, BREAK")
+                // XXX shouldn't we just use a coroutine timeout?
+                stopWorkers()
                 break
             } else if (isUrlBlocked(test.url)) {
-                val blocked = blockedCount.incrementAndGet()
-                Log.d(WTAG, "URL BLOCKED, SKIP - " + test.url + " / " + blocked)
+                Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+                reporter.testComplete(test, false, true)
                 continue
             }
-
-            val loopTimer = Timer()
-
-            Log.d(WTAG, "CONTINUE TESTING URL " + test.url)
 
             val proxyUri = URI(test.url)
             Log.d(WTAG, "Test job: " + test)
@@ -131,7 +104,9 @@ class EnvoyConnectWorker(
                 }
             }
 
-            val timeElapsed = loopTimer.stop()
+            // report test results, keep track of things, etc
+            // calls the user provided callback
+            reporter.testComplete(test, res, false)
 
             if (res) {
                 // Test was successful
@@ -144,12 +119,9 @@ class EnvoyConnectWorker(
 
                 // do we already have a working connection?
                 // if so, no need to do anything (but report)
-                if (!EnvoyNetworking.envoyConnected) {
+                if (!settings.envoyConnected) {
                     EnvoyNetworking.connected(test)
                 }
-
-                // report status
-                callback.reportUrlSuccess(proxyUri, test.testType, timeElapsed)
 
                 // we're done
                 // XXX it's technically possible for a proxy to "win" this
@@ -158,35 +130,13 @@ class EnvoyConnectWorker(
                 // we have a working connection, stop wasting resources ;-)
                 stopWorkers()
                 break;
-
-            } else {
-                // report failure
-                callback.reportUrlFailure(proxyUri, test.testType, timeElapsed)
-
-                // failed?
-                if (test.testType == EnvoyServiceType.DIRECT) {
-                    Log.d(WTAG, "DIRECT FAILED - " + test.url)
-                } else {
-                    val failed = failedCount.incrementAndGet()
-                    Log.d(WTAG, "URL FAILED - " + test.url + " / " + failed)
-
-                    // store failed urls so they are not attempted again
-                    // XXX Ever? When? Why? What are the rules here?
-                    val currentTime = System.currentTimeMillis()
-                    val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-                    val failureCount = sharedPreferences.getInt(test.url + COUNT_SUFFIX, 0)
-                    val editor: SharedPreferences.Editor = sharedPreferences.edit()
-                    editor.putLong(test.url + TIME_SUFFIX, currentTime)
-                    editor.putInt(test.url + COUNT_SUFFIX, failureCount + 1)
-                    editor.apply()
-                }
             }
         }
 
         // TODO: this is an opportunity to fetch more URLs
         // to try
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
-        reportEndState()
+        reporter.reportEndState()
     }
 
     // the worker ends up stopping itself this way, that seems bad?
@@ -198,12 +148,15 @@ class EnvoyConnectWorker(
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
-        Log.i(TAG,
-            "Launching ${EnvoyNetworking.concurrency} coroutines for ${envoyTests.size} tests")
 
-        for (i in 1..EnvoyNetworking.concurrency) {
+        val settings = EnvoyNetworkingSettings.getInstance()
+
+        Log.i(TAG,
+            "Launching ${settings.concurrency} coroutines for ${envoyTests.size} tests")
+
+        for (i in 1..settings.concurrency) {
             Log.d(TAG, "Launching worker: " + i)
-            var job = launch(Dispatchers.IO) {
+            var job = launch {
                 testUrls(i)
             }
             jobs.add(job)
@@ -217,37 +170,35 @@ class EnvoyConnectWorker(
     }
 
     private suspend fun startEnvoy() = coroutineScope {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         launch {
             // Pick a working DoH server
-            EnvoyNetworking.dns.init()
+            settings.dns.init()
 
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
             // the PT state directory in Lyrebird
-            EnvoyNetworking.emissary.init(context.filesDir.path)
+            settings.emissary.init(context.filesDir.path)
 
             // start test workers
             startWorkers()
         }
     }
 
+    //
+    // Main entry point
     override suspend fun doWork(): Result {
-
-        // reset things
-        startTime.set(System.currentTimeMillis())
-        testCount.set(EnvoyConnectionTests.envoyTests.size) // don't count direct test
-        blockedCount.set(0)
-        failedCount.set(0)
-        testComplete.set(false)
 
         envoyTests.clear()
         jobs.clear()
 
         // sanity check
-        if (testCount.get() < 1) {
+        if (EnvoyConnectionTests.envoyTests.size < 1) {
             Log.d(TAG, "NOTHING TO TEST")
-            reportEndState()
+            reporter.reportEndState()
             return Result.success() // success?
         }
 
@@ -258,6 +209,10 @@ class EnvoyConnectWorker(
                 EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
             envoyTests.add(test)
         }
+        // We preserve the original list of tests in EnvoyNetworking
+        // for use if we need to reconnect. This is just our working
+        // copy
+
         // shuffle the rest of the URLs
         envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
 
@@ -269,6 +224,7 @@ class EnvoyConnectWorker(
         return Result.success()
     }
 
+    // this doesn't belong inside the connect worker? maybe in the reporter?
     private fun isUrlBlocked(url: String): Boolean {
 
         // disable this feature for debugging
@@ -298,7 +254,7 @@ class EnvoyConnectWorker(
     }
 
     private fun isTimeExpired(): Boolean {
-        val timeElapsed = System.currentTimeMillis() - startTime.get()
+        val timeElapsed = reporter.timeElapsed()
         if (timeElapsed > TIME_LIMIT) {
             Log.d(TAG, "time expired, end test")
             return true
@@ -306,32 +262,5 @@ class EnvoyConnectWorker(
             Log.d(TAG, "time remaining, continue test")
             return false
         }
-    }
-
-    private fun reportEndState() {
-        if (testComplete.compareAndSet(false, true)) {
-            Log.d(TAG, "need to report status")
-        } else {
-            Log.d(TAG, "status already reported")
-            return
-        }
-        val timeElapsed = System.currentTimeMillis() - startTime.get()
-
-        val runCount = blockedCount.get() + failedCount.get()
-        val allBlocked = (testCount.get() < 1)
-        val allFailed = (testCount.get() == runCount)
-        val timeout = (testCount.get() > runCount)
-
-        val result = when {
-            EnvoyNetworking.envoyConnected -> EnvoyTestStatus.PASSED
-            (testCount.get() < 1) -> EnvoyTestStatus.EMPTY
-            allBlocked -> EnvoyTestStatus.BLOCKED
-            allFailed -> EnvoyTestStatus.FAILED
-            timeout -> EnvoyTestStatus.TIMEOUT
-            else -> EnvoyTestStatus.UNKNOWN
-        }
-
-        Log.d(TAG, "Result: $result time: " + timeElapsed / 1000)
-        callback.reportTestStatus(result, timeElapsed)
     }
 }

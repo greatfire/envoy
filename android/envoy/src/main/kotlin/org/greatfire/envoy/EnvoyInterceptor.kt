@@ -19,17 +19,20 @@ class EnvoyInterceptor : Interceptor {
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val req = chain.request()
 
-        if (EnvoyNetworking.envoyConnected) {
-            if (EnvoyNetworking.useDirect) {
+        if (settings.envoyConnected) {
+            if (settings.useDirect) {
                 Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
                 return chain.proceed(chain.request())
             } else {
                 // proxy via Envoy
-                Log.d(TAG, "Proxy Via Envoy: " + EnvoyNetworking.activeType)
-                val res = when (EnvoyNetworking.activeType) {
+                Log.d(TAG, "Proxy Via Envoy: " + settings.activeType)
+                val res = when (settings.activeType) {
                     EnvoyServiceType.CRONET_ENVOY -> {
                         Log.d(TAG, "Cronet request to Envoy server")
                         cronetToEnvoy(chain)
@@ -43,7 +46,7 @@ class EnvoyInterceptor : Interceptor {
                         useStandardProxy(chain)
                     }
                     else -> {
-                        Log.e(TAG, "unsupported activeType: " + EnvoyNetworking.activeType)
+                        Log.e(TAG, "unsupported activeType: " + settings.activeType)
                         // MNB: should this be an error state?
                         // It's a bug if this happens. Rather than error out
                         // the request, we might as well try a direct connection
@@ -63,12 +66,15 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun observingInterceptor(chain: Interceptor.Chain): Response {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val res = chain.proceed(chain.request())
 
         if (res.isSuccessful) {
             // signal that things appear to be working without our help
-            EnvoyNetworking.appConnectionsWorking = true
-            if (EnvoyNetworking.passivelyTestDirect) {
+            settings.appConnectionsWorking = true
+            if (settings.passivelyTestDirect) {
                 // XXX is a single 200 enough to say it's working?
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX we probably shouldn't need to make an EnvoyTest
@@ -86,6 +92,9 @@ class EnvoyInterceptor : Interceptor {
     // Given an OkHttp Request, return a new one pointed at the Envoy
     // URL with the original request moved in to headers
     private fun getEnvoyRequest(origRequest: Request): Request {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val requestBuilder = origRequest.newBuilder()
 
         val t = System.currentTimeMillis()
@@ -96,7 +105,7 @@ class EnvoyInterceptor : Interceptor {
             addHeader("Host-Orig", url.host)
             addHeader("Url-Orig", url.toString())
             // XXX do the cache param correctly
-            url(EnvoyNetworking.activeUrl + "?test=" + t)
+            url(settings.activeUrl + "?test=" + t)
         }
 
         return requestBuilder.build()
@@ -116,7 +125,10 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun setupProxy() {
-        val uri = URI(EnvoyNetworking.activeUrl)
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
+        val uri = URI(settings.activeUrl)
         var proxyType = Proxy.Type.HTTP
         val scheme = uri.getScheme()
         Log.d(TAG, "SCHEME: $scheme")
@@ -145,11 +157,13 @@ class EnvoyInterceptor : Interceptor {
     // Use cronet to make the request to an Envoy proxy
     private fun cronetToEnvoy(chain: Interceptor.Chain): Response {
 
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val req = getEnvoyRequest(chain.request())
 
         val callback = CronetUrlRequestCallback(req, chain.call())
         val urlRequest = CronetNetworking.buildRequest(
-            req, callback, EnvoyNetworking.cronetEngine!!
+            req, callback, settings.cronetEngine!!
         )
         urlRequest.start()
         return callback.blockForResponse()

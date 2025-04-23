@@ -15,26 +15,15 @@ import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
 
-// Go library
-import emissary.Emissary
-
 /*
     Class to hold all the test functions for testing various
     proxy and connection types
 */
 
-data class EnvoyTest(
-    var testType: EnvoyServiceType,
-    var url: String,
-) {
-    var proxyUrl: String? = null
-}
-
 class EnvoyConnectionTests {
     companion object {
         private const val TAG = "EnvoyConnectionTests"
 
-        // var envoyUrls = mutableListOf<String>()
         // This list of tests persists
         var envoyTests = mutableListOf<EnvoyTest>()
 
@@ -145,10 +134,13 @@ class EnvoyConnectionTests {
 
     // Test a direct connection to the target site
     fun testDirectConnection(): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         Log.d(TAG, "Testing direct connection")
 
         // We could just skip this?
-        if (EnvoyNetworking.appConnectionsWorking) {
+        if (settings.appConnectionsWorking) {
             Log.d(TAG, "App Connection are working already")
         }
 
@@ -200,13 +192,16 @@ class EnvoyConnectionTests {
 
     // ECH
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
 
         val hostname = URI(test.url).getHost()
-        val echConfigList = EnvoyNetworking.dns.getECHConfig(hostname)
-        EnvoyNetworking.emissary.setEnvoyUrl(test.url, echConfigList)
+        val echConfigList = settings.dns.getECHConfig(hostname)
+        settings.emissary.setEnvoyUrl(test.url, echConfigList)
 
-        val url = EnvoyNetworking.emissary.findEnvoyUrl()
+        val url = settings.emissary.findEnvoyUrl()
         // XXX this is a weird case, emissary returns a new
         // URL to use
         // if it comes back, it's tested and working
@@ -217,7 +212,10 @@ class EnvoyConnectionTests {
 
     // IEnvoyProxy PTs
     suspend fun testHysteria2(test: EnvoyTest): Boolean {
-        val addr = EnvoyNetworking.emissary.startHysteria2(test.url)
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
+        val addr = settings.emissary.startHysteria2(test.url)
 
         test.proxyUrl = "socks5://$addr"
 
@@ -225,7 +223,7 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            EnvoyNetworking.emissary.stopHysteria2()
+            settings.emissary.stopHysteria2()
         }
         return res
     }
@@ -238,17 +236,20 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
         val uuid = getV2RayUuid(test.url)
 
-        val addr = EnvoyNetworking.emissary.startV2RaySrtp(host, port, uuid)
+        val addr = settings.emissary.startV2RaySrtp(host, port, uuid)
 
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            EnvoyNetworking.emissary.stopV2RaySrtp() // probably unnecessary
+            settings.emissary.stopV2RaySrtp() // probably unnecessary
             return false
         }
 
@@ -257,23 +258,26 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            EnvoyNetworking.emissary.stopV2RaySrtp()
+            settings.emissary.stopV2RaySrtp()
         }
         return res
     }
 
     suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
         val uuid = getV2RayUuid(test.url)
 
-        val addr = EnvoyNetworking.emissary.startV2RayWechat(host, port, uuid)
+        val addr = settings.emissary.startV2RayWechat(host, port, uuid)
 
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            EnvoyNetworking.emissary.stopV2RayWechat() // probably unnecessary
+            settings.emissary.stopV2RayWechat() // probably unnecessary
             return false
         }
 
@@ -282,7 +286,7 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            EnvoyNetworking.emissary.stopV2RayWechat()
+            settings.emissary.stopV2RayWechat()
         }
         return res
     }
