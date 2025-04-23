@@ -19,9 +19,6 @@ import org.chromium.net.UrlResponseInfo
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 
-// Go library
-import emissary.Emissary
-
 /*
     Class to hold all the test functions for testing various
     proxy and connection types
@@ -285,6 +282,9 @@ class EnvoyConnectionTests {
 
     // Test a direct connection to the target site
     fun testDirectConnection(): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         Log.d(TAG, "Testing direct connection")
 
         val request = Request.Builder().url(testUrl).head().build()
@@ -452,17 +452,20 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
         val uuid = getV2RayUuid(test.url)
 
-        val addr = EnvoyNetworking.emissary.startV2RaySrtp(host, port, uuid)
+        val addr = settings.emissary.startV2RaySrtp(host, port, uuid)
 
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            EnvoyNetworking.emissary.stopV2RaySrtp() // probably unnecessary
+            settings.emissary.stopV2RaySrtp() // probably unnecessary
             return false
         }
 
@@ -471,23 +474,26 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            EnvoyNetworking.emissary.stopV2RaySrtp()
+            settings.emissary.stopV2RaySrtp()
         }
         return res
     }
 
     suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
+
+        val settings = EnvoyNetworkingSettings.getInstance()
+
         val server = URI(test.url)
         val host = server.getHost()
         val port = server.getPort().toString()
         val uuid = getV2RayUuid(test.url)
 
-        val addr = EnvoyNetworking.emissary.startV2RayWechat(host, port, uuid)
+        val addr = settings.emissary.startV2RayWechat(host, port, uuid)
 
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            EnvoyNetworking.emissary.stopV2RayWechat() // probably unnecessary
+            settings.emissary.stopV2RayWechat() // probably unnecessary
             return false
         }
 
@@ -496,7 +502,7 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            EnvoyNetworking.emissary.stopV2RayWechat()
+            settings.emissary.stopV2RayWechat()
         }
         return res
     }
