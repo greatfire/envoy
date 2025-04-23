@@ -16,6 +16,8 @@ class EnvoyTestReporter() {
         private const val COUNT_SUFFIX = "_count"
     }
 
+    private val settings = EnvoyNetworkingSettings.getInstance()
+
     // simple counters to infer status
     private var testCount = 0
     private var blockedCount = 0
@@ -38,8 +40,6 @@ class EnvoyTestReporter() {
     }
 
     private fun reportFailure(test: EnvoyTest) {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
 
         if (test.testType != EnvoyServiceType.DIRECT) {
             // store failed urls so they are not attempted again
@@ -74,8 +74,6 @@ class EnvoyTestReporter() {
     }
 
     fun reportEndState() {
-
-        val settings = EnvoyNetworkingSettings.getInstance()
 
         val timeElapsed = System.currentTimeMillis() - startTime
 
