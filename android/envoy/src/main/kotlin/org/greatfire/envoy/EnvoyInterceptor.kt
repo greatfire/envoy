@@ -6,6 +6,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URI
+import kotlinx.coroutines.runBlocking
 
 class EnvoyInterceptor : Interceptor {
 

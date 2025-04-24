@@ -72,6 +72,9 @@ class EnvoyConnectWorker(
             // MNB: temp, replace test.testType string with enum?
             var serviceType = EnvoyServiceType.UNKNOWN
 
+            // start the timer
+            test.startTest()
+
             // is there some better way to structure this? It's going to
             // get ungainly
             val proxyUri = Uri.parse(test.url)
@@ -128,8 +131,17 @@ class EnvoyConnectWorker(
                 }
             }
 
+            // Report success if the test was successful
+            if (res) {
+                settings.connected(test)
+                // stopWorkers()
+                // break;
+            }
+
             // report test results, keep track of things, etc
             // calls the user provided callback
+            // it's important this is called after settings.connected()
+            // so the selected service isn't stopped :)
             reporter.testComplete(test, res, false)
 
             if (res) {
@@ -192,6 +204,7 @@ class EnvoyConnectWorker(
 
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
 
+            Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
