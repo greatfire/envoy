@@ -146,8 +146,17 @@ class EnvoyConnectWorker(
                 }
             }
 
+            // Report success if the test was successful
+            if (res) {
+                settings.connected(test)
+                // stopWorkers()
+                // break;
+            }
+
             // report test results, keep track of things, etc
             // calls the user provided callback
+            // it's important this is called after settings.connected()
+            // so the selected service isn't stopped :)
             reporter.testComplete(test, res, false)
 
             if (res) {
