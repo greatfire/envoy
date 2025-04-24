@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import emissary.Emissary // Envoy Go library
 import java.io.File
+import kotlinx.coroutines.sync.*
 import org.chromium.net.CronetEngine
 
 class EnvoyNetworkingSettings private constructor() {
@@ -19,16 +20,8 @@ class EnvoyNetworkingSettings private constructor() {
     // if true, the interceptor passes requets through
     var useDirect = false
     // active Envoy or Proxy URL
-    // XXX in some cases we need to use both a proxy and an Envoy URL
-    var activeUrl: String = ""
-    // this value is essentially meaningless before we try connecting
-    var activeType = EnvoyServiceType.UNKNOWN
-
-    // XXX these are dumb names, but currently activeType needs to be a
-    // generic SOCKS5 proxy for most protocols, so store the "real" one
-    // here for now
-    var realActiveType = EnvoyServiceType.UNKNOWN
-    var realActiveUrl: String = ""
+    var activeConnection: EnvoyTest? = null
+    val additionalWorkingConnections = mutableListOf<EnvoyTest>()
 
     // our Cronet engine
     var cronetEngine: CronetEngine? = null
@@ -58,16 +51,18 @@ class EnvoyNetworkingSettings private constructor() {
         fun getInstance() = instance ?: synchronized(this) {
             instance ?: EnvoyNetworkingSettings().also { instance = it }
         }
+
+        @Volatile
+        private var connectedMutex = Mutex()
     }
 
     fun resetState() {
         // reset state variables for a new set of tests
         envoyConnected = false
         useDirect = false
-        activeUrl = ""
-        activeType = EnvoyServiceType.UNKNOWN
-        realActiveUrl = ""
-        realActiveType = EnvoyServiceType.UNKNOWN
+        activeConnection = null
+        // XXX should we maybe use this here?
+        additionalWorkingConnections.clear()
     }
 
     private fun createCronetEngine() {
@@ -89,44 +84,39 @@ class EnvoyNetworkingSettings private constructor() {
     }
 
     // The connection worker found a successful connection
-    fun connected(test: EnvoyTest) {
-        Log.i(TAG, "Envoy Connected!")
-        Log.d(TAG, "service: " + test.testType)
-        Log.d(TAG, "URL: " + test.url)
-        Log.d(TAG, "proxyUrl: " + test.proxyUrl)
+    suspend fun connected(test: EnvoyTest) {
+        connectedMutex.withLock {
+            // if we're already connected, ignore this UNLESS
+            // it's telling us to use DIRECT
+            if (envoyConnected && test.testType != EnvoyServiceType.DIRECT) {
+                Log.d(TAG, "Already connected, later success $test")
+                // We're just saving these for now, maybe we can use them
+                // if either the main connection fails or we want to cycle
+                // connections
+                additionalWorkingConnections.add(test)
+                return
+            }
 
-        realActiveUrl = test.url
-        realActiveType = test.testType
+            Log.i(TAG, "🎉 Envoy Connected!")
+            Log.d(TAG, "connected: $test")
 
-        when (test.testType) {
-            EnvoyServiceType.DIRECT -> {
-                useDirect = true
+            when (test.testType) {
+                EnvoyServiceType.DIRECT -> {
+                    // everything else is ignored if this is true
+                    useDirect = true
+                }
+                EnvoyServiceType.CRONET_ENVOY -> {
+                    // Cronet is selected, create the cronet engine
+                    createCronetEngine()
+                }
+                else -> return // nothing to do
             }
-            EnvoyServiceType.CRONET_ENVOY -> {
-                // Cronet is selected, create the cronet engine
-                createCronetEngine()
-                activeType = test.testType
-                activeUrl = test.url
-            }
-            EnvoyServiceType.HTTP_ECH -> {
-                // upstream is an Envoy proxy
-                activeType = EnvoyServiceType.OKHTTP_ENVOY
-                activeUrl = test.proxyUrl!!
-            }
-            // all these services provice a SOCKS5 proxy
-            EnvoyServiceType.HYSTERIA2,
-            EnvoyServiceType.V2SRTP,
-            EnvoyServiceType.V2WECHAT -> {
-                // we have a SOCKS (or HTTP) proxy at proxy URL
-                activeType = EnvoyServiceType.OKHTTP_PROXY
-                activeUrl = test.proxyUrl!!
-            }
-            else -> {
-                activeType = test.testType
-                activeUrl = test.url
-            }
+
+            test.selectedService = true
+            activeConnection = test
+            // this setting makes the Interceptor change behavior,
+            // so flip it last. XXX should this be more thread safe?
+            envoyConnected = true // 🎉
         }
-
-        envoyConnected = true // 🎉
     }
 }
