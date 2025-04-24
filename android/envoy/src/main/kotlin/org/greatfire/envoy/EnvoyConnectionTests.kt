@@ -10,6 +10,7 @@ import java.net.Proxy
 import java.net.URI
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import kotlinx.coroutines.delay
 import okhttp3.*
 import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
@@ -104,6 +105,9 @@ class EnvoyConnectionTests {
                 "v2wechat" -> {
                     envoyTests.add(EnvoyTest(EnvoyServiceType.V2WECHAT, url))
                 }
+                "ss" -> {
+                    envoyTests.add(EnvoyTest(EnvoyServiceType.SHADOWSOCKS, url))
+                }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
                 }
@@ -127,7 +131,7 @@ class EnvoyConnectionTests {
             val code = response.code
             Log.d(TAG, "request: " + request + ", got code: " + code)
             return(code == testResponseCode)
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Log.e(TAG, "Test threw an error for request" + request)
             Log.e(TAG, "error: " + e)
             return false
@@ -150,7 +154,7 @@ class EnvoyConnectionTests {
 
     // Test a standard SOCKS or HTTP(S) proxy
     suspend fun testStandardProxy(proxyUrl: URI): Boolean {
-        Log.d(TAG, "Testing standard proxy")
+        Log.d(TAG, "Testing standard proxy $proxyUrl")
 
         var proxyType = Proxy.Type.HTTP
         if (proxyUrl.getScheme() == "socks5") {
@@ -188,22 +192,20 @@ class EnvoyConnectionTests {
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
         Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
 
-        val hostname = URI(test.url).getHost()
-        val echConfigList = settings.dns.getECHConfig(hostname)
-        settings.emissary.setEnvoyUrl(test.url, echConfigList)
-
+        test.startService()
         val url = settings.emissary.findEnvoyUrl()
         // XXX this is a weird case, emissary returns a new
         // URL to use
         // if it comes back, it's tested and working
         test.proxyUrl = url
+        test.proxyIsEnvoy = true
         Log.d(TAG, "Emissary URL: " + url)
         return true
     }
 
     // IEnvoyProxy PTs
     suspend fun testHysteria2(test: EnvoyTest): Boolean {
-        val addr = settings.emissary.startHysteria2(test.url)
+        val addr = test.startService()
 
         test.proxyUrl = "socks5://$addr"
 
@@ -211,7 +213,7 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            settings.emissary.stopHysteria2()
+            test.stopService()
         }
         return res
     }
@@ -219,28 +221,22 @@ class EnvoyConnectionTests {
     // Shadowsocks
     suspend fun testShadowsocks(test: EnvoyTest): Boolean {
         Log.d(TAG, "Testing Shadowsocks " + test)
+        val addr = test.startService()
 
-        // XXX this needs to be in shared state so we can
-        // keep it running
-        val shadow = EnvoyShadowsocks(test.url, settings.ctx!!)
-        shadow.start()
-        return testStandardProxy(URI("socks5://127.0.0.1:25627"))
-    }
+        Log.d(TAG, "started Shadowsocks $addr")
 
-    private fun getV2RayUuid(url: String): String {
-        val san = UrlQuerySanitizer()
-        san.setAllowUnregisteredParamaters(true)
-        san.parseUrl(url)
-        return san.getValue("id")
+        // XXX wait until it's up... we need an isItUpYet for kotlin
+        delay(2000)
+
+        val res = testStandardProxy(URI(addr))
+        if (res == false) {
+            test.stopService()
+        }
+        return res
     }
 
     suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
-        val server = URI(test.url)
-        val host = server.getHost()
-        val port = server.getPort().toString()
-        val uuid = getV2RayUuid(test.url)
-
-        val addr = settings.emissary.startV2RaySrtp(host, port, uuid)
+        var addr = test.startService()
 
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
@@ -254,18 +250,13 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            settings.emissary.stopV2RaySrtp()
+            test.stopService()
         }
         return res
     }
 
     suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
-        val server = URI(test.url)
-        val host = server.getHost()
-        val port = server.getPort().toString()
-        val uuid = getV2RayUuid(test.url)
-
-        val addr = settings.emissary.startV2RayWechat(host, port, uuid)
+        val addr = test.startService()
 
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
@@ -279,7 +270,7 @@ class EnvoyConnectionTests {
 
         val res = testStandardProxy(URI(test.proxyUrl))
         if (res == false) {
-            settings.emissary.stopV2RayWechat()
+            test.stopService()
         }
         return res
     }

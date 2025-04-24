@@ -7,6 +7,7 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 // import java.net.URL
 import java.net.URI
+import kotlinx.coroutines.runBlocking
 
 
 class EnvoyInterceptor : Interceptor {
@@ -29,33 +30,38 @@ class EnvoyInterceptor : Interceptor {
                 // pass the request through
                 return chain.proceed(chain.request())
             } else {
-                // proxy via Envoy
-                Log.d(TAG, "Proxy Via Envoy: " + settings.activeType)
-                val res = when (settings.activeType) {
-                    EnvoyServiceType.CRONET_ENVOY -> {
-                        Log.d(TAG, "Cronet request to Envoy server")
-                        cronetToEnvoy(chain)
-                    }
-                    EnvoyServiceType.OKHTTP_ENVOY -> {
-                        Log.d(TAG, "OkHttp request to Envoy server")
-                        okHttpToEnvoy(chain)
-                    }
-                    EnvoyServiceType.OKHTTP_PROXY -> {
-                        Log.d(TAG, "Passing request to standard proxy")
-                        useStandardProxy(chain)
-                    }
-                    else -> {
-                        Log.e(TAG, "unsupported activeType: " + settings.activeType)
-                        // MNB: should this be an error state?
-                        // It's a bug if this happens. Rather than error out
-                        // the request, we might as well try a direct connection
+                settings.activeConnection?.let {
+                    // proxy via Envoy
+                    Log.d(TAG, "Proxy Via Envoy: " + it.testType)
+                    val res = when (it.testType) {
+                        EnvoyServiceType.CRONET_ENVOY -> {
+                            Log.d(TAG, "Cronet request to Envoy server")
+                            cronetToEnvoy(chain)
+                        }
+                        EnvoyServiceType.OKHTTP_ENVOY -> {
+                            Log.d(TAG, "OkHttp request to Envoy server")
+                            okHttpToEnvoy(chain)
+                        }
+                        EnvoyServiceType.OKHTTP_PROXY -> {
+                            Log.d(TAG, "Passing request to standard proxy")
+                            useStandardProxy(chain)
+                        }
+                        else -> {
+                            Log.e(TAG, "unsupported activeType: " + it.testType)
+                            // MNB: should this be an error state?
+                            // It's a bug if this happens. Rather than error out
+                            // the request, we might as well try a direct connection
 
-                        // pass the request through and hope for the best?
-                        chain.proceed(chain.request())
+                            // pass the request through and hope for the best?
+                            chain.proceed(chain.request())
+                        }
                     }
+                    return res
                 }
 
-                return res
+                Log.e(TAG, "envoyConnected is true, but activeConnection is not set!")
+                // try the request as-is 🤷
+                return chain.proceed(chain.request())
             }
         } else {
             // let requests pass though and see record if they succeed
@@ -69,15 +75,18 @@ class EnvoyInterceptor : Interceptor {
         val res = chain.proceed(chain.request())
 
         if (res.isSuccessful) {
-            if (EnvoyNetworking.passivelyTestDirect) {
+            if (EnvoyNetworking.initialized && EnvoyNetworking.passivelyTestDirect) {
                 // XXX is a single 200 enough to say it's working?
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX we probably shouldn't need to make an EnvoyTest
                 // instance here :)
                 //
                 // the URL param is not used for direct connctions
-                settings.connected(EnvoyTest(
-                    EnvoyServiceType.DIRECT, "direct://"))
+                runBlocking {
+                    // connected is a suspend function
+                    settings.connected(EnvoyTest(
+                        EnvoyServiceType.DIRECT, "direct://"))
+                }
             }
         }
 
@@ -97,7 +106,7 @@ class EnvoyInterceptor : Interceptor {
             addHeader("Host-Orig", url.host)
             addHeader("Url-Orig", url.toString())
             // XXX do the cache param correctly
-            url(settings.activeUrl + "?test=" + t)
+            url(settings.activeConnection!!.url + "?test=" + t)
         }
 
         return requestBuilder.build()
@@ -117,7 +126,7 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun setupProxy() {
-        val uri = URI(settings.activeUrl)
+        val uri = URI(settings.activeConnection!!.proxyUrl)
         var proxyType = Proxy.Type.HTTP
         val scheme = uri.getScheme()
         Log.d(TAG, "SCHEME: $scheme")

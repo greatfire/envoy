@@ -14,7 +14,7 @@ class EnvoyShadowsocks(val url: String, val context: Context) {
         private const val LOCAL_ADDRESS = "127.0.0.1"
         // this is an arbitrary, random port number
         // our Go code tests the port is unused, should this be smarter?
-        private const val LOCAL_PORT = "25627"
+        const val LOCAL_PORT = "25627"
     }
 
     private var currentProcess: Process? = null

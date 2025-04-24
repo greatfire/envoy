@@ -17,7 +17,8 @@ import java.util.concurrent.atomic.AtomicLong
     Establish a connection to an Envoy Proxy
 */
 class EnvoyConnectWorker(
-    val context: Context, val params: WorkerParameters, val callback: EnvoyTestCallback
+    val context: Context,
+    val params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
     // MNB read about workers
@@ -68,6 +69,9 @@ class EnvoyConnectWorker(
             val proxyUri = URI(test.url)
             Log.d(WTAG, "Test job: " + test)
 
+            // start the timer
+            test.startTest()
+
             // is there some better way to structure this? It's going to
             // get ungainly
             val res = when(test.testType) {
@@ -105,33 +109,19 @@ class EnvoyConnectWorker(
                 }
             }
 
+            // Report success if the test was successful
+            if (res) {
+                settings.connected(test)
+                // stopWorkers()
+                // break;
+            }
+
             // report test results, keep track of things, etc
             // calls the user provided callback
+            // it's important this is called after settings.connected()
+            // so the selected service isn't stopped :)
             reporter.testComplete(test, res, false)
 
-            if (res) {
-                // Test was successful
-
-                // direct connection, enable this even if something else
-                // tested as working first
-                if (test.testType == EnvoyServiceType.DIRECT) {
-                    settings.connected(test)
-                }
-
-                // do we already have a working connection?
-                // if so, no need to do anything (but report)
-                if (!settings.envoyConnected) {
-                    settings.connected(test)
-                }
-
-                // we're done
-                // XXX it's technically possible for a proxy to "win" this
-                // race while a direct connection works
-
-                // we have a working connection, stop wasting resources ;-)
-                stopWorkers()
-                break;
-            }
         }
 
         // TODO: this is an opportunity to fetch more URLs
@@ -153,7 +143,7 @@ class EnvoyConnectWorker(
             "Launching ${settings.concurrency} coroutines for ${envoyTests.size} tests")
 
         for (i in 1..settings.concurrency) {
-            Log.d(TAG, "Launching worker: " + i)
+            // Log.d(TAG, "Launching worker: " + i)
             var job = launch {
                 testUrls(i)
             }
@@ -162,25 +152,29 @@ class EnvoyConnectWorker(
 
         jobs.joinAll()
 
-        Log.d(TAG, "EnvoyConnectWorker is done")
-
-        // MNB: ...or do we report end state here?
+        Log.d(TAG, "EnvoyConnectWorker workers are done?")
     }
 
     private suspend fun startEnvoy() = coroutineScope {
-
+        Log.d(TAG, "startEnvoy1: ${Thread.currentThread().name}")
+        // launch (newSingleThreadContext("EnvoyConnectThread")) {
         launch {
+            Log.d(TAG, "startEnvoy2: ${Thread.currentThread().name}")
             // Pick a working DoH server
             settings.dns.init()
 
+            Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
             // the PT state directory in Lyrebird
             settings.emissary.init(context.filesDir.path)
 
+            Log.d(TAG, "startEnvoy4: ${Thread.currentThread().name}")
             // start test workers
             startWorkers()
+
+            Log.d(TAG, "startEnvoy5: ${Thread.currentThread().name}")
         }
     }
 
@@ -191,12 +185,12 @@ class EnvoyConnectWorker(
         envoyTests.clear()
         jobs.clear()
 
-        // sanity check
-        if (EnvoyConnectionTests.envoyTests.size < 1) {
-            Log.d(TAG, "NOTHING TO TEST")
-            reporter.reportEndState()
-            return Result.success() // success?
-        }
+        // // sanity check
+        // if (EnvoyConnectionTests.envoyTests.size < 1) {
+        //     Log.d(TAG, "NOTHING TO TEST")
+        //     reporter.reportEndState()
+        //     return Result.success() // success?
+        // }
 
         // test direct connection first
         if (EnvoyConnectionTests.directUrl != "") {

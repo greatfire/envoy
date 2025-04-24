@@ -18,6 +18,7 @@ class EnvoyNetworking {
         // Should the Interceptor enable a direct connection if the app
         // requests appear to be working (i.e. returning 200 codes)
         var passivelyTestDirect = true
+        var initialized = false
     }
 
     // Public functions, this is the primary public interface for Envoy
@@ -63,6 +64,7 @@ class EnvoyNetworking {
     }
 
     fun connect(): EnvoyNetworking {
+        initialized = true
         settings.resetState()
         Log.d(TAG, "Starting Envoy connect...")
 

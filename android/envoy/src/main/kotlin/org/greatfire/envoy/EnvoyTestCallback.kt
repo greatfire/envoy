@@ -12,5 +12,5 @@ interface EnvoyTestCallback {
     fun reportOverallStatus(testStatus: EnvoyTestStatus, timeElapsed: Long)
 
     //is this viable?
-    fun getContext(): Context
+    // fun getContext(): Context
 }

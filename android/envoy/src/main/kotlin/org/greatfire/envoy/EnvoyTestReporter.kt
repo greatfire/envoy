@@ -61,6 +61,12 @@ class EnvoyTestReporter() {
     fun testComplete(test: EnvoyTest, result: Boolean, blocked: Boolean) {
         val timeElapsed = test.stopTimer()
 
+        // if this one wasn't selected, and the service is
+        // still running, stop it now
+        if (!test.selectedService && test.serviceRunning) {
+            test.stopService()
+        }
+
         testCount++
         when {
             blocked -> blockedCount++
