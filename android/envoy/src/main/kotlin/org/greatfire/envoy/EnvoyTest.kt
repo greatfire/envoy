@@ -37,10 +37,17 @@ data class EnvoyTest(
     // Is the associated service (if any) running?
     var serviceRunning: Boolean = false
 
+    // envoy:// URL related options
+    val headers = mutableListOf<Pair<String, String>>()
+    var address: String? = null
+    var resolverRules: String? = null
+
+    // Envoy Global settings and state
     private val settings = EnvoyNetworkingSettings.getInstance()
 
     // used to time how long it takes to connect and test
     private var timer: Timer? = null
+    // should this be in settings?
     private var shadowsocks: EnvoyShadowsocks? = null
 
     private fun getTimer(): Timer {

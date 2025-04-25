@@ -1,7 +1,7 @@
 package org.greatfire.envoy
 
 import android.content.Context
-import android.net.UrlQuerySanitizer
+import android.net.Uri
 import android.os.ConditionVariable
 import android.util.Log
 import java.io.IOException
@@ -28,6 +28,8 @@ class EnvoyConnectionTests {
         private const val TAG = "EnvoyConnectionTests"
 
         // This list of tests persists
+        // should this move to the global state/settings
+        // object?
         var envoyTests = mutableListOf<EnvoyTest>()
 
         var cronetThreadPool = Executors.newCachedThreadPool()
@@ -39,6 +41,75 @@ class EnvoyConnectionTests {
         var testResponseCode = 204
         // direct URL to the site for testing
         var directUrl = ""
+
+        // this case is a little complicated, so it has it's own
+        // function
+        //
+        // this URL format is (more or less) documented at
+        // https://github.com/greatfire/envoy/tree/master/native
+        private fun addEnvoySechemeUrl(url: String) {
+            // XXX should this take a Uri as a param?
+            val tempUri = Uri.parse(url)
+            val realUrl = tempUri.getQueryParameter("url")
+
+            if (realUrl.isNullOrEmpty()) {
+                Log.e(TAG, "envoy:// URL missing required `url` parameter")
+                return
+            }
+
+            // this is the only case where the test.url isn't the
+            // caller provided URL.. not sure that matters, but
+            // it seems worth calling out the oddity
+            //
+            // We also can't support all the options (like resolver rules)
+            // with OkHttp... should we ignore them and try anyway, or
+            // just use Cronet if those features are called for?
+            val okTest = EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, realUrl)
+            val crTest = EnvoyTest(EnvoyServiceType.CRONET_ENVOY, realUrl)
+
+            // `header_` params
+            tempUri.getQueryParameterNames().forEach {
+                if (it.startsWith("header_")) {
+                    val name = it
+                    val value = tempUri.getQueryParameter(it)
+                    // tag, you're "it" ... witch "it" carefully here
+                    value?.let {
+                        okTest.headers.add(Pair(name, it))
+                        crTest.headers.add(Pair(name, it))
+                    }
+                }
+            }
+
+            // `address` param
+            val addr = tempUri.getQueryParameter("address")
+            addr?.let {
+                okTest.address = it
+                crTest.address = it
+            }
+
+            // 'resolver' param
+            val resolver = tempUri.getQueryParameter("resolver")
+            resolver?.let {
+                // okHttp is never going to support this?
+                okTest.resolverRules = it
+                crTest.resolverRules = it
+            }
+
+            // 'socks5' param
+            // it's poorly named, http(s):// proxies are ok too
+            val proxyUrl = tempUri.getQueryParameter("socks5")
+            proxyUrl?.let {
+                okTest.proxyUrl = it
+                crTest.proxyUrl = it
+            }
+
+            // we don't support the other values with OkHttp (yet?)
+            // only Cronet
+            with(envoyTests) {
+                add(okTest)
+                add(crTest)
+            }
+        }
 
         // and an Envoy proxy URL to the list to test
         //
@@ -80,21 +151,7 @@ class EnvoyConnectionTests {
                     }
                 }
                 "envoy" -> {
-                    Log.w(TAG, "TODO fully support enovy:// URLs") // XXX
-                    // https://github.com/greatfire/envoy/blob/master/native/README.md
-
-                    // extract the `url` param for now and try that alone for now
-                    val san = UrlQuerySanitizer()
-                    san.setAllowUnregisteredParamaters(true)
-                    san.parseUrl(url)
-
-                    val eUrl = san.getValue("url")
-                    // we don't support the other values with OkHttp (yet?)
-                    // only Cronet
-                    with(envoyTests) {
-                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, eUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, url))
-                    }
+                    addEnvoySechemeUrl(url)
                 }
                 "hysteria2" -> {
                     envoyTests.add(EnvoyTest(EnvoyServiceType.HYSTERIA2, url))
