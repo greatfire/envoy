@@ -1,16 +1,15 @@
 package org.greatfire.envoy
-/*
-    This object provides an external interface for setting up network connections with Envoy.
-    It can also be accessed from the EnvoyConnectWorker and the EnvoyInterceptor.
-*/
 
 import android.content.Context
 import android.util.Log
 import androidx.work.*
 
-class EnvoyNetworking {
+/*
+    This object provides an external interface for setting up network connections with Envoy.
+    It can also be accessed from the EnvoyConnectWorker and the EnvoyInterceptor.
+*/
 
-    private val settings = EnvoyState.getInstance()
+class EnvoyNetworking {
 
     companion object {
         private const val TAG = "EnvoyNetworking"
@@ -20,6 +19,8 @@ class EnvoyNetworking {
         var passivelyTestDirect = true
         var initialized = false
     }
+
+    private val state = EnvoyState.getInstance()
 
     // Public functions, this is the primary public interface for Envoy
     fun addEnvoyUrl(url: String): EnvoyNetworking {
@@ -51,21 +52,20 @@ class EnvoyNetworking {
 
     // Set the callback for reporting status to the main application
     fun setCallback(callback: EnvoyTestCallback): EnvoyNetworking {
-        settings.callback = callback
+        state.callback = callback
 
         return this
     }
 
     // Provide a context reference from the main application
     fun setContext(context: Context): EnvoyNetworking {
-        settings.ctx = context
+        state.ctx = context
 
         return this
     }
 
     fun connect(): EnvoyNetworking {
         initialized = true
-        //settings.resetState()
         Log.d(TAG, "Starting Envoy connect...")
 
         val workRequest = OneTimeWorkRequestBuilder<EnvoyConnectWorker>()
@@ -74,7 +74,7 @@ class EnvoyNetworking {
             .build()
 
         WorkManager
-            .getInstance(settings.ctx!!)
+            .getInstance(state.ctx!!)
             .enqueue(workRequest)
 
         return this

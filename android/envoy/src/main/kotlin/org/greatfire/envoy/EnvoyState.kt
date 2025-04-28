@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import emissary.Emissary // Envoy Go library
 import java.io.File
-import kotlinx.coroutines.sync.*
 import org.chromium.net.CronetEngine
 
 class EnvoyState private constructor() {
@@ -19,9 +18,6 @@ class EnvoyState private constructor() {
         fun getInstance() = instance ?: synchronized(this) {
             instance ?: EnvoyState().also { instance = it }
         }
-
-        @Volatile
-        private var connectedMutex = Mutex()
     }
 
     // Settings
@@ -31,13 +27,7 @@ class EnvoyState private constructor() {
     // while testing
     var concurrency = 6 // XXX
 
-    // are we connected
-    //var envoyConnected = false
-    // if true, the interceptor passes requets through
-    //var useDirect = false
-    // active Envoy or Proxy URL
-    //var activeConnection: EnvoyTest? = null
-    //val additionalWorkingConnections = mutableListOf<EnvoyTest>()
+    // util class now handles test results
 
     // our Cronet engine
     var cronetEngine: CronetEngine? = null
@@ -57,17 +47,6 @@ class EnvoyState private constructor() {
 
     val shadowsocks: ShadowsocksService? = null
 
-    /*
-    fun resetState() {
-        // reset state variables for a new set of tests
-        envoyConnected = false
-        useDirect = false
-        activeConnection = null
-        // XXX should we maybe use this here?
-        additionalWorkingConnections.clear()
-    }
-    */
-
     private fun createCronetEngine() {
         // I think we can reuse the cache dir between runs?
         // XXX we used to have multiple tests cronet based tests
@@ -86,9 +65,8 @@ class EnvoyState private constructor() {
         )
     }
 
-    // The connection worker found a successful connection
-    //
-    suspend fun connectIfNeeded(test: EnvoyTest) {
+    // called when the connection worker found a successful connection
+    fun connectIfNeeded(test: EnvoyTest) {
         if (test.selectedService && test.testType == EnvoyServiceType.CRONET_ENVOY) {
             // Cronet is selected, create the cronet engine
             Log.d(TAG, "CREATE CRONET ENGINE FOR " + test.url)
@@ -99,42 +77,4 @@ class EnvoyState private constructor() {
             // if direct selected, stop cronet?
         }
     }
-
-    /*
-    suspend fun connected(test: EnvoyTest) {
-        connectedMutex.withLock {
-            // if we're already connected, ignore this UNLESS
-            // it's telling us to use DIRECT
-            if (envoyConnected && test.testType != EnvoyServiceType.DIRECT) {
-                Log.d(TAG, "Already connected, later success $test")
-                // We're just saving these for now, maybe we can use them
-                // if either the main connection fails or we want to cycle
-                // connections
-                additionalWorkingConnections.add(test)
-                return
-            }
-
-            Log.i(TAG, "🎉 Envoy Connected!")
-            Log.d(TAG, "connected: $test")
-
-            when (test.testType) {
-                EnvoyServiceType.DIRECT -> {
-                    // everything else is ignored if this is true
-                    useDirect = true
-                }
-                EnvoyServiceType.CRONET_ENVOY -> {
-                    // Cronet is selected, create the cronet engine
-                    createCronetEngine()
-                }
-                else -> return // nothing to do
-            }
-
-            test.selectedService = true
-            activeConnection = test
-            // this setting makes the Interceptor change behavior,
-            // so flip it last. XXX should this be more thread safe?
-            envoyConnected = true // 🎉
-        }
-    }
-    */
 }

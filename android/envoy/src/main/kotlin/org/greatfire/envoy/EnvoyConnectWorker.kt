@@ -10,35 +10,25 @@ import kotlinx.coroutines.*
 /*
     Establish a connection to an Envoy Proxy
 */
+
 class EnvoyConnectWorker(
     val context: Context,
     val params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-    // MNB read about workers
-
-    val tests = EnvoyConnectionTests()
-
     companion object {
         private const val TAG = "EnvoyConnectWorker"
-        //private val settings = EnvoyState.getInstance()
-
-        // these seem to be related to the "blocked" logic
-        /*
-        private const val TIME_LIMIT = 60000 // make configurable?
-        private const val ONE_HOUR_MS = 3600000
-        private const val ONE_DAY_MS = 86400000
-        private const val ONE_WEEK_MS = 604800000
-        private const val TIME_SUFFIX = "_time"
-        private const val COUNT_SUFFIX = "_count"
-        */
+        // MNB retry/timeout logic moved to util class
     }
+
+    // collection of all tests that need to be run
+    val tests = EnvoyConnectionTests()
 
     // this ArrayDeque is our working copy of the tests
     private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
 
-    // these are singletons now so no need to store in the companion?
+    // MNB these are singletons now so no need to store them in the companion
     private val state = EnvoyState.getInstance()
     private val util = EnvoyTestUtil.getInstance()
 
@@ -52,27 +42,28 @@ class EnvoyConnectWorker(
         while (true) {
             val test = envoyTests.removeFirstOrNull()
             if (test == null) {
+                Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 break
             }  else if (util.isTimeExpired()) {
                 Log.d(WTAG, "TIME EXPIRED, BREAK")
                 // XXX shouldn't we just use a coroutine timeout?
-                stopWorkers()
+                // MNB this creates a fuzzier time limit that allows tests in progress to complete
                 break
-            } else if (!util.isUrlBlocked(test)) {
-                Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+            } else if (util.isUrlBlocked(test)) {
+                // starts the timer and updates the tally
+                util.startTest(test)
+                Log.d(WTAG, "URL BLOCKED, SKIP - " + test.url)
                 util.stopTestBlocked(test)
                 continue
+            } else {
+                // starts the timer and updates the tally
+                util.startTest(test)
+                Log.d(WTAG, "EXECUTE TEST FOR - " + test.url)
             }
-
-            val proxyUri = URI(test.url)
-            Log.d(WTAG, "Test job: " + test)
-
-            // start the timer
-            util.startTest(test)
-            //test.startTimer()
 
             // is there some better way to structure this? It's going to
             // get ungainly
+            val proxyUri = URI(test.url)
             val res = when(test.testType) {
                 EnvoyServiceType.DIRECT -> {
                     tests.testDirectConnection()
@@ -108,32 +99,19 @@ class EnvoyConnectWorker(
                 }
             }
 
-            // Report success if the test was successful
             if (res) {
-                // first success sets connected flag
-                // other successes stop services
-                // all report success
+                // first success sets connected flag, other successes stop services,
+                // report success in either case. if test returned with updated flag,
+                // create a cronet engine (depending on selected service)
                 state.connectIfNeeded(util.stopTestPassed(test))
-                //settings.connected(test)
-                // stopWorkers()
-                // break;
             } else {
+                // report test failure. failed tests will not be retried until time passes
                 util.stopTestFailed(test)
             }
-
-            // report test results, keep track of things, etc
-            // calls the user provided callback
-            // it's important this is called after settings.connected()
-            // so the selected service isn't stopped :)
-            //reporter.testComplete(test, res, false)
-
         }
 
-        // TODO: this is an opportunity to fetch more URLs
-        // to try
-        // move this to top level instead of a worker so it's only reported once
+        // TODO: this is an opportunity to fetch more URLs to try
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
-        util.testsComplete()
     }
 
     // the worker ends up stopping itself this way, that seems bad?
@@ -159,9 +137,11 @@ class EnvoyConnectWorker(
             jobs.add(job)
         }
 
+        // wait for jobs to complete
         jobs.joinAll()
 
-        // TODO: report overall status here?
+        // MNB jobs have all completed, report overall status
+        util.testsComplete()
 
         Log.d(TAG, "EnvoyConnectWorker workers are done?")
     }
@@ -196,18 +176,16 @@ class EnvoyConnectWorker(
         envoyTests.clear()
         jobs.clear()
 
-        // // sanity check
-        // if (EnvoyConnectionTests.envoyTests.size < 1) {
-        //     Log.d(TAG, "NOTHING TO TEST")
-        //     reporter.reportEndState()
-        //     return Result.success() // success?
-        // }
+        // sanity check
+        if (EnvoyConnectionTests.envoyTests.size < 1) {
+            Log.d(TAG, "NOTHING TO TEST")
+            util.testsComplete()
+            return Result.success()
+        }
 
         // test direct connection first
         if (EnvoyConnectionTests.directUrl != "") {
-            // testUrls.add(EnvoyNetworking.directUrl)
-            val test = EnvoyTest(
-                EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
+            val test = EnvoyTest(EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
             envoyTests.add(test)
         }
         // We preserve the original list of tests in EnvoyNetworking
@@ -224,46 +202,4 @@ class EnvoyConnectWorker(
         startEnvoy()
         return Result.success()
     }
-
-    // this doesn't belong inside the connect worker? maybe in the reporter?
-    /*
-    private fun isUrlBlocked(url: String): Boolean {
-
-        // disable this feature for debugging
-        if (BuildConfig.BUILD_TYPE == "debug") {
-            Log.d(TAG, "debug build, ignore time limit and submit")
-            return false
-        } else {
-            Log.d(TAG, "release build, check time limit before submitting")
-        }
-
-        val currentTime = System.currentTimeMillis()
-        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-        val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
-        val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
-
-        val sanitizedUrl = UrlUtil.sanitizeUrl(url)
-
-        if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
-            || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
-            || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
-            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
-            return true
-        } else {
-            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
-            return false
-        }
-    }
-
-    private fun isTimeExpired(): Boolean {
-        val timeElapsed = reporter.timeElapsed()
-        if (timeElapsed > TIME_LIMIT) {
-            Log.d(TAG, "time expired, end test")
-            return true
-        } else {
-            Log.d(TAG, "time remaining, continue test")
-            return false
-        }
-    }
-    */
 }

@@ -5,10 +5,7 @@ import okhttp3.*
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
-// import java.net.URL
 import java.net.URI
-import kotlinx.coroutines.runBlocking
-
 
 class EnvoyInterceptor : Interceptor {
 
@@ -26,7 +23,8 @@ class EnvoyInterceptor : Interceptor {
         val req = chain.request()
 
         if (util.connected.get()) {
-            // MNB: does this mean if a service is set and then overridden to direct, no cleanup/restart is needed?
+            // MNB: does this mean if a service is set and then overridden
+            // to connect directly, no cleanup/restart is needed?
             if (util.service.get() == EnvoyServiceType.DIRECT.ordinal) {
                 Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
@@ -50,10 +48,6 @@ class EnvoyInterceptor : Interceptor {
                         }
                         else -> {
                             Log.e(TAG, "unsupported activeType: " + it.testType)
-                            // MNB: should this be an error state?
-                            // It's a bug if this happens. Rather than error out
-                            // the request, we might as well try a direct connection
-
                             // pass the request through and hope for the best?
                             chain.proceed(chain.request())
                         }
@@ -82,12 +76,9 @@ class EnvoyInterceptor : Interceptor {
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX we probably shouldn't need to make an EnvoyTest
                 // instance here :)
-                //
-                // the URL param is not used for direct connctions
-                runBlocking {
-                    // connected is a suspend function
-                    util.stopTestPassed(EnvoyTest(EnvoyServiceType.DIRECT, "direct://"))
-                }
+                // MNB calling stopTestPassed shouldn't have unintended consequences
+                // connectIfNeeded will do nothing, so don't bother calling
+                util.stopTestPassed(EnvoyTest(EnvoyServiceType.DIRECT, "direct://"))
             }
         }
 

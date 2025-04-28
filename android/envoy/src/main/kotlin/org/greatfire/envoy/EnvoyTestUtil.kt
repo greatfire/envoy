@@ -32,7 +32,7 @@ class EnvoyTestUtil() {
         }
     }
 
-    private val settings = EnvoyState.getInstance()
+    private val state = EnvoyState.getInstance()
 
     // simple counters to infer status
     var testCount = AtomicInteger(0)
@@ -64,10 +64,10 @@ class EnvoyTestUtil() {
     fun isTimeExpired(): Boolean {
         val time = System.currentTimeMillis() - startTime.get()
         if (time > TIME_LIMIT) {
-            Log.d(TAG, "time expired, end test")
+            Log.d(TAG, "time expired, stop testing")
             return true
         } else {
-            Log.d(TAG, "time remaining, continue test")
+            Log.d(TAG, "time remaining, continue testing")
             return false
         }
     }
@@ -83,7 +83,7 @@ class EnvoyTestUtil() {
         }
 
         val currentTime = System.currentTimeMillis()
-        val preferences = PreferenceManager.getDefaultSharedPreferences(settings.ctx!!)
+        val preferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
         val failureTime = preferences.getLong(test.url + TIME_SUFFIX, 0)
         val failureCount = preferences.getInt(test.url + COUNT_SUFFIX, 0)
 
@@ -130,7 +130,6 @@ class EnvoyTestUtil() {
             }
             test.selectedService = true
             Log.d(TAG, "TEST PASSED, OVERRIDE TYPE TO " + test.testType)
-            // } else if(!test.selectedService && test.serviceRunning) {
         } else {
             // if this one wasn't selected, and the service is
             // still running, stop it now
@@ -140,16 +139,18 @@ class EnvoyTestUtil() {
             Log.d(TAG, "TEST PASSED, BUT ALREADY SET TYPE, STOPPED SERVICE")
         }
 
-        // passed, remove retry interval
-        // this may not be thread safe, but it shouldn't be called concurrently for the same url
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(settings.ctx!!)
-        val editor: SharedPreferences.Editor = sharedPreferences.edit()
-        editor.remove(test.url + TIME_SUFFIX)
-        editor.remove(test.url + COUNT_SUFFIX)
-        editor.apply()
-        Log.d(TAG, "REMOVED PREFS: " + test.url + TIME_SUFFIX + " / " + test.url + COUNT_SUFFIX)
+        if (test.testType != EnvoyServiceType.DIRECT) {
+            // passed, remove retry interval
+            // this may not be thread safe, but it shouldn't be called concurrently for the same url
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
+            val editor: SharedPreferences.Editor = sharedPreferences.edit()
+            editor.remove(test.url + TIME_SUFFIX)
+            editor.remove(test.url + COUNT_SUFFIX)
+            editor.apply()
+            Log.d(TAG, "REMOVED PREFS: " + test.url + TIME_SUFFIX + " / " + test.url + COUNT_SUFFIX)
+        }
 
-        settings.callback!!.reportTestSuccess(test.url, test.testType, test.timeSpent())
+        state.callback!!.reportTestSuccess(test.url, test.testType, test.timeSpent())
         // return test with updated state (including selected flag)
         return test
     }
@@ -159,18 +160,24 @@ class EnvoyTestUtil() {
         val count = failedCount.incrementAndGet()
         Log.d(TAG, "FAILED COUNT UPDATED: " + count)
 
-        // failed, update retry interval
-        // this may not be thread safe, but it shouldn't be called concurrently for the same url
-        val currentTime = System.currentTimeMillis()
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(settings.ctx!!)
-        val failureCount = sharedPreferences.getInt(test.url + COUNT_SUFFIX, 0)
-        val editor: SharedPreferences.Editor = sharedPreferences.edit()
-        editor.putLong(test.url + TIME_SUFFIX, currentTime)
-        editor.putInt(test.url + COUNT_SUFFIX, failureCount + 1)
-        Log.d(TAG, "SAVED PREFS: " + test.url + TIME_SUFFIX + " - " + currentTime + " / " + test.url + COUNT_SUFFIX + " - " + (failureCount + 1))
-        editor.apply()
+        if (test.testType == EnvoyServiceType.DIRECT) {
+            // failed, update retry interval
+            // this may not be thread safe, but it shouldn't be called concurrently for the same url
+            val currentTime = System.currentTimeMillis()
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
+            val failureCount = sharedPreferences.getInt(test.url + COUNT_SUFFIX, 0)
+            val editor: SharedPreferences.Editor = sharedPreferences.edit()
+            editor.putLong(test.url + TIME_SUFFIX, currentTime)
+            editor.putInt(test.url + COUNT_SUFFIX, failureCount + 1)
+            editor.apply()
+            Log.d(
+                TAG,
+                "SAVED PREFS: " + test.url + TIME_SUFFIX + " - " + currentTime
+                        + " / " + test.url + COUNT_SUFFIX + " - " + (failureCount + 1)
+            )
+        }
 
-        settings.callback!!.reportTestFailure(test.url, test.testType, test.timeSpent())
+        state.callback!!.reportTestFailure(test.url, test.testType, test.timeSpent())
     }
 
     fun stopTestBlocked(test: EnvoyTest) {
@@ -178,7 +185,7 @@ class EnvoyTestUtil() {
         val count = blockedCount.incrementAndGet()
         Log.d(TAG, "BLOCKED COUNT UPDATED: " + count)
 
-        settings.callback!!.reportTestBlocked(test.url, test.testType)
+        state.callback!!.reportTestBlocked(test.url, test.testType)
     }
 
     fun testsComplete() {
@@ -204,6 +211,6 @@ class EnvoyTestUtil() {
             }
         }
 
-        settings.callback!!.reportOverallStatus(result, time)
+        state.callback!!.reportOverallStatus(result, time)
     }
 }

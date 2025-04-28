@@ -22,7 +22,6 @@ import org.chromium.net.UrlResponseInfo
 */
 
 class EnvoyConnectionTests {
-    private val settings = EnvoyState.getInstance()
 
     companion object {
         private const val TAG = "EnvoyConnectionTests"
@@ -172,6 +171,8 @@ class EnvoyConnectionTests {
         }
     }
 
+    private val state = EnvoyState.getInstance()
+
     // helper, given a request and optional proxy, test the connection
     private fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
         val builder = OkHttpClient.Builder();
@@ -250,7 +251,7 @@ class EnvoyConnectionTests {
         Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
 
         test.startService()
-        val url = settings.emissary.findEnvoyUrl()
+        val url = state.emissary.findEnvoyUrl()
         // XXX this is a weird case, emissary returns a new
         // URL to use
         // if it comes back, it's tested and working
@@ -298,7 +299,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            settings.emissary.stopV2RaySrtp() // probably unnecessary
+            state.emissary.stopV2RaySrtp() // probably unnecessary
             return false
         }
 
@@ -318,7 +319,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            settings.emissary.stopV2RayWechat() // probably unnecessary
+            state.emissary.stopV2RayWechat() // probably unnecessary
             return false
         }
 
