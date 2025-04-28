@@ -7,7 +7,23 @@ import java.io.File
 import kotlinx.coroutines.sync.*
 import org.chromium.net.CronetEngine
 
-class EnvoyNetworkingSettings private constructor() {
+class EnvoyState private constructor() {
+
+    companion object {
+        private const val TAG = "EnvoyState"
+
+        // Singleton
+        @Volatile
+        private var instance: EnvoyState? = null
+
+        fun getInstance() = instance ?: synchronized(this) {
+            instance ?: EnvoyState().also { instance = it }
+        }
+
+        @Volatile
+        private var connectedMutex = Mutex()
+    }
+
     // Settings
     //
     // How many coroutines to use to test URLs
@@ -16,12 +32,12 @@ class EnvoyNetworkingSettings private constructor() {
     var concurrency = 6 // XXX
 
     // are we connected
-    var envoyConnected = false
+    //var envoyConnected = false
     // if true, the interceptor passes requets through
-    var useDirect = false
+    //var useDirect = false
     // active Envoy or Proxy URL
-    var activeConnection: EnvoyTest? = null
-    val additionalWorkingConnections = mutableListOf<EnvoyTest>()
+    //var activeConnection: EnvoyTest? = null
+    //val additionalWorkingConnections = mutableListOf<EnvoyTest>()
 
     // our Cronet engine
     var cronetEngine: CronetEngine? = null
@@ -41,21 +57,7 @@ class EnvoyNetworkingSettings private constructor() {
 
     val shadowsocks: ShadowsocksService? = null
 
-    companion object {
-        private const val TAG = "EnvoyNetworkingSettings"
-
-        // Singleton
-        @Volatile
-        private var instance: EnvoyNetworkingSettings? = null
-
-        fun getInstance() = instance ?: synchronized(this) {
-            instance ?: EnvoyNetworkingSettings().also { instance = it }
-        }
-
-        @Volatile
-        private var connectedMutex = Mutex()
-    }
-
+    /*
     fun resetState() {
         // reset state variables for a new set of tests
         envoyConnected = false
@@ -64,6 +66,7 @@ class EnvoyNetworkingSettings private constructor() {
         // XXX should we maybe use this here?
         additionalWorkingConnections.clear()
     }
+    */
 
     private fun createCronetEngine() {
         // I think we can reuse the cache dir between runs?
@@ -84,6 +87,20 @@ class EnvoyNetworkingSettings private constructor() {
     }
 
     // The connection worker found a successful connection
+    //
+    suspend fun connectIfNeeded(test: EnvoyTest) {
+        if (test.selectedService && test.testType == EnvoyServiceType.CRONET_ENVOY) {
+            // Cronet is selected, create the cronet engine
+            Log.d(TAG, "CREATE CRONET ENGINE FOR " + test.url)
+            createCronetEngine()
+        } else {
+            // nothing to do?
+            Log.d(TAG, "NO SETUP REQUIRED FOR " + test.url)
+            // if direct selected, stop cronet?
+        }
+    }
+
+    /*
     suspend fun connected(test: EnvoyTest) {
         connectedMutex.withLock {
             // if we're already connected, ignore this UNLESS
@@ -119,4 +136,5 @@ class EnvoyNetworkingSettings private constructor() {
             envoyConnected = true // 🎉
         }
     }
+    */
 }

@@ -43,7 +43,7 @@ data class EnvoyTest(
     var resolverRules: String? = null
 
     // Envoy Global settings and state
-    private val settings = EnvoyNetworkingSettings.getInstance()
+    private val settings = EnvoyState.getInstance()
 
     // used to time how long it takes to connect and test
     private var timer: Timer? = null
@@ -147,7 +147,7 @@ data class EnvoyTest(
         }
     }
 
-    fun startTest() {
+    fun startTimer() {
         getTimer() // this starts the timer as a side effect
     }
 

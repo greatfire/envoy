@@ -22,7 +22,7 @@ import org.chromium.net.UrlResponseInfo
 */
 
 class EnvoyConnectionTests {
-    private val settings = EnvoyNetworkingSettings.getInstance()
+    private val settings = EnvoyState.getInstance()
 
     companion object {
         private const val TAG = "EnvoyConnectionTests"

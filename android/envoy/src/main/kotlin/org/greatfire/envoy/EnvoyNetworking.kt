@@ -10,7 +10,7 @@ import androidx.work.*
 
 class EnvoyNetworking {
 
-    private val settings = EnvoyNetworkingSettings.getInstance()
+    private val settings = EnvoyState.getInstance()
 
     companion object {
         private const val TAG = "EnvoyNetworking"
@@ -65,7 +65,7 @@ class EnvoyNetworking {
 
     fun connect(): EnvoyNetworking {
         initialized = true
-        settings.resetState()
+        //settings.resetState()
         Log.d(TAG, "Starting Envoy connect...")
 
         val workRequest = OneTimeWorkRequestBuilder<EnvoyConnectWorker>()

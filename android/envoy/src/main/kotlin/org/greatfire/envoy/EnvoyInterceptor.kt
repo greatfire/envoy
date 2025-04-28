@@ -17,20 +17,22 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private var proxy: Proxy? = null
-    private val settings = EnvoyNetworkingSettings.getInstance()
+    private val state = EnvoyState.getInstance()
+    private val util = EnvoyTestUtil.getInstance()
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
 
         val req = chain.request()
 
-        if (settings.envoyConnected) {
-            if (settings.useDirect) {
+        if (util.connected.get()) {
+            // MNB: does this mean if a service is set and then overridden to direct, no cleanup/restart is needed?
+            if (util.service.get() == EnvoyServiceType.DIRECT.ordinal) {
                 Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
                 return chain.proceed(chain.request())
             } else {
-                settings.activeConnection?.let {
+                util.activeConnection?.let {
                     // proxy via Envoy
                     Log.d(TAG, "Proxy Via Envoy: " + it.testType)
                     val res = when (it.testType) {
@@ -84,8 +86,7 @@ class EnvoyInterceptor : Interceptor {
                 // the URL param is not used for direct connctions
                 runBlocking {
                     // connected is a suspend function
-                    settings.connected(EnvoyTest(
-                        EnvoyServiceType.DIRECT, "direct://"))
+                    util.stopTestPassed(EnvoyTest(EnvoyServiceType.DIRECT, "direct://"))
                 }
             }
         }
@@ -106,7 +107,7 @@ class EnvoyInterceptor : Interceptor {
             addHeader("Host-Orig", url.host)
             addHeader("Url-Orig", url.toString())
             // XXX do the cache param correctly
-            url(settings.activeConnection!!.url + "?test=" + t)
+            url(util.activeConnection!!.url + "?test=" + t)
         }
 
         return requestBuilder.build()
@@ -126,7 +127,7 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun setupProxy() {
-        val uri = URI(settings.activeConnection!!.proxyUrl)
+        val uri = URI(util.activeConnection!!.proxyUrl)
         var proxyType = Proxy.Type.HTTP
         val scheme = uri.getScheme()
         Log.d(TAG, "SCHEME: $scheme")
@@ -158,7 +159,7 @@ class EnvoyInterceptor : Interceptor {
 
         val callback = CronetUrlRequestCallback(req, chain.call())
         val urlRequest = CronetNetworking.buildRequest(
-            req, callback, settings.cronetEngine!!
+            req, callback, state.cronetEngine!!
         )
         urlRequest.start()
         return callback.blockForResponse()

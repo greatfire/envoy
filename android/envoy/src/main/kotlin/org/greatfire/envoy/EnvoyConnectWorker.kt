@@ -1,17 +1,11 @@
 package org.greatfire.envoy
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
-import androidx.preference.PreferenceManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.net.URI
 import kotlinx.coroutines.*
-import org.greatfire.envoy.NetworkIntentService.Companion
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 
 /*
     Establish a connection to an Envoy Proxy
@@ -27,22 +21,26 @@ class EnvoyConnectWorker(
 
     companion object {
         private const val TAG = "EnvoyConnectWorker"
-        private val settings = EnvoyNetworkingSettings.getInstance()
+        //private val settings = EnvoyState.getInstance()
 
         // these seem to be related to the "blocked" logic
+        /*
         private const val TIME_LIMIT = 60000 // make configurable?
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
         private const val ONE_WEEK_MS = 604800000
         private const val TIME_SUFFIX = "_time"
         private const val COUNT_SUFFIX = "_count"
+        */
     }
 
     // this ArrayDeque is our working copy of the tests
     private val envoyTests = ArrayDeque<EnvoyTest>()
     private val jobs = mutableListOf<Job>()
 
-    private val reporter = EnvoyTestReporter()
+    // these are singletons now so no need to store in the companion?
+    private val state = EnvoyState.getInstance()
+    private val util = EnvoyTestUtil.getInstance()
 
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
@@ -55,14 +53,14 @@ class EnvoyConnectWorker(
             val test = envoyTests.removeFirstOrNull()
             if (test == null) {
                 break
-            }  else if (isTimeExpired()) {
+            }  else if (util.isTimeExpired()) {
                 Log.d(WTAG, "TIME EXPIRED, BREAK")
                 // XXX shouldn't we just use a coroutine timeout?
                 stopWorkers()
                 break
-            } else if (isUrlBlocked(test.url)) {
+            } else if (!util.isUrlBlocked(test)) {
                 Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
-                reporter.testComplete(test, false, true)
+                util.stopTestBlocked(test)
                 continue
             }
 
@@ -70,7 +68,8 @@ class EnvoyConnectWorker(
             Log.d(WTAG, "Test job: " + test)
 
             // start the timer
-            test.startTest()
+            util.startTest(test)
+            //test.startTimer()
 
             // is there some better way to structure this? It's going to
             // get ungainly
@@ -111,23 +110,30 @@ class EnvoyConnectWorker(
 
             // Report success if the test was successful
             if (res) {
-                settings.connected(test)
+                // first success sets connected flag
+                // other successes stop services
+                // all report success
+                state.connectIfNeeded(util.stopTestPassed(test))
+                //settings.connected(test)
                 // stopWorkers()
                 // break;
+            } else {
+                util.stopTestFailed(test)
             }
 
             // report test results, keep track of things, etc
             // calls the user provided callback
             // it's important this is called after settings.connected()
             // so the selected service isn't stopped :)
-            reporter.testComplete(test, res, false)
+            //reporter.testComplete(test, res, false)
 
         }
 
         // TODO: this is an opportunity to fetch more URLs
         // to try
+        // move this to top level instead of a worker so it's only reported once
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
-        reporter.reportEndState()
+        util.testsComplete()
     }
 
     // the worker ends up stopping itself this way, that seems bad?
@@ -140,9 +146,12 @@ class EnvoyConnectWorker(
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
         Log.i(TAG,
-            "Launching ${settings.concurrency} coroutines for ${envoyTests.size} tests")
+            "Launching ${state.concurrency} coroutines for ${envoyTests.size} tests")
 
-        for (i in 1..settings.concurrency) {
+        // clear state variables, start timer
+        util.reset()
+
+        for (i in 1..state.concurrency) {
             // Log.d(TAG, "Launching worker: " + i)
             var job = launch {
                 testUrls(i)
@@ -151,6 +160,8 @@ class EnvoyConnectWorker(
         }
 
         jobs.joinAll()
+
+        // TODO: report overall status here?
 
         Log.d(TAG, "EnvoyConnectWorker workers are done?")
     }
@@ -161,14 +172,14 @@ class EnvoyConnectWorker(
         launch {
             Log.d(TAG, "startEnvoy2: ${Thread.currentThread().name}")
             // Pick a working DoH server
-            settings.dns.init()
+            state.dns.init()
 
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
             // the PT state directory in Lyrebird
-            settings.emissary.init(context.filesDir.path)
+            state.emissary.init(context.filesDir.path)
 
             Log.d(TAG, "startEnvoy4: ${Thread.currentThread().name}")
             // start test workers
@@ -215,6 +226,7 @@ class EnvoyConnectWorker(
     }
 
     // this doesn't belong inside the connect worker? maybe in the reporter?
+    /*
     private fun isUrlBlocked(url: String): Boolean {
 
         // disable this feature for debugging
@@ -253,4 +265,5 @@ class EnvoyConnectWorker(
             return false
         }
     }
+    */
 }
