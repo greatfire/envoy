@@ -136,6 +136,37 @@ class EnvoyConnectionTests {
                 echTest.address = it
             }
 
+            // `address` param
+            tempUri.getQueryParameter("address")?.let {
+                // this is a shortcut for creating a ResolverRule
+                // for the `url` param
+                val temp = Uri.parse(realUrl)
+                val host = temp.getHost()
+
+                val rule = "MAP $host $it"
+
+                // support both `resolver` and `address`
+                // the were mutually exclusive in the C++ patches,
+                // but they don't need to be
+                if (crTest.resolverRules != null) {
+                    crTest.resolverRules += (',' + rule)
+                } else {
+                    crTest.resolverRules = rule
+                }
+
+                // Our OkHttp code doesn't support these, but maybe in the
+                // future...
+                if (okTest.resolverRules != null) {
+                    okTest.resolverRules += (',' + rule)
+                } else {
+                    okTest.resolverRules = rule
+                }
+
+                // currently unused, but stash away the value
+                okTest.address = it
+                crTest.address = it
+            }
+
             // 'socks5' param
             // it's poorly named, http(s):// proxies are ok too
             tempUri.getQueryParameter("socks5")?.let {
@@ -180,7 +211,7 @@ class EnvoyConnectionTests {
                         // should we always test all?
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
 
@@ -227,6 +258,44 @@ class EnvoyConnectionTests {
                     Log.e(TAG, "Unsupported URL: " + url)
                 }
             }
+        }
+
+        // This should live elsewhere
+        // poll until a TCP port is listening, so we can use
+        // services as soon as they're up
+        suspend fun isItUpYet(host: String, port: Int): Boolean {
+            // Give up at some point, currnetly 10 seconds
+            val OVERALL_TIMEOUT = 10 * 1000
+            // Length between tests
+            val POLL_INTERVAL = 1000L
+
+            val startTime = System.currentTimeMillis()
+
+            while (true) {
+                // check OVERALL_TIMEOUT
+                if (System.currentTimeMillis() - startTime > OVERALL_TIMEOUT) {
+                    Log.e(TAG, "Service at $host:$port didn't start in time")
+                    return false
+                }
+
+                // no timeout, we just want to see if the port is open
+                try {
+                    // val sock = Socket(host, port, 0)
+                    val sock = Socket()
+                    // this needs some actual time to connect
+                    sock.connect(InetSocketAddress(host, port), 1000)
+                    Log.d(TAG, "UP! $host:$port")
+                    return true
+                } catch (e: Exception) {
+                    // should be a java.net.ConnectException
+                    // should we test that?
+                    Log.d(TAG, "Not up yet $host:$port, $e")
+                }
+                delay(POLL_INTERVAL)
+            }
+
+            // this shouldn't be reachable
+            return false
         }
     }
 
@@ -515,15 +584,12 @@ class EnvoyConnectionTests {
         Log.d(TAG, "Testing Shadowsocks " + test)
         val addr = test.startService()
 
-        Log.d(TAG, "started Shadowsocks $addr")
-
-        // XXX wait until it's up... we need an isItUpYet for kotlin
-        delay(2000)
+        Log.d(TAG, "testing Shadowsocks $addr")
 
         val res = testStandardProxy(URI(addr))
-        if (res == false) {
-            test.stopService()
-        }
+        // if (res == false) {
+        //     test.stopService()
+        // }
         return res
     }
 
