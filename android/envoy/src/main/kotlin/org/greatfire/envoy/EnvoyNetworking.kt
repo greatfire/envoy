@@ -22,7 +22,7 @@ import plenipotentiary.Plenipotentiary
 
 class EnvoyNetworking {
 
-    private val settings = EnvoyNetworkingSettings.getInstance()
+class EnvoyNetworking {
 
     companion object {
         private const val TAG = "EnvoyNetworking"
