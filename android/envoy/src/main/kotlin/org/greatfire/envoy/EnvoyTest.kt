@@ -28,7 +28,7 @@ data class EnvoyTest(
     }
 
     // proxy URL for the service providing transport
-    // can be SOCKS5, HTTP(S), Envoy, see proxyiSEnvoy
+    // can be SOCKS5, HTTP(S), Envoy, see proxyIsEnvoy
     var proxyUrl: String? = null
     // - true means the proxyUrl refers to a nonstandard Envoy proxy
     // as documented at http://github.com/greatfire/envoy/
