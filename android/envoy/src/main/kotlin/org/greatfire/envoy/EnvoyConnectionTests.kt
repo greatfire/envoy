@@ -166,9 +166,9 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
                 "masque" -> {
@@ -214,6 +214,44 @@ class EnvoyConnectionTests {
                     Log.e(TAG, "Unsupported URL: " + url)
                 }
             }
+        }
+
+        // This should live elsewhere
+        // poll until a TCP port is listening, so we can use
+        // services as soon as they're up
+        suspend fun isItUpYet(host: String, port: Int): Boolean {
+            // Give up at some point, currnetly 10 seconds
+            val OVERALL_TIMEOUT = 10 * 1000
+            // Length between tests
+            val POLL_INTERVAL = 1000L
+
+            val startTime = System.currentTimeMillis()
+
+            while (true) {
+                // check OVERALL_TIMEOUT
+                if (System.currentTimeMillis() - startTime > OVERALL_TIMEOUT) {
+                    Log.e(TAG, "Service at $host:$port didn't start in time")
+                    return false
+                }
+
+                // no timeout, we just want to see if the port is open
+                try {
+                    // val sock = Socket(host, port, 0)
+                    val sock = Socket()
+                    // this needs some actual time to connect
+                    sock.connect(InetSocketAddress(host, port), 1000)
+                    Log.d(TAG, "UP! $host:$port")
+                    return true
+                } catch (e: Exception) {
+                    // should be a java.net.ConnectException
+                    // should we test that?
+                    Log.d(TAG, "Not up yet $host:$port, $e")
+                }
+                delay(POLL_INTERVAL)
+            }
+
+            // this shouldn't be reachable
+            return false
         }
     }
 
