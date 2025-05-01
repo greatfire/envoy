@@ -533,7 +533,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            settings.emissary.stopV2RaySrtp() // probably unnecessary
+            state.emissary.stopV2RaySrtp() // probably unnecessary
             return false
         }
 
@@ -553,7 +553,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            settings.emissary.stopV2RayWechat() // probably unnecessary
+            state.emissary.stopV2RayWechat() // probably unnecessary
             return false
         }
 

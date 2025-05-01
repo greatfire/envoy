@@ -63,6 +63,10 @@ data class EnvoyTest(
         return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
     }
 
+    override fun toString(): String {
+        return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
+    }
+
     private fun getTimer(): Timer {
         if (timer == null) {
             timer = Timer()
