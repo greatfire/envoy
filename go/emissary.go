@@ -197,7 +197,7 @@ func (e *Emissary) Init(tempDir string) {
     	tempDir, e.EnableLogging, e.UnsafeLogging, e.LogLevel, s)
 
     // Set the default DNS server for Go stuff
-    e.startWebServer()
+    go e.startWebServer()
 }
 
 func (e *Emissary) FindEnvoyUrl() (string) {
