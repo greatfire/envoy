@@ -69,11 +69,11 @@ class EnvoyState private constructor() {
     fun connectIfNeeded(test: EnvoyTest) {
         if (test.selectedService && test.testType == EnvoyServiceType.CRONET_ENVOY) {
             // Cronet is selected, create the cronet engine
-            Log.d(TAG, "CREATE CRONET ENGINE FOR " + test.url)
+            Log.d(TAG, "CREATE CRONET ENGINE FOR " + test)
             createCronetEngine()
         } else {
             // nothing to do?
-            Log.d(TAG, "NO SETUP REQUIRED FOR " + test.url)
+            Log.d(TAG, "NO SETUP REQUIRED FOR " + test)
             // if direct selected, stop cronet?
         }
     }

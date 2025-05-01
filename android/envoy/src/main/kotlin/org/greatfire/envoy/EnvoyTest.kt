@@ -50,6 +50,10 @@ data class EnvoyTest(
     // should this be in settings?
     private var shadowsocks: EnvoyShadowsocks? = null
 
+    override fun toString(): String {
+        return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
+    }
+
     private fun getTimer(): Timer {
         if (timer == null) {
             timer = Timer()

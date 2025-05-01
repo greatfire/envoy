@@ -44,7 +44,10 @@ class EnvoyConnectWorker(
             if (test == null) {
                 Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 break
-            }  else if (util.isTimeExpired()) {
+            }  else if (util.connected.get()) {
+                Log.d(WTAG, "ALREADY CONNECTED, BREAK")
+                break
+            } else if (util.isTimeExpired()) {
                 Log.d(WTAG, "TIME EXPIRED, BREAK")
                 // XXX shouldn't we just use a coroutine timeout?
                 // MNB this creates a fuzzier time limit that allows tests in progress to complete
@@ -52,13 +55,13 @@ class EnvoyConnectWorker(
             } else if (util.isUrlBlocked(test)) {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                Log.d(WTAG, "URL BLOCKED, SKIP - " + test.url)
+                Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
                 util.stopTestBlocked(test)
                 continue
             } else {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                Log.d(WTAG, "EXECUTE TEST FOR - " + test.url)
+                Log.d(WTAG, "EXECUTE TEST FOR - " + test)
             }
 
             // is there some better way to structure this? It's going to

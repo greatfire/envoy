@@ -15,6 +15,8 @@ import okhttp3.*
 import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
+import java.io.InterruptedIOException
+import java.util.concurrent.TimeUnit
 
 /*
     Class to hold all the test functions for testing various
@@ -180,7 +182,7 @@ class EnvoyConnectionTests {
             builder.proxy(proxy)
         }
 
-        val client = builder.build()
+        val client = builder.callTimeout(30, TimeUnit.SECONDS).build()
 
         Log.d(TAG, "testing request to: " + request.url)
 
@@ -189,6 +191,9 @@ class EnvoyConnectionTests {
             val code = response.code
             Log.d(TAG, "request: " + request + ", got code: " + code)
             return(code == testResponseCode)
+        } catch (e: InterruptedIOException) {
+            Log.e(TAG, "Test timed out for request" + request)
+            return false
         } catch (e: Exception) {
             Log.e(TAG, "Test threw an error for request" + request)
             Log.e(TAG, "error: " + e)
@@ -248,7 +253,7 @@ class EnvoyConnectionTests {
 
     // ECH
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
-        Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
+        Log.d(TAG, "Testing Envoy URL with Emissary: " + test)
 
         test.startService()
         val url = state.emissary.findEnvoyUrl()

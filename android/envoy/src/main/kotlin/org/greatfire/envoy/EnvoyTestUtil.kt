@@ -125,6 +125,7 @@ class EnvoyTestUtil() {
             currentActiveConnection?.let {
                 Log.d(TAG, "USE DIRECT, SET ASIDE PREVIOUS CONNECTION: " + currentActiveConnection.testType)
                 currentActiveConnection.selectedService = false
+                currentActiveConnection.stopService()
                 additionalWorkingConnections.add(currentActiveConnection)
                 activeConnection = null
             }
@@ -157,10 +158,12 @@ class EnvoyTestUtil() {
 
     fun stopTestFailed(test: EnvoyTest) {
         test.stopTimer()
+        test.stopService()
+
         val count = failedCount.incrementAndGet()
         Log.d(TAG, "FAILED COUNT UPDATED: " + count)
 
-        if (test.testType == EnvoyServiceType.DIRECT) {
+        if (test.testType != EnvoyServiceType.DIRECT) {
             // failed, update retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
             val currentTime = System.currentTimeMillis()
