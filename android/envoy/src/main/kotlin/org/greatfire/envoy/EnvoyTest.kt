@@ -118,7 +118,12 @@ data class EnvoyTest(
                 }
                 return ""
             }
-            EnvoyServiceType.HYSTERIA2 -> state.emissary.startHysteria2(url)
+            EnvoyServiceType.HYSTERIA2 -> {
+                val addr = state.emissary.startHysteria2(url)
+                EnvoyConnectionTests.isItUpYet(addr)
+                return addr
+
+            }
             EnvoyServiceType.SHADOWSOCKS -> {
                 // sadly this new code doesn't work, see the comments there
                 //
@@ -140,24 +145,28 @@ data class EnvoyTest(
                 EnvoyConnectionTests.isItUpYet(
                     "127.0.0.1", 1080)
 
-                Log.i(TAG, "Oldskool Shadowsocks started")
+                Log.d(TAG, "Oldskool Shadowsocks started")
                 return "socks5://127.0.0.1:1080"
             }
             EnvoyServiceType.V2SRTP -> {
                 val server = Uri.parse(url)
-                val host = server.getHost()
-                val port = server.getPort().toString()
+                val host = server.host
+                val port = server.port.toString()
                 val uuid = getV2RayUuid(url)
 
-                return state.emissary.startV2RaySrtp(host, port, uuid)
+                val addr = state.emissary.startV2RaySrtp(host, port, uuid)
+                EnvoyConnectionTests.isItUpYet(addr)
+                return addr
             }
             EnvoyServiceType.V2WECHAT -> {
                 val server = Uri.parse(url)
-                val host = server.getHost()
-                val port = server.getPort().toString()
+                val host = server.host
+                val port = server.port.toString()
                 val uuid = getV2RayUuid(url)
 
-                return state.emissary.startV2RayWechat(host, port, uuid)
+                val addr = state.emissary.startV2RayWechat(host, port, uuid)
+                EnvoyConnectionTests.isItUpYet(addr)
+                return addr
             }
             else -> {
                 Log.e(TAG, "Tried to start an unknown service type $testType")
