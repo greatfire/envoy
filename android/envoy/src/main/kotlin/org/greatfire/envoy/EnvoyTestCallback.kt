@@ -5,9 +5,11 @@ import java.net.URI
 
 interface EnvoyTestCallback {
 
-    fun reportTestSuccess(testedUri: URI, testedService: EnvoyServiceType, timeElapsed: Long)
+    fun reportTestSuccess(testedUrl: String, testedService: EnvoyServiceType, timeElapsed: Long)
 
-    fun reportTestFailure(testedUri: URI, testedService: EnvoyServiceType, timeElapsed: Long)
+    fun reportTestFailure(testedUrl: String, testedService: EnvoyServiceType, timeElapsed: Long)
+
+    fun reportTestBlocked(testedUrl: String, testedService: EnvoyServiceType)
 
     fun reportOverallStatus(testStatus: EnvoyTestStatus, timeElapsed: Long)
 

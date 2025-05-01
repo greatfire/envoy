@@ -5,10 +5,7 @@ import okhttp3.*
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
-// import java.net.URL
 import java.net.URI
-import kotlinx.coroutines.runBlocking
-
 
 class EnvoyInterceptor : Interceptor {
 
@@ -17,20 +14,23 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private var proxy: Proxy? = null
-    private val settings = EnvoyNetworkingSettings.getInstance()
+    private val state = EnvoyState.getInstance()
+    private val util = EnvoyTestUtil.getInstance()
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
 
         val req = chain.request()
 
-        if (settings.envoyConnected) {
-            if (settings.useDirect) {
+        if (util.connected.get()) {
+            // MNB: does this mean if a service is set and then overridden
+            // to connect directly, no cleanup/restart is needed?
+            if (util.service.get() == EnvoyServiceType.DIRECT.ordinal) {
                 Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
                 return chain.proceed(chain.request())
             } else {
-                settings.activeConnection?.let {
+                util.activeConnection?.let {
                     // proxy via Envoy
                     Log.d(TAG, "Proxy Via Envoy: " + it.testType)
                     val res = when (it.testType) {
@@ -48,10 +48,6 @@ class EnvoyInterceptor : Interceptor {
                         }
                         else -> {
                             Log.e(TAG, "unsupported activeType: " + it.testType)
-                            // MNB: should this be an error state?
-                            // It's a bug if this happens. Rather than error out
-                            // the request, we might as well try a direct connection
-
                             // pass the request through and hope for the best?
                             chain.proceed(chain.request())
                         }
@@ -80,13 +76,9 @@ class EnvoyInterceptor : Interceptor {
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX we probably shouldn't need to make an EnvoyTest
                 // instance here :)
-                //
-                // the URL param is not used for direct connctions
-                runBlocking {
-                    // connected is a suspend function
-                    settings.connected(EnvoyTest(
-                        EnvoyServiceType.DIRECT, "direct://"))
-                }
+                // MNB calling stopTestPassed shouldn't have unintended consequences
+                // connectIfNeeded will do nothing, so don't bother calling
+                util.stopTestPassed(EnvoyTest(EnvoyServiceType.DIRECT, "direct://"))
             }
         }
 
@@ -106,7 +98,7 @@ class EnvoyInterceptor : Interceptor {
             addHeader("Host-Orig", url.host)
             addHeader("Url-Orig", url.toString())
             // XXX do the cache param correctly
-            url(settings.activeConnection!!.url + "?test=" + t)
+            url(util.activeConnection!!.url + "?test=" + t)
         }
 
         return requestBuilder.build()
@@ -126,7 +118,7 @@ class EnvoyInterceptor : Interceptor {
     }
 
     private fun setupProxy() {
-        val uri = URI(settings.activeConnection!!.proxyUrl)
+        val uri = URI(util.activeConnection!!.proxyUrl)
         var proxyType = Proxy.Type.HTTP
         val scheme = uri.getScheme()
         Log.d(TAG, "SCHEME: $scheme")
@@ -158,7 +150,7 @@ class EnvoyInterceptor : Interceptor {
 
         val callback = CronetUrlRequestCallback(req, chain.call())
         val urlRequest = CronetNetworking.buildRequest(
-            req, callback, settings.cronetEngine!!
+            req, callback, state.cronetEngine!!
         )
         urlRequest.start()
         return callback.blockForResponse()

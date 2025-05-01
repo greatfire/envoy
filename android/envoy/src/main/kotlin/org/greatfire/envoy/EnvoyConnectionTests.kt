@@ -15,6 +15,8 @@ import okhttp3.*
 import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
+import java.io.InterruptedIOException
+import java.util.concurrent.TimeUnit
 
 /*
     Class to hold all the test functions for testing various
@@ -22,7 +24,6 @@ import org.chromium.net.UrlResponseInfo
 */
 
 class EnvoyConnectionTests {
-    private val settings = EnvoyNetworkingSettings.getInstance()
 
     companion object {
         private const val TAG = "EnvoyConnectionTests"
@@ -172,6 +173,8 @@ class EnvoyConnectionTests {
         }
     }
 
+    private val state = EnvoyState.getInstance()
+
     // helper, given a request and optional proxy, test the connection
     private fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
         val builder = OkHttpClient.Builder();
@@ -179,7 +182,7 @@ class EnvoyConnectionTests {
             builder.proxy(proxy)
         }
 
-        val client = builder.build()
+        val client = builder.callTimeout(30, TimeUnit.SECONDS).build()
 
         Log.d(TAG, "testing request to: " + request.url)
 
@@ -188,6 +191,9 @@ class EnvoyConnectionTests {
             val code = response.code
             Log.d(TAG, "request: " + request + ", got code: " + code)
             return(code == testResponseCode)
+        } catch (e: InterruptedIOException) {
+            Log.e(TAG, "Test timed out for request" + request)
+            return false
         } catch (e: Exception) {
             Log.e(TAG, "Test threw an error for request" + request)
             Log.e(TAG, "error: " + e)
@@ -247,10 +253,10 @@ class EnvoyConnectionTests {
 
     // ECH
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
-        Log.d(TAG, "Testing Envoy URL with Emissary: " + test.url)
+        Log.d(TAG, "Testing Envoy URL with Emissary: " + test)
 
         test.startService()
-        val url = settings.emissary.findEnvoyUrl()
+        val url = state.emissary.findEnvoyUrl()
         // XXX this is a weird case, emissary returns a new
         // URL to use
         // if it comes back, it's tested and working
@@ -298,7 +304,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            settings.emissary.stopV2RaySrtp() // probably unnecessary
+            state.emissary.stopV2RaySrtp() // probably unnecessary
             return false
         }
 
@@ -318,7 +324,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            settings.emissary.stopV2RayWechat() // probably unnecessary
+            state.emissary.stopV2RayWechat() // probably unnecessary
             return false
         }
 
