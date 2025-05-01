@@ -26,8 +26,6 @@ type Emissary struct {
 	TestTarget		string
 	TargetResponse	int
 
-	DOHServer		string
-
 	ProxyListen		string
 
 	Salt			string
@@ -63,7 +61,7 @@ func NewEmissary() (*Emissary) {
 		TestTarget: "https://www.google.com/generate_204",
 	    TargetResponse: 204,
 
-	    DOHServer: "9.9.9.9",
+	    // DOHServer: "9.9.9.9",
 
 	    // XXX should we re-use the code in IEP to find a free port?
 	    ProxyListen: "127.0.0.1:27629",
@@ -144,9 +142,9 @@ func (e *Emissary) SetEnvoyUrl(envoyUrl, echConfigListStr string) {
 
 // set the default Go resolver to use DNS over HTTPS with our
 // working server
-func (e *Emissary) setDOHServer() {
-	zap.S().Infof("Setting default Go DNS resolver to use DOH: %s", e.DOHServer)
-	doh_url := "https://" + e.DOHServer + "/dns-query{?dns}"
+func (e *Emissary) SetDOHServer(dohServer string) {
+	zap.S().Infof("Setting default Go DNS resolver to use DOH: %s", dohServer)
+	doh_url := "https://" + dohServer + "/dns-query{?dns}"
 	resolver, r_err := ndns.NewDoHResolver(doh_url)
 	if r_err != nil {
 		zap.S().Fatalf("Failed to make a resolver: %s", r_err)
@@ -199,7 +197,6 @@ func (e *Emissary) Init(tempDir string) {
     	tempDir, e.EnableLogging, e.UnsafeLogging, e.LogLevel, s)
 
     // Set the default DNS server for Go stuff
-    e.setDOHServer()
     e.startWebServer()
 }
 
