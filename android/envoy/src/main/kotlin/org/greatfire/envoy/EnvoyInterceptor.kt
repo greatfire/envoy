@@ -112,6 +112,8 @@ class EnvoyInterceptor : Interceptor {
     private fun okHttpToEnvoy(chain: Interceptor.Chain): Response {
         val origRequest = chain.request()
 
+        // XXX envoy:// URL headers
+
         Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
 
         return chain.proceed(getEnvoyRequest(origRequest))
@@ -147,6 +149,8 @@ class EnvoyInterceptor : Interceptor {
     // Use cronet to make the request to an Envoy proxy
     private fun cronetToEnvoy(chain: Interceptor.Chain): Response {
         val req = getEnvoyRequest(chain.request())
+
+        // XXX envoy:// URL headers
 
         val callback = CronetUrlRequestCallback(req, chain.call())
         val urlRequest = CronetNetworking.buildRequest(

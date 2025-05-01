@@ -8,6 +8,15 @@ import androidx.core.content.ContextCompat
 import java.io.File
 import org.json.JSONObject
 
+/*
+    THIS DOESN'T WORK 😔
+
+    SELinux blocks it for reasons I don't understand:
+    type=1400 audit(0.0:10695): avc:  denied  { search } for  name="tests" dev="dm-44" ino=65540 scontext=u:r:untrusted_app:s0:c207,c256,c512,c768 tcontext=u:object_r:shell_test_data_file:s0 tclass=dir permissive=0 app=org.greatfire.wikiunblocked
+    but doing (AFAIKT) the exact same thing in the old ShadowsocksService
+    works.. so we're using that (for now?)
+*/
+
 class EnvoyShadowsocks(val url: String, val context: Context) {
     companion object {
         private const val TAG = "EnvoyShadowsocks"
@@ -19,7 +28,7 @@ class EnvoyShadowsocks(val url: String, val context: Context) {
 
     private var currentProcess: Process? = null
 
-    private fun startShadowSocks(): String {
+    fun start(): String {
         // The current Shadowsocks docs say the whole URL should be base64
         // encoded (outside of any fragment), but we've only been encoding
         // the user info part. I don't know if that's an old convention,
@@ -32,6 +41,7 @@ class EnvoyShadowsocks(val url: String, val context: Context) {
             return ""
         }
 
+        // Write out the config file
         val userInfo = String(Base64.decode(parsed.getUserInfo(),
             Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE))
         val parts = userInfo.split(':')
@@ -50,26 +60,18 @@ class EnvoyShadowsocks(val url: String, val context: Context) {
         val configFile = File(ContextCompat.getNoBackupFilesDir(context), "shadowsocks.conf")
         configFile.writeText(json.toString())
 
+        // get the binary path
         val nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir
         val executableFile = File(nativeLibraryDir, "libsslocal.so")
         val executablePath = executableFile.absolutePath
         val cmdArgs = arrayOf(executablePath, "-c", configFile.absolutePath)
 
-        // launch shadowsocks in its own thread
-        Runnable {
-            Log.i(TAG, "Starting Shadowsocks on port " + LOCAL_PORT)
-            fun run() {
-                currentProcess = Runtime.getRuntime().exec(cmdArgs)
-            }
-        }.run()
+        Log.i(TAG, "🗣️ Starting Shadowsocks on port " + LOCAL_PORT)
+        currentProcess = Runtime.getRuntime().exec(cmdArgs)
+        Log.d(TAG, "🗣️ Shadowsocks started")
 
         return LOCAL_PORT
     }
-
-    fun start(): String {
-        return startShadowSocks()
-    }
-
 
     fun stop() {
         currentProcess?.let {
@@ -77,6 +79,5 @@ class EnvoyShadowsocks(val url: String, val context: Context) {
             it.destroy()
             currentProcess = null
         }
-        // does the Runnable just get GC'd?
     }
 }

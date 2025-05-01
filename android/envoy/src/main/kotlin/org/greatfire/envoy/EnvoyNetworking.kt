@@ -66,7 +66,7 @@ class EnvoyNetworking {
 
     fun connect(): EnvoyNetworking {
         initialized = true
-        Log.d(TAG, "Starting Envoy connect...")
+        Log.d(TAG, "🏄‍♂️🏄‍♂️🏄‍♂️ Starting Envoy connect...")
 
         val workRequest = OneTimeWorkRequestBuilder<EnvoyConnectWorker>()
             // connecting to the proxy is a high priority task

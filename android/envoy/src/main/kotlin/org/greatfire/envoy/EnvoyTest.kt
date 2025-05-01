@@ -4,6 +4,10 @@ import android.net.Uri
 import android.net.UrlQuerySanitizer
 import android.util.Log
 
+// old shadowsocks
+import android.content.Intent
+import androidx.core.content.ContextCompat
+
 // This class represents an Envoy connection: type and URL,
 // and tracks additional information, such as a URL to any
 // proxy used, e.g. Shadowsocks provides a SOCKS5 interface
@@ -39,6 +43,8 @@ data class EnvoyTest(
 
     // envoy:// URL related options
     val headers = mutableListOf<Pair<String, String>>()
+    // address param creates an resolver rule
+    // stash it here in case we can support it with OkHttp
     var address: String? = null
     var resolverRules: String? = null
 
@@ -48,7 +54,8 @@ data class EnvoyTest(
     // used to time how long it takes to connect and test
     private var timer: Timer? = null
     // should this be in settings?
-    private var shadowsocks: EnvoyShadowsocks? = null
+    // private var shadowsocks: EnvoyShadowsocks? = null
+    private val shadowsocksIntent: Intent? = null
 
     override fun toString(): String {
         return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
@@ -101,6 +108,10 @@ data class EnvoyTest(
         return when (testType) {
             EnvoyServiceType.HTTP_ECH -> {
                 val hostname = Uri.parse(url).getHost()
+
+                // XXX set DOH server for Go code here?
+                // or keep it in connect()?
+
                 hostname?.let {
                     val echConfigList = settings.dns.getECHConfig(hostname)
                     settings.emissary.setEnvoyUrl(url, echConfigList)
@@ -109,10 +120,27 @@ data class EnvoyTest(
             }
             EnvoyServiceType.HYSTERIA2 -> settings.emissary.startHysteria2(url)
             EnvoyServiceType.SHADOWSOCKS -> {
-                shadowsocks = EnvoyShadowsocks(url, settings.ctx!!)
-                // come on Kotlin, we just assigned it!
-                shadowsocks!!.start()
-                return "socks5://127.0.0.1:${EnvoyShadowsocks.LOCAL_PORT}"
+                // sadly this new code doesn't work, see the comments there
+                //
+                // shadowsocks = EnvoyShadowsocks(url, settings.ctx!!)
+                // // come on Kotlin, we just assigned it!
+                // shadowsocks!!.start()
+
+                // // block (coroutine friendly) until it's up
+                // EnvoyConnectionTests.isItUpYet(
+                //     "127.0.0.1", EnvoyShadowsocks.LOCAL_PORT.toInt())
+
+                // return "socks5://127.0.0.1:${EnvoyShadowsocks.LOCAL_PORT}"
+
+                val shadowsocksIntent = Intent(settings.ctx!!, ShadowsocksService::class.java)
+                shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", url)
+                ContextCompat.startForegroundService(settings.ctx!!, shadowsocksIntent)
+
+                EnvoyConnectionTests.isItUpYet(
+                    "127.0.0.1", 1080)
+
+                Log.i(TAG, "Oldskool Shadowsocks started")
+                return "socks5://127.0.0.1:1080"
             }
             EnvoyServiceType.V2SRTP -> {
                 val server = Uri.parse(url)
@@ -142,7 +170,7 @@ data class EnvoyTest(
         // this is called to stop unused services
         when (testType) {
             EnvoyServiceType.HYSTERIA2 -> settings.emissary.stopHysteria2()
-            EnvoyServiceType.SHADOWSOCKS -> shadowsocks?.let { it.stop() }
+            // EnvoyServiceType.SHADOWSOCKS -> shadowsocks?.let { it.stop() }
             EnvoyServiceType.V2SRTP -> settings.emissary.stopV2RaySrtp()
             EnvoyServiceType.V2WECHAT -> settings.emissary.stopV2RayWechat()
             else -> {

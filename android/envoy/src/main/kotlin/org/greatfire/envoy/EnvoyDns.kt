@@ -19,8 +19,8 @@ class EnvoyDns() {
         private val SERVERS = listOf<String>("45.11.45.11", "[2a09::]")
     }
 
-    var chosenServer: String? = ""
-    var serverUrl: String? = ""
+    var chosenServer: String? = null
+    var serverUrl: String? = null
 
     // Make test query to a random host name from this list
     // so the DNS providers and censors see a little variety

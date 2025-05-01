@@ -151,13 +151,18 @@ class EnvoyConnectWorker(
 
     private suspend fun startEnvoy() = coroutineScope {
         Log.d(TAG, "startEnvoy1: ${Thread.currentThread().name}")
-        // launch (newSingleThreadContext("EnvoyConnectThread")) {
+
         launch {
             Log.d(TAG, "startEnvoy2: ${Thread.currentThread().name}")
             // Pick a working DoH server
             state.dns.init()
+            // if one was picked, pass it over to the Go code to use
+            // settings.dns.chosenServer?.let {
+            //     settings.emissary.DOHServer = it
+            // }
 
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
+
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
@@ -166,6 +171,7 @@ class EnvoyConnectWorker(
 
             Log.d(TAG, "startEnvoy4: ${Thread.currentThread().name}")
             // start test workers
+            // this depends (in some cases) on dns.init() completing
             startWorkers()
 
             Log.d(TAG, "startEnvoy5: ${Thread.currentThread().name}")
