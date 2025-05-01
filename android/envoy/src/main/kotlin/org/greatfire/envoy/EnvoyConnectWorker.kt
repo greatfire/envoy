@@ -202,6 +202,7 @@ class EnvoyConnectWorker(
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
 
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
+
             // initialize the go code
 
             // should we use a subdir? This is (mostly?) used for
