@@ -35,33 +35,30 @@ class EnvoyConnectWorker(
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
     suspend fun testUrls(id: Int) {
-        // XXX split this up in to like 3 functions
-
+        // add worker ID to the TAG
         val WTAG = TAG + "-" + id
 
         while (true) {
             val test = envoyTests.removeFirstOrNull()
             if (test == null) {
-                Log.d(WTAG, "NO TESTS LEFT, BREAK")
+                // Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 break
             }  else if (util.connected.get()) {
-                Log.d(WTAG, "ALREADY CONNECTED, BREAK")
+                // Log.d(WTAG, "ALREADY CONNECTED, BREAK")
                 break
             } else if (util.isTimeExpired()) {
-                Log.d(WTAG, "TIME EXPIRED, BREAK")
-                // XXX shouldn't we just use a coroutine timeout?
-                // MNB this creates a fuzzier time limit that allows tests in progress to complete
+                // Log.d(WTAG, "TIME EXPIRED, BREAK")
                 break
             } else if (util.isUrlBlocked(test)) {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+                // Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
                 util.stopTestBlocked(test)
                 continue
             } else {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                Log.d(WTAG, "EXECUTE TEST FOR - " + test)
+                // Log.d(WTAG, "EXECUTE TEST FOR - " + test)
             }
 
             // is there some better way to structure this? It's going to
@@ -157,9 +154,9 @@ class EnvoyConnectWorker(
             // Pick a working DoH server
             state.dns.init()
             // if one was picked, pass it over to the Go code to use
-            // settings.dns.chosenServer?.let {
-            //     settings.emissary.DOHServer = it
-            // }
+            state.dns.chosenServer?.let {
+                state.emissary.setDOHServer(it)
+            }
 
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")
 
@@ -167,7 +164,7 @@ class EnvoyConnectWorker(
 
             // should we use a subdir? This is (mostly?) used for
             // the PT state directory in Lyrebird
-            state.emissary.init(context.filesDir.path)
+            state.emissary.init(context.cacheDir.path)
 
             Log.d(TAG, "startEnvoy4: ${Thread.currentThread().name}")
             // start test workers
@@ -185,12 +182,13 @@ class EnvoyConnectWorker(
         envoyTests.clear()
         jobs.clear()
 
+        // this triggers spuriously...
         // sanity check
-        if (EnvoyConnectionTests.envoyTests.size < 1) {
-            Log.d(TAG, "NOTHING TO TEST")
-            util.testsComplete()
-            return Result.success()
-        }
+        // if (EnvoyConnectionTests.envoyTests.size < 1) {
+        //     Log.d(TAG, "NOTHING TO TEST")
+        //     util.testsComplete()
+        //     return Result.success()
+        // }
 
         // test direct connection first
         if (EnvoyConnectionTests.directUrl != "") {
@@ -208,7 +206,12 @@ class EnvoyConnectWorker(
                 + envoyTests.size
                 + " URLs to test")
 
-        startEnvoy()
+        try {
+            startEnvoy()
+        } catch (e: Exception) {
+            Log.e(TAG, "Starting Envoy failed: $e")
+        }
+        // if we return failure, the job is re-run, I think?
         return Result.success()
     }
 }
