@@ -43,7 +43,7 @@ class EnvoyDns() {
                 // XXX should we test the list isn't empty at least
                 // or seomthing?
                 // We assume a return here is a success
-                if (chosenServer == "") {
+                if (chosenServer.isNullOrEmpty()) {
                     Log.i(TAG, "picking DNS server: " + host)
                     chosenServer = host
                     serverUrl = dnsUrl
@@ -71,7 +71,10 @@ class EnvoyDns() {
 
         workList.forEach {
             val job = launch {
-                testServer(it)
+                // timeout pretty quickly
+                withTimeoutOrNull(5000) {
+                    testServer(it)
+                }
             }
             jobs.add(job)
         }
