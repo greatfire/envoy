@@ -164,9 +164,9 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
-                        // add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
                 "socks5", "proxy+https" -> {
@@ -179,7 +179,7 @@ class EnvoyConnectionTests {
 
                     with (envoyTests) {
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
-                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
                     }
                 }
                 "envoy" -> {
@@ -203,12 +203,21 @@ class EnvoyConnectionTests {
             }
         }
 
+        // helper, some services return "host:port"
+        suspend fun isItUpYet(addr: String): Boolean {
+            val parts = addr.split(":")
+            if (parts.size > 1) {
+                return isItUpYet(parts[0], parts[1].toInt())
+            }
+            return false
+        }
+
         // This should live elsewhere
         // poll until a TCP port is listening, so we can use
         // services as soon as they're up
         suspend fun isItUpYet(host: String, port: Int): Boolean {
-            // Give up at some point, currnetly 10 seconds
-            val OVERALL_TIMEOUT = 10 * 1000
+            // Give up at some point
+            val OVERALL_TIMEOUT = 5 * 1000
             // Length between tests
             val POLL_INTERVAL = 1000L
 
