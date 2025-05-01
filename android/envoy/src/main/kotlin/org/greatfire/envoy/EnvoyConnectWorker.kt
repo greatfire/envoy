@@ -3,15 +3,10 @@ package org.greatfire.envoy
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.preference.PreferenceManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 // import java.net.URI
 import kotlinx.coroutines.*
-import org.greatfire.envoy.NetworkIntentService.Companion
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 
 /*
     Establish a connection to an Envoy Proxy
@@ -131,11 +126,14 @@ class EnvoyConnectWorker(
                 }
             }
 
-            // Report success if the test was successful
             if (res) {
-                settings.connected(test)
-                // stopWorkers()
-                // break;
+                // first success sets connected flag, other successes stop services,
+                // report success in either case. if test returned with updated flag,
+                // create a cronet engine (depending on selected service)
+                state.connectIfNeeded(util.stopTestPassed(test))
+            } else {
+                // report test failure. failed tests will not be retried until time passes
+                util.stopTestFailed(test)
             }
 
             // report test results, keep track of things, etc
@@ -155,7 +153,6 @@ class EnvoyConnectWorker(
 
         // TODO: this is an opportunity to fetch more URLs to try
         Log.d(WTAG, "testUrl " + id + " is out of URLs")
-        reporter.reportEndState()
     }
 
     // the worker ends up stopping itself this way, that seems bad?
@@ -258,45 +255,5 @@ class EnvoyConnectWorker(
         }
         // if we return failure, the job is re-run, I think?
         return Result.success()
-    }
-
-    // this doesn't belong inside the connect worker? maybe in the reporter?
-    private fun isUrlBlocked(url: String): Boolean {
-
-        // disable this feature for debugging
-        if (BuildConfig.BUILD_TYPE == "debug") {
-            Log.d(TAG, "debug build, ignore time limit and submit")
-            return false
-        } else {
-            Log.d(TAG, "release build, check time limit before submitting")
-        }
-
-        val currentTime = System.currentTimeMillis()
-        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-        val failureTime = preferences.getLong(url + TIME_SUFFIX, 0)
-        val failureCount = preferences.getInt(url + COUNT_SUFFIX, 0)
-
-        val sanitizedUrl = UrlUtil.sanitizeUrl(url)
-
-        if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
-            || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
-            || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
-            Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
-            return true
-        } else {
-            Log.d(TAG, "time limit expired for url(" + failureTime + "), submit again: " + sanitizedUrl)
-            return false
-        }
-    }
-
-    private fun isTimeExpired(): Boolean {
-        val timeElapsed = reporter.timeElapsed()
-        if (timeElapsed > TIME_LIMIT) {
-            Log.d(TAG, "time expired, end test")
-            return true
-        } else {
-            Log.d(TAG, "time remaining, continue test")
-            return false
-        }
     }
 }

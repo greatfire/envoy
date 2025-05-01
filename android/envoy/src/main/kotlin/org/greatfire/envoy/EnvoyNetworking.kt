@@ -15,9 +15,12 @@ import plenipotentiary.Plenipotentiary
     It can also be accessed from the EnvoyConnectWorker and the EnvoyInterceptor.
 */
 
-class EnvoyNetworking {
+/*
+    This object provides an external interface for setting up network connections with Envoy.
+    It can also be accessed from the EnvoyConnectWorker and the EnvoyInterceptor.
+*/
 
-    private val settings = EnvoyNetworkingSettings.getInstance()
+class EnvoyNetworking {
 
     companion object {
         private const val TAG = "EnvoyNetworking"
