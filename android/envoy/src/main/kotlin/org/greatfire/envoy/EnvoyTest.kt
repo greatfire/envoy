@@ -49,7 +49,7 @@ data class EnvoyTest(
     var resolverRules: String? = null
 
     // Envoy Global settings and state
-    private val settings = EnvoyState.getInstance()
+    private val state = EnvoyState.getInstance()
 
     // used to time how long it takes to connect and test
     private var timer: Timer? = null
@@ -113,16 +113,16 @@ data class EnvoyTest(
                 // or keep it in connect()?
 
                 hostname?.let {
-                    val echConfigList = settings.dns.getECHConfig(hostname)
-                    settings.emissary.setEnvoyUrl(url, echConfigList)
+                    val echConfigList = state.dns.getECHConfig(hostname)
+                    state.emissary.setEnvoyUrl(url, echConfigList)
                 }
                 return ""
             }
-            EnvoyServiceType.HYSTERIA2 -> settings.emissary.startHysteria2(url)
+            EnvoyServiceType.HYSTERIA2 -> state.emissary.startHysteria2(url)
             EnvoyServiceType.SHADOWSOCKS -> {
                 // sadly this new code doesn't work, see the comments there
                 //
-                // shadowsocks = EnvoyShadowsocks(url, settings.ctx!!)
+                // shadowsocks = EnvoyShadowsocks(url, state.ctx!!)
                 // // come on Kotlin, we just assigned it!
                 // shadowsocks!!.start()
 
@@ -132,9 +132,10 @@ data class EnvoyTest(
 
                 // return "socks5://127.0.0.1:${EnvoyShadowsocks.LOCAL_PORT}"
 
-                val shadowsocksIntent = Intent(settings.ctx!!, ShadowsocksService::class.java)
+                val shadowsocksIntent = Intent(state.ctx!!, ShadowsocksService::class.java)
                 shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", url)
-                ContextCompat.startForegroundService(settings.ctx!!, shadowsocksIntent)
+                // XXX shouldn't this be background?
+                ContextCompat.startForegroundService(state.ctx!!, shadowsocksIntent)
 
                 EnvoyConnectionTests.isItUpYet(
                     "127.0.0.1", 1080)
@@ -148,7 +149,7 @@ data class EnvoyTest(
                 val port = server.getPort().toString()
                 val uuid = getV2RayUuid(url)
 
-                return settings.emissary.startV2RaySrtp(host, port, uuid)
+                return state.emissary.startV2RaySrtp(host, port, uuid)
             }
             EnvoyServiceType.V2WECHAT -> {
                 val server = Uri.parse(url)
@@ -156,7 +157,7 @@ data class EnvoyTest(
                 val port = server.getPort().toString()
                 val uuid = getV2RayUuid(url)
 
-                return settings.emissary.startV2RayWechat(host, port, uuid)
+                return state.emissary.startV2RayWechat(host, port, uuid)
             }
             else -> {
                 Log.e(TAG, "Tried to start an unknown service type $testType")
@@ -169,10 +170,11 @@ data class EnvoyTest(
         // stop the associated service
         // this is called to stop unused services
         when (testType) {
-            EnvoyServiceType.HYSTERIA2 -> settings.emissary.stopHysteria2()
+            EnvoyServiceType.HYSTERIA2 -> state.emissary.stopHysteria2()
             // EnvoyServiceType.SHADOWSOCKS -> shadowsocks?.let { it.stop() }
-            EnvoyServiceType.V2SRTP -> settings.emissary.stopV2RaySrtp()
-            EnvoyServiceType.V2WECHAT -> settings.emissary.stopV2RayWechat()
+            // EnvoyServiceType.SHADOWSOCKS -> state.ctx!!.stopService(shadowsocksIntent)
+            EnvoyServiceType.V2SRTP -> state.emissary.stopV2RaySrtp()
+            EnvoyServiceType.V2WECHAT -> state.emissary.stopV2RayWechat()
             else -> {
                 Log.e(TAG, "Tried to stop an unknown service $testType")
             }
