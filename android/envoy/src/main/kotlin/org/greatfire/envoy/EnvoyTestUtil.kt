@@ -27,6 +27,7 @@ class EnvoyTestUtil() {
         // MNB: can you document how these constants are used?
         // What are the rules for the "blocked" functionality?
         private const val TIME_LIMIT = 60000 // make configurable?
+        private const val FIVE_MINUTES_MS = 300000
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
         private const val ONE_WEEK_MS = 604800000
@@ -85,11 +86,11 @@ class EnvoyTestUtil() {
     fun isUrlBlocked(test: EnvoyTest): Boolean {
 
         // disable this feature for debugging
-        if (BuildConfig.BUILD_TYPE == "debug") {
-            Log.d(TAG, "debug build, ignore time limit and submit")
+        if (!state.backoffEnabled) {
+            Log.d(TAG, "backoff flag not set, ignore time limit and submit")
             return false
         } else {
-            Log.d(TAG, "release build, check time limit before submitting")
+            Log.d(TAG, "backoff flag set, check time limit before submitting")
         }
 
         val currentTime = System.currentTimeMillis()
@@ -99,9 +100,12 @@ class EnvoyTestUtil() {
 
         val sanitizedUrl = UrlUtil.sanitizeUrl(test.url)
 
-        if ((failureCount in 1..3 && currentTime - failureTime < ONE_HOUR_MS * failureCount)
-            || (failureCount == 4 && currentTime - failureTime < ONE_DAY_MS)
-            || (failureCount >= 5 && currentTime - failureTime < ONE_WEEK_MS)) {
+        // backoff retries to avoid repeatedly hitting potentially blocked endpoints
+        // first wait 5/10/15 minutes, then an hour, then a day
+        // temporary blocks never seem to be unblocked within seconds
+        if ((failureCount in 1..3 && currentTime - failureTime < FIVE_MINUTES_MS * failureCount)
+            || (failureCount == 4 && currentTime - failureTime < ONE_HOUR_MS)
+            || (failureCount > 5 && currentTime - failureTime < ONE_DAY_MS)) {
             Log.d(TAG, "time limit has not expired for url(" + failureTime + "), do not submit: " + sanitizedUrl)
             return true
         } else {

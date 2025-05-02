@@ -27,6 +27,9 @@ class EnvoyState private constructor() {
     // while testing
     var concurrency = 6 // XXX
 
+    // if set, wait an increasing amount of time before retrying blocked urls
+    var backoffEnabled = false
+
     // util class now handles test results
 
     // our Cronet engine

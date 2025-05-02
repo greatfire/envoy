@@ -64,6 +64,16 @@ class EnvoyNetworking {
         return this
     }
 
+    fun setConcurrency(concurrency: Int): EnvoyNetworking {
+        state.concurrency = concurrency
+        return this
+    }
+
+    fun setBackoff(backoffEnabled: Boolean): EnvoyNetworking {
+        state.backoffEnabled = backoffEnabled
+        return this
+    }
+
     fun connect(): EnvoyNetworking {
         initialized = true
         Log.d(TAG, "🏄‍♂️🏄‍♂️🏄‍♂️ Starting Envoy connect...")
