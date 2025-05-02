@@ -75,7 +75,7 @@ class EnvoyConnectionTests {
                     val value = tempUri.getQueryParameter(it)
 
                     // strip off the "header_" prefix
-                    val parts = it.split("_", limit = 1)
+                    val parts = it.split("_", limit = 2)
                     val name = parts[1]
                     // tag, you're "it" ... witch "it" carefully here
                     Log.d(TAG, "adding global header: $name: $value")
