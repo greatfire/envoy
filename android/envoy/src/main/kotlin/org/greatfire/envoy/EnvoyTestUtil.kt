@@ -127,7 +127,8 @@ class EnvoyTestUtil() {
             service.set(test.testType.ordinal)
             activeConnection = test
             test.selectedService = true
-            Log.d(TAG, "TEST PASSED, SET TYPE TO " + test.testType)
+            Log.i(TAG, "🚀🚀🚀 Envoy connected")
+            Log.d(TAG,  "CONNECTED $test")
         } else if(test.testType == EnvoyServiceType.DIRECT) {
             // if direct connection worked, override type from previous success
             // stop service?  stop cronet engine?
@@ -141,14 +142,13 @@ class EnvoyTestUtil() {
                 activeConnection = null
             }
             test.selectedService = true
-            Log.d(TAG, "TEST PASSED, OVERRIDE TYPE TO " + test.testType)
+            Log.i(TAG, "🚀🚀🚀 Envoy connected DIRECT")
         } else {
             // if this one wasn't selected, and the service is
             // still running, stop it now
             test.stopService()
-            // if we're storing additional active connections do we still stop the service?
             additionalWorkingConnections.add(test)
-            Log.d(TAG, "TEST PASSED, BUT ALREADY SET TYPE, STOPPED SERVICE")
+            Log.d(TAG, "additional working service $test")
         }
 
         if (test.testType != EnvoyServiceType.DIRECT) {
