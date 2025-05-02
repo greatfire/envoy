@@ -149,8 +149,6 @@ class EnvoyInterceptor : Interceptor {
     private fun okHttpToEnvoy(chain: Interceptor.Chain): Response {
         val origRequest = chain.request()
 
-        // XXX envoy:// URL headers
-
         Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
 
         return chain.proceed(getEnvoyRequest(origRequest))
