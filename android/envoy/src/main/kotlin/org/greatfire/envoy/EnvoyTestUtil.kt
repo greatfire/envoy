@@ -7,15 +7,25 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
-// EnvoyTest instances are added to this Reporter as they complete.
-// The reporter keeps track of counts and things to report on success
-// or failure
+// MNB: Can you document this? What is it's job?
+
+/*
+This seems to be:
+* managing starting and stopping services
+* managing the active sevice
+* keeping track of statistics
+* reporting back to the caller
+* managing prefs
+* holding some test related logic
+*/
 
 class EnvoyTestUtil() {
 
     companion object {
         private const val TAG = "EnvoyTestUtil"
 
+        // MNB: can you document how these constants are used?
+        // What are the rules for the "blocked" functionality?
         private const val TIME_LIMIT = 60000 // make configurable?
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
@@ -49,7 +59,7 @@ class EnvoyTestUtil() {
     val additionalWorkingConnections = mutableListOf<EnvoyTest>()
 
     fun reset() {
-        Log.d(TAG, "RESET")
+        // Log.d(TAG, "RESET")
 
         testCount.set(0)
         blockedCount.set(0)
@@ -103,9 +113,10 @@ class EnvoyTestUtil() {
     fun startTest(test: EnvoyTest) {
         test.startTimer()
         val count = testCount.incrementAndGet()
-        Log.d(TAG, "TEST COUNT UPDATED: " + count)
+        // Log.d(TAG, "TEST COUNT UPDATED: " + count)
     }
 
+    // Stop the test, it passed
     fun stopTestPassed(test: EnvoyTest): EnvoyTest {
         test.stopTimer()
 
@@ -123,7 +134,7 @@ class EnvoyTestUtil() {
             service.set(EnvoyServiceType.DIRECT.ordinal)
             val currentActiveConnection = activeConnection
             currentActiveConnection?.let {
-                Log.d(TAG, "USE DIRECT, SET ASIDE PREVIOUS CONNECTION: " + currentActiveConnection.testType)
+                // Log.d(TAG, "USE DIRECT, SET ASIDE PREVIOUS CONNECTION: " + currentActiveConnection.testType)
                 currentActiveConnection.selectedService = false
                 currentActiveConnection.stopService()
                 additionalWorkingConnections.add(currentActiveConnection)
@@ -156,6 +167,7 @@ class EnvoyTestUtil() {
         return test
     }
 
+    // stop the test, it failed
     fun stopTestFailed(test: EnvoyTest) {
         test.stopTimer()
         test.stopService()
