@@ -95,23 +95,33 @@ class EnvoyInterceptor : Interceptor {
 
     // Given an OkHttp Request, return a new one pointed at the Envoy
     // URL with the original request moved in to headers
-    private fun getEnvoyRequest(origRequest: Request): Request {
-        val requestBuilder = origRequest.newBuilder()
+    private fun getEnvoyRequest(
+        req: Request,
+        envoyRewrite: Boolean = false): Request
+    {
+        val builder = req.newBuilder()
 
-        val t = System.currentTimeMillis()
-        val url = origRequest.url
-
-        with (requestBuilder) {
-            // addHeader("X-Envoy", "Interceptor")
-            addHeader("Host-Orig", url.host)
-            addHeader("Url-Orig", url.toString())
-            // XXX do the cache param correctly
-            url(util.activeConnection!!.url + "?test=" + t)
+        // rewrite the request for an Envoy proxy
+        if (envoyRewrite) {
+            val t = System.currentTimeMillis()
+            val url = req.url
+            with (builder) {
+                addHeader("Host-Orig", url.host)
+                addHeader("Url-Orig", url.toString())
+                url(util.activeConnection!!.url + "?test=" + t)
+            }
         }
 
-        return requestBuilder.build()
-    }
+        // Add any configured (via envoy:// URL) to the request
+        util.activeConnection?.let {
+            it.headers.forEach {
+                Log.d(TAG, "Adding header $it")
+                builder.addHeader(it.first, it.second)
+            }
+        }
 
+        return builder.build()
+    }
 
     // Proxy though the Envoy HTTPS proxy
     //
@@ -119,8 +129,6 @@ class EnvoyInterceptor : Interceptor {
     // SOCKS proxy
     private fun okHttpToEnvoy(chain: Interceptor.Chain): Response {
         val origRequest = chain.request()
-
-        // XXX envoy:// URL headers
 
         Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
 
@@ -169,8 +177,6 @@ class EnvoyInterceptor : Interceptor {
     // Use cronet to make the request to an Envoy proxy
     private fun cronetToEnvoy(chain: Interceptor.Chain): Response {
         val req = getEnvoyRequest(chain.request())
-
-        // XXX envoy:// URL headers
 
         val callback = CronetUrlRequestCallback(req, chain.call())
         val urlRequest = CronetNetworking.buildRequest(
