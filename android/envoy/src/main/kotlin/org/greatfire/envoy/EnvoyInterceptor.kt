@@ -42,7 +42,15 @@ class EnvoyInterceptor : Interceptor {
                             Log.d(TAG, "OkHttp request to Envoy server")
                             okHttpToEnvoy(chain)
                         }
-                        EnvoyServiceType.OKHTTP_PROXY -> {
+                        EnvoyServiceType.OKHTTP_PROXY,
+                        // all of these services provive a standard SOCKS5
+                        // interface. We used to pass these through Cronet,
+                        // should we test both? Just use OkHttp for now
+                        EnvoyServiceType.HYSTERIA2,
+                        EnvoyServiceType.V2WS,
+                        EnvoyServiceType.V2SRTP,
+                        EnvoyServiceType.V2WECHAT,
+                        EnvoyServiceType.SHADOWSOCKS, -> {
                             Log.d(TAG, "Passing request to standard proxy")
                             useStandardProxy(chain)
                         }
