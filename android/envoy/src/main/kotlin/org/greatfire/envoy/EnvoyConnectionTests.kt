@@ -493,6 +493,10 @@ class EnvoyConnectionTests {
         Log.d(TAG, "Testing Shadowsocks " + test)
         val addr = test.startService()
 
+        // this already has the socks5:// prefix, I guess
+        // we're not consistent there :)
+        test.proxyUrl = addr
+
         Log.d(TAG, "testing Shadowsocks $addr")
 
         val res = testStandardProxy(URI(addr))
