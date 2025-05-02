@@ -127,7 +127,19 @@ class EnvoyInterceptor : Interceptor {
         return chain.proceed(getEnvoyRequest(origRequest))
     }
 
+    // helper to setup the needed Proxy() instance
     private fun setupProxy() {
+        if (util.activeConnection == null) {
+            Log.e(TAG, "can't setup proxy when activeConnection is null!?")
+            return
+        }
+
+        if (util.activeConnection!!.proxyUrl.isNullOrEmpty()) {
+            Log.e(TAG, "activeConnection required a proxy, but no proxyUrl is set!?")
+            return
+        }
+
+        Log.d(TAG, "setting up proxy for URL: " + util.activeConnection!!.proxyUrl)
         val uri = URI(util.activeConnection!!.proxyUrl)
         var proxyType = Proxy.Type.HTTP
         val scheme = uri.getScheme()
