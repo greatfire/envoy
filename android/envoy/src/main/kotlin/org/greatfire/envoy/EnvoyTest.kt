@@ -184,6 +184,16 @@ data class EnvoyTest(
             // EnvoyServiceType.SHADOWSOCKS -> state.ctx!!.stopService(shadowsocksIntent)
             EnvoyServiceType.V2SRTP -> state.emissary.stopV2RaySrtp()
             EnvoyServiceType.V2WECHAT -> state.emissary.stopV2RayWechat()
+            EnvoyServiceType.CRONET_ENVOY,
+            EnvoyServiceType.OKHTTP_ENVOY,
+            EnvoyServiceType.CRONET_PROXY,
+            EnvoyServiceType.OKHTTP_PROXY -> {
+                // no service for these
+                Log.d(TAG, "No service to stop for $testType")
+            }
+            EnvoyServiceType.HTTP_ECH -> {
+                Log.d(TAG, "TODO: we can stop the ECH proxy")
+            }
             else -> {
                 Log.e(TAG, "Tried to stop an unknown service $testType")
             }
