@@ -1,8 +1,6 @@
 package org.greatfire.envoy
 
-import android.content.SharedPreferences
 import android.util.Log
-import androidx.preference.PreferenceManager
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -15,7 +13,6 @@ This seems to be:
 * managing the active sevice
 * keeping track of statistics
 * reporting back to the caller
-* managing prefs
 * holding some test related logic
 */
 
@@ -31,8 +28,6 @@ class EnvoyTestUtil() {
         private const val ONE_HOUR_MS = 3600000
         private const val ONE_DAY_MS = 86400000
         private const val ONE_WEEK_MS = 604800000
-        private const val TIME_SUFFIX = "_time"
-        private const val COUNT_SUFFIX = "_count"
 
         // Singleton
         @Volatile
@@ -58,6 +53,8 @@ class EnvoyTestUtil() {
     var service = AtomicInteger(EnvoyServiceType.UNKNOWN.ordinal)
     var activeConnection: EnvoyTest? = null
     val additionalWorkingConnections = mutableListOf<EnvoyTest>()
+
+    val preferences = EnvoyPrefs()
 
     fun reset() {
         // Log.d(TAG, "RESET")
@@ -94,9 +91,8 @@ class EnvoyTestUtil() {
         }
 
         val currentTime = System.currentTimeMillis()
-        val preferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
-        val failureTime = preferences.getLong(test.url + TIME_SUFFIX, 0)
-        val failureCount = preferences.getInt(test.url + COUNT_SUFFIX, 0)
+        val failureTime = preferences.getFailureTimeForUrl(test.url)
+        val failureCount = preferences.getFailureCountForUrl(test.url)
 
         val sanitizedUrl = UrlUtil.sanitizeUrl(test.url)
 
@@ -158,12 +154,7 @@ class EnvoyTestUtil() {
         if (test.testType != EnvoyServiceType.DIRECT) {
             // passed, remove retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
-            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
-            val editor: SharedPreferences.Editor = sharedPreferences.edit()
-            editor.remove(test.url + TIME_SUFFIX)
-            editor.remove(test.url + COUNT_SUFFIX)
-            editor.apply()
-            Log.d(TAG, "REMOVED PREFS: " + test.url + TIME_SUFFIX + " / " + test.url + COUNT_SUFFIX)
+            preferences.clearUrlFailure(test.url)
         }
 
         state.callback!!.reportTestSuccess(test.url, test.testType, test.timeSpent())
@@ -183,17 +174,7 @@ class EnvoyTestUtil() {
             // failed, update retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
             val currentTime = System.currentTimeMillis()
-            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
-            val failureCount = sharedPreferences.getInt(test.url + COUNT_SUFFIX, 0)
-            val editor: SharedPreferences.Editor = sharedPreferences.edit()
-            editor.putLong(test.url + TIME_SUFFIX, currentTime)
-            editor.putInt(test.url + COUNT_SUFFIX, failureCount + 1)
-            editor.apply()
-            Log.d(
-                TAG,
-                "SAVED PREFS: " + test.url + TIME_SUFFIX + " - " + currentTime
-                        + " / " + test.url + COUNT_SUFFIX + " - " + (failureCount + 1)
-            )
+            preferences.incrementUrlFailure(test.url, currentTime)
         }
 
         state.callback!!.reportTestFailure(test.url, test.testType, test.timeSpent())
