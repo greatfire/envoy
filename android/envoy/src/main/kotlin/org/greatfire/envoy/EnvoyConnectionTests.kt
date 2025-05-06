@@ -179,7 +179,7 @@ class EnvoyConnectionTests {
 
                     with (envoyTests) {
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
                     }
                 }
                 "envoy" -> {
