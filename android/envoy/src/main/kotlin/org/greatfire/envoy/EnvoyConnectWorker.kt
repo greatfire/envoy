@@ -1,10 +1,11 @@
 package org.greatfire.envoy
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import java.net.URI
+// import java.net.URI
 import kotlinx.coroutines.*
 
 /*
@@ -63,7 +64,7 @@ class EnvoyConnectWorker(
 
             // is there some better way to structure this? It's going to
             // get ungainly
-            val proxyUri = URI(test.url)
+            val proxyUri = Uri.parse(test.url)
             val res = when(test.testType) {
                 EnvoyServiceType.DIRECT -> {
                     tests.testDirectConnection()

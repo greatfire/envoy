@@ -8,7 +8,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.Socket
-import java.net.URI
+// import java.net.URI
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 import kotlinx.coroutines.delay
@@ -147,7 +147,7 @@ class EnvoyConnectionTests {
         // we could just require the use for envoy:// urls?)
         @JvmStatic
         fun addEnvoyUrl(url: String) {
-            val uri = URI(url)
+            val uri = Uri.parse(url)
 
             Log.d(TAG, "&&& addEnvoyUrl type: " + uri.getScheme())
 
@@ -292,18 +292,29 @@ class EnvoyConnectionTests {
     }
 
     // Test a standard SOCKS or HTTP(S) proxy
-    suspend fun testStandardProxy(proxyUrl: URI): Boolean {
-        Log.d(TAG, "Testing standard proxy $proxyUrl")
+    suspend fun testStandardProxy(proxyUri: Uri): Boolean {
+        Log.d(TAG, "Testing standard proxy $proxyUri")
 
         var proxyType = Proxy.Type.HTTP
-        if (proxyUrl.getScheme() == "socks5") {
+        if (proxyUri.scheme == "socks5") {
             proxyType = Proxy.Type.SOCKS
         }
-        val host = proxyUrl.getHost()
-        val port = proxyUrl.getPort()
+        val host = proxyUri.host
+        var port = proxyUri.port
 
-        if (host == null || port == null) {
-            Log.e(TAG, "null param: host $host port $port")
+        if (port == -1) {
+            // apparently knowing the default port for the protocol is too
+            // much for the Uri libaray
+            port = when(proxyUri.scheme) {
+                "http"   -> 80
+                "socks5" -> 1080
+                else  -> 443 // https port by default?
+            }
+        }
+
+        Log.d(TAG, "🦐🦐 proxy $host:$port")
+
+        if (host.isNullOrEmpty()) {
             return false
         }
 
@@ -315,14 +326,18 @@ class EnvoyConnectionTests {
 
     // Test using an Envoy HTTP(s) proxy
     // see examples at https://github.com/greatfire/envoy/
-    suspend fun testEnvoyOkHttp(proxyUrl: URI): Boolean {
+    suspend fun testEnvoyOkHttp(proxyUrl: Uri): Boolean {
         if (proxyUrl.getScheme() == "envoy") {
             // XXX handle envoy:// URLs
             Log.e(TAG, "envoy:// URLs aren't supported yet ☹️")
             return false
         } else {
             // assume this is an http(s) Evnoy proxy
-            val host = URI(testUrl).getHost()
+            val host = Uri.parse(testUrl).host
+            if (host == null) {
+                // this shouldn't happen
+                return false
+            }
             // XXX cache param, this is hacky :)
             val t = System.currentTimeMillis()
             val url = proxyUrl.toString() + "?test=" + t
@@ -358,7 +373,7 @@ class EnvoyConnectionTests {
 
         Log.d(TAG, "testing hysteria2 at ${test.proxyUrl}")
 
-        val res = testStandardProxy(URI(test.proxyUrl))
+        val res = testStandardProxy(Uri.parse(test.proxyUrl))
         if (res == false) {
             test.stopService()
         }
@@ -376,7 +391,7 @@ class EnvoyConnectionTests {
 
         Log.d(TAG, "testing Shadowsocks $addr")
 
-        val res = testStandardProxy(URI(addr))
+        val res = testStandardProxy(Uri.parse(addr))
         // if (res == false) {
         //     test.stopService()
         // }
@@ -396,7 +411,7 @@ class EnvoyConnectionTests {
         test.proxyUrl = "socks5://$addr"
         Log.d(TAG, "Testing V2Ray SRTP ${test.proxyUrl}")
 
-        val res = testStandardProxy(URI(test.proxyUrl))
+        val res = testStandardProxy(Uri.parse(test.proxyUrl))
         if (res == false) {
             test.stopService()
         }
@@ -416,7 +431,7 @@ class EnvoyConnectionTests {
         test.proxyUrl = "socks5://$addr"
         Log.d(TAG, "testing V2Ray WeChat at ${test.proxyUrl}")
 
-        val res = testStandardProxy(URI(test.proxyUrl))
+        val res = testStandardProxy(Uri.parse(test.proxyUrl))
         if (res == false) {
             test.stopService()
         }
@@ -515,7 +530,7 @@ class EnvoyConnectionTests {
             cronetThreadPool
         )
         // add the Envoy headers for the real target
-        val targetHost = URI(testUrl).getHost()
+        val targetHost = Uri.parse(testUrl).host
         // XXX cache param
         requestBuilder.addHeader("Host-Orig", targetHost)
         requestBuilder.addHeader("Url-Orig", testUrl)
