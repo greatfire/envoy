@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 # see https://chromium.googlesource.com/chromium/src/+/master/components/cronet/build_instructions.md
 
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
@@ -19,45 +19,74 @@ CHROME_VERSION=$MAJOR.$MINOR.$BUILD.$PATCH
 git clean -ffd
 git checkout .
 
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0001-Envoy.patch"
-# Geneva DNS evasions https://geneva.cs.umd.edu/
-# updates to api.txt are also in this patch, since both it and the 0003 patch change the cronet API
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0002-geneva-dns-and-api-txt.patch"
+# work around a bug in the Cronet build
+(cd $CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs; ln -s linux/chromium-browser-clang/ .)
 
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003-Add-socks5-proxy-and-jni.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-envoy-url-socks5-param.patch"
+# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0001-Envoy.patch"
+# # Geneva DNS evasions https://geneva.cs.umd.edu/
+# # updates to api.txt are also in this patch, since both it and the 0003 patch change the cronet API
+# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0002-geneva-dns-and-api-txt.patch"
 
-# enable ECH
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/ECH_DOH_108.patch"
+# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0003-Add-socks5-proxy-and-jni.patch"
+# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/0004-envoy-url-socks5-param.patch"
+
+# # enable ECH
+# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/ECH_DOH_108.patch"
 # hacky STDERR logging
 #patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- --force <"$PATCH_DIR/scm_ECH_log.patch"
 
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/01-proxy_support.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
+# SCM: this one doesn't compile, TODO fix that :)
+# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
+
+# api.txt and api_version.txt is updated after all the patches are applied
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-update_api.patch"
+
+# build related hack that probably needs more attention, the generate javadoc step
+# fails with a class not found error... hopefully goes away with newer Chromium sources
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/99-fixes.patch"
+
+
 # autoninja -C out/Default chrome_public_apk
-gn gen out/Cronet-Desktop
-autoninja -C out/Cronet-Desktop cronet # cronet_sample
+# gn gen out/Cronet-Desktop
+# autoninja -C out/Cronet-Desktop cronet # cronet_sample
+
+echo "STEVE put the desktop build back in :)"
 
 for arch in arm arm64 x86 x64; do
-    # arm_use_neon = false
+
     out_dir="$CHROMIUM_SRC_ROOT/out/Cronet-$arch-$BUILD_VARIANT"
     if [[ -d "${out_dir}/cronet" ]]; then
         rm -r "${out_dir}/cronet"
     fi
+
     gn_args="--out_dir=$out_dir"
     if [[ $BUILD_VARIANT == release ]]; then
         gn_args="$gn_args --release"
     fi
-    # this adds target_cpu="x86" even for x64 builds
-    # it seems like the only other thing this does is exclude "arm_use_neon=false" which just generates
-    # a warning on non-ARM platforms, and add target_cpu, which we do, correctly, below
-    if [[ $arch == "x86" ]]; then
+
+    # arm64 is the default these days
+    if [[ $arch == "arm" ]]; then
+        gn_args="$gn_args --arm"
+    elif [[ $arch == "x64" ]]; then
+        gn_args="$gn_args --x64"
+    elif [[ $arch == "x86" ]]; then
         gn_args="$gn_args --x86"
     fi
-    # shellcheck disable=SC2086
+
     "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
     if ! grep "target_cpu = \"$arch\"" "$out_dir/args.gn"; then
         echo "target_cpu = \"$arch\"" >>"$out_dir/args.gn"
     fi
+
+    # this defaults to true and errors out (thanks Google)
+    sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"
+
     autoninja -C "$out_dir" cronet_package
+
+    # Copy all the architechure outputs in the arm output directory for packaging
+    # (this should probably use a temp dir)
     if [[ $arch != "arm" ]]; then
         cp -a "$out_dir/cronet/libs/"* "$out_dir/../Cronet-arm-$BUILD_VARIANT/cronet/libs/"
     fi

@@ -1,0 +1,713 @@
+ .../api/src/org/chromium/net/CronetEngine.java      |  9 +++++++++
+ .../src/org/chromium/net/ICronetEngineBuilder.java  |  2 ++
+ components/cronet/android/cronet_context_adapter.cc | 11 +++++++++++
+ components/cronet/android/cronet_context_adapter.h  |  8 ++++++++
+ components/cronet/android/cronet_library_loader.cc  |  8 ++++++++
+ .../net/impl/AndroidHttpEngineBuilderWrapper.java   |  7 +++++++
+ .../chromium/net/impl/CronetEngineBuilderImpl.java  | 11 +++++++++++
+ .../chromium/net/impl/CronetUrlRequestContext.java  | 21 ++++++++++++++++++---
+ .../android/proto/request_context_config.proto      |  1 +
+ .../cronet_sample_apk/CronetSampleApplication.java  |  2 ++
+ .../net/ExperimentalOptionsTranslationTestUtil.java |  5 +++++
+ components/cronet/cronet_context.cc                 | 13 +++++++++++++
+ components/cronet/cronet_context.h                  |  3 +++
+ components/cronet/cronet_global_state.h             |  4 ++++
+ components/cronet/cronet_global_state_stubs.cc      |  7 +++++++
+ components/cronet/native/cronet.idl                 |  6 ++++++
+ components/cronet/native/engine.cc                  | 14 +++++++++++---
+ components/cronet/native/generated/cronet.idl_c.h   |  6 ++++++
+ .../native/generated/cronet.idl_impl_struct.cc      | 12 ++++++++++++
+ .../native/generated/cronet.idl_impl_struct.h       |  1 +
+ components/cronet/native/sample/main.cc             |  1 +
+ components/cronet/url_request_context_config.cc     |  8 ++++++--
+ components/cronet/url_request_context_config.h      |  9 +++++++++
+ net/proxy_resolution/proxy_config_service.cc        | 17 +++++++++++++++++
+ net/proxy_resolution/proxy_config_service.h         |  4 ++++
+ net/url_request/url_request_context.h               |  5 +++++
+ net/url_request/url_request_context_builder.cc      |  4 ++++
+ net/url_request/url_request_context_builder.h       |  7 +++++++
+ 28 files changed, 198 insertions(+), 8 deletions(-)
+
+diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+index a2e417cfcabdc..52f40c923b796 100644
+--- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
++++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+@@ -135,6 +135,15 @@ public abstract class CronetEngine {
+         /** Reference to the actual builder implementation. {@hide exclude from JavaDoc}. */
+         protected final ICronetEngineBuilder mBuilderDelegate;
+ 
++        /**
++         *
++         *
++         */
++        public Builder setProxyUrl(String proxyUrl) {
++            mBuilderDelegate.setProxyUrl(proxyUrl);
++            return this;
++        }
++
+         /**
+          * Constructs a {@link Builder} object that facilitates creating a {@link CronetEngine}. The
+          * default configuration enables HTTP/2 and QUIC, but disables the HTTP cache.
+diff --git a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+index f340a87dc2ee1..427d0d0c224f6 100644
+--- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
++++ b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+@@ -75,6 +75,8 @@ public abstract class ICronetEngineBuilder {
+ 
+     public abstract ICronetEngineBuilder setUserAgent(String userAgent);
+ 
++    public abstract ICronetEngineBuilder setProxyUrl(String proxy_url);
++
+     public abstract String getDefaultUserAgent();
+ 
+     public abstract ExperimentalCronetEngine build();
+diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
+index 8007d4d94c9f5..adf42f3e013f2 100644
+--- a/components/cronet/android/cronet_context_adapter.cc
++++ b/components/cronet/android/cronet_context_adapter.cc
+@@ -80,6 +80,16 @@ void CronetContextAdapter::InitRequestContextOnInitThread(
+   context_->InitRequestContextOnInitThread();
+ }
+ 
++void CronetContextAdapter::InitRequestContextOnInitThreadWithUri(
++    JNIEnv* env,
++    const JavaParamRef<jobject>& jcaller,
++    const JavaParamRef<jstring>& juri) {
++  jcronet_url_request_context_.Reset(env, jcaller);
++  std::string uri(
++      base::android::ConvertJavaStringToUTF8(env, juri));
++  context_->InitRequestContextOnInitThreadWithUri(uri);
++}
++
+ void CronetContextAdapter::ConfigureNetworkQualityEstimatorForTesting(
+     JNIEnv* env,
+     const JavaParamRef<jobject>& jcaller,
+@@ -243,6 +253,7 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
+           configOptions.http_cache_max_size(), configOptions.disable_cache(),
+           configOptions.storage_path(),
+           /* accept_languages */ std::string(), configOptions.user_agent(),
++          configOptions.proxy_url(),
+           configOptions.experimental_options(),
+           base::WrapUnique(reinterpret_cast<net::CertVerifier*>(
+               configOptions.mock_cert_verifier())),
+diff --git a/components/cronet/android/cronet_context_adapter.h b/components/cronet/android/cronet_context_adapter.h
+index cfd99bcd5fb59..7dc3197b5ddcd 100644
+--- a/components/cronet/android/cronet_context_adapter.h
++++ b/components/cronet/android/cronet_context_adapter.h
+@@ -50,6 +50,11 @@ class CronetContextAdapter : public CronetContext::Callback {
+       JNIEnv* env,
+       const base::android::JavaParamRef<jobject>& jcaller);
+ 
++  void InitRequestContextOnInitThreadWithUri(
++      JNIEnv* env,
++      const base::android::JavaParamRef<jobject>& jcaller,
++      const base::android::JavaParamRef<jstring>& juri);
++
+   // Releases all resources for the request context and deletes the object.
+   // Blocks until network thread is destroyed after running all pending tasks.
+   void Destroy(JNIEnv* env,
+@@ -98,6 +103,9 @@ class CronetContextAdapter : public CronetContext::Callback {
+   // Called on init Java thread to initialize URLRequestContext.
+   void InitRequestContextOnInitThread();
+ 
++  // Called on init Java thread to initialize URLRequestContext.
++  void InitRequestContextOnInitThreadWithUri(const base::android::JavaParamRef<jstring>& juri);
++
+   // Configures the network quality estimator to observe requests to localhost,
+   // to use smaller responses when estimating throughput, and to disable the
+   // device offline checks when computing the effective connection type or when
+diff --git a/components/cronet/android/cronet_library_loader.cc b/components/cronet/android/cronet_library_loader.cc
+index 85c9bc07f7a05..73e6ce1509799 100644
+--- a/components/cronet/android/cronet_library_loader.cc
++++ b/components/cronet/android/cronet_library_loader.cc
+@@ -213,6 +213,14 @@ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
+   return service;
+ }
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
++  std::unique_ptr<net::ProxyConfigService> service =
++      net::ProxyConfigService::CreateFixedSystemProxyConfigService(
++          io_task_runner, uri);
++  return service;
++}
++
+ // Creates a proxy resolution service appropriate for this platform.
+ std::unique_ptr<net::ProxyResolutionService> CreateProxyResolutionService(
+     std::unique_ptr<net::ProxyConfigService> proxy_config_service,
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java b/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
+index 5305de3046c82..e33dee1639916 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
+@@ -49,6 +49,13 @@ class AndroidHttpEngineBuilderWrapper extends ICronetEngineBuilder {
+         return this;
+     }
+ 
++    @Override
++    public ICronetEngineBuilder setProxyUrl(String proxyUrl) {
++        // HttpEngine.Builder doesn't have this method
++        // mBackend.setProxyUrl(proxyUrl);
++        return this;
++    }
++
+     @Override
+     public ICronetEngineBuilder setStoragePath(String value) {
+         mBackend.setStoragePath(value);
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
+index 3e17f1c53c0e0..6511b87d30ab5 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
+@@ -142,6 +142,7 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
+     private final CronetSource mSource;
+     private boolean mPublicKeyPinningBypassForLocalTrustAnchorsEnabled;
+     private String mUserAgent;
++    private String mProxyUrl;
+     private String mStoragePath;
+     private boolean mQuicEnabled;
+     private boolean mHttp2Enabled;
+@@ -232,6 +233,16 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
+         return mUserAgent;
+     }
+ 
++    @Override
++    public CronetEngineBuilderImpl setProxyUrl(String proxyUrl) {
++        mProxyUrl = proxyUrl;
++        return this;
++    }
++
++    public String getProxyUrl() {
++        return mProxyUrl;
++    }
++
+     @Override
+     public CronetEngineBuilderImpl setStoragePath(String value) {
+         if (!new File(value).isDirectory()) {
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+index 770f55fa99d90..429c2c728df73 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+@@ -298,10 +298,18 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+                             // mUrlRequestContextAdapter is guaranteed to exist until
+                             // initialization on init and network threads completes and
+                             // initNetworkThread is called back on network thread.
+-                            CronetUrlRequestContextJni.get()
++                            if (builder.getProxyUrl() != null && builder.getProxyUrl().startsWith("socks5://")) {
++                                CronetUrlRequestContextJni.get()
++                                    .initRequestContextOnInitThreadWithUri(
++				                        mUrlRequestContextAdapter,
++                                        CronetUrlRequestContext.this,
++                                        builder.getProxyUrl());
++		                    } else {
++                                CronetUrlRequestContextJni.get()
+                                     .initRequestContextOnInitThread(
+-                                            mUrlRequestContextAdapter,
+-                                            CronetUrlRequestContext.this);
++                                        mUrlRequestContextAdapter,
++                                        CronetUrlRequestContext.this);
++		                    }
+                         }
+ 
+                         if (cronetInitializedInfoLogger != null) {
+@@ -411,6 +419,10 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+             resultBuilder.setExperimentalOptions(engineBuilder.experimentalOptions());
+         }
+ 
++        if (engineBuilder.getProxyUrl() != null) {
++            resultBuilder.setProxyUrl(engineBuilder.getProxyUrl());
++        }
++
+         return resultBuilder.build();
+     }
+ 
+@@ -1040,6 +1052,9 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+ 
+         byte[] getHistogramDeltas();
+ 
++        @NativeClassQualifiedName("CronetContextAdapter")
++        void initRequestContextOnInitThreadWithUri(long nativePtr, CronetUrlRequestContext caller, String uri);
++
+         @NativeClassQualifiedName("CronetContextAdapter")
+         void destroy(long nativePtr, CronetUrlRequestContext caller);
+ 
+diff --git a/components/cronet/android/proto/request_context_config.proto b/components/cronet/android/proto/request_context_config.proto
+index 348bd84d5e23e..f73db98ddc54c 100644
+--- a/components/cronet/android/proto/request_context_config.proto
++++ b/components/cronet/android/proto/request_context_config.proto
+@@ -21,4 +21,5 @@ message RequestContextConfigOptions {
+   optional bool enable_network_quality_estimator = 12;
+   optional bool bypass_public_key_pinning_for_local_trust_anchors = 13;
+   optional int32 network_thread_priority = 14;
++  optional string proxy_url = 15;
+ }
+diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
+index 8a6b57aad749d..7e1b0d448c621 100644
+--- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
++++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
+@@ -24,6 +24,7 @@ public class CronetSampleApplication extends Application {
+         myBuilder
+                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
+                 .enableHttp2(true)
++                .setProxyUrl("socks5://127.0.0.1:1080")
+                 .enableQuic(true);
+         mCronetEngine = myBuilder.build();
+     }
+@@ -62,6 +63,7 @@ public class CronetSampleApplication extends Application {
+                         .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
+                         .enableHttp2(true)
+                         .enableQuic(true)
++                        .setProxyUrl("socks5://127.0.0.1:1080")
+                         .build();
+     }
+ }
+diff --git a/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java b/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
+index a070ec49d3959..82921ef41d97c 100644
+--- a/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
++++ b/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
+@@ -190,6 +190,11 @@ public class ExperimentalOptionsTranslationTestUtil {
+             throw new UnsupportedOperationException();
+         }
+ 
++        @Override
++        public ICronetEngineBuilder setProxyUrl(String value) {
++            throw new UnsupportedOperationException();
++        }
++
+         @Override
+         public ICronetEngineBuilder setConnectionMigrationOptions(
+                 ConnectionMigrationOptions options) {
+diff --git a/components/cronet/cronet_context.cc b/components/cronet/cronet_context.cc
+index 4f0ebd8125f10..fd8bb335c9748 100644
+--- a/components/cronet/cronet_context.cc
++++ b/components/cronet/cronet_context.cc
+@@ -249,6 +249,19 @@ CronetContext::NetworkTasks::~NetworkTasks() {
+     net::NetworkChangeNotifier::RemoveNetworkObserver(this);
+ }
+ 
++void CronetContext::InitRequestContextOnInitThreadWithUri(base::StringPiece uri) {
++  DCHECK(OnInitThread());
++  auto proxy_config_service =
++      cronet::CreateFixedProxyConfigService(GetNetworkTaskRunner(), uri);
++  g_net_log.Get().EnsureInitializedOnInitThread();
++  GetNetworkTaskRunner()->PostTask(
++      FROM_HERE,
++      base::BindOnce(&CronetContext::NetworkTasks::Initialize,
++                     base::Unretained(network_tasks_), GetNetworkTaskRunner(),
++                     GetFileThread()->task_runner(),
++                     std::move(proxy_config_service)));
++}
++
+ void CronetContext::InitRequestContextOnInitThread() {
+   DCHECK(OnInitThread());
+   // Cannot create this inside Initialize because Android requires this to be
+diff --git a/components/cronet/cronet_context.h b/components/cronet/cronet_context.h
+index b5163c84b09f0..d0a9631a0e3d9 100644
+--- a/components/cronet/cronet_context.h
++++ b/components/cronet/cronet_context.h
+@@ -15,6 +15,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/ref_counted.h"
++#include "base/strings/string_piece.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/threading/thread.h"
+ #include "base/threading/thread_checker.h"
+@@ -112,6 +113,8 @@ class CronetContext {
+   // Blocks until network thread is destroyed after running all pending tasks.
+   virtual ~CronetContext();
+ 
++  void InitRequestContextOnInitThreadWithUri(base::StringPiece uri);
++
+   // Called on init thread to initialize URLRequestContext.
+   void InitRequestContextOnInitThread();
+ 
+diff --git a/components/cronet/cronet_global_state.h b/components/cronet/cronet_global_state.h
+index 3bd6201df9e50..1abab49b21dc0 100644
+--- a/components/cronet/cronet_global_state.h
++++ b/components/cronet/cronet_global_state.h
+@@ -8,6 +8,7 @@
+ #include <memory>
+ #include <string>
+ #include "base/memory/scoped_refptr.h"
++#include "base/strings/string_piece.h"
+ #include "base/task/sequenced_task_runner.h"
+ 
+ namespace net {
+@@ -33,6 +34,9 @@ void PostTaskToInitThread(const base::Location& posted_from,
+ // idempotent, and must complete initialization before returning.
+ void EnsureInitialized();
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri);
++
+ // Creates a proxy config service appropriate for this platform that fetches the
+ // system proxy settings. Cronet will call this API only after a prior call
+ // to EnsureInitialized() has returned.
+diff --git a/components/cronet/cronet_global_state_stubs.cc b/components/cronet/cronet_global_state_stubs.cc
+index e1162a786c688..9834de1ad8656 100644
+--- a/components/cronet/cronet_global_state_stubs.cc
++++ b/components/cronet/cronet_global_state_stubs.cc
+@@ -8,6 +8,7 @@
+ 
+ #include "base/at_exit.h"
+ #include "base/feature_list.h"
++#include "base/strings/string_piece.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
+@@ -62,6 +63,12 @@ void PostTaskToInitThread(const base::Location& posted_from,
+   InitTaskRunner()->PostTask(posted_from, std::move(task));
+ }
+ 
++std::unique_ptr<net::ProxyConfigService> CreateFixedProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& io_task_runner, base::StringPiece uri) {
++  return net::ProxyConfigService::CreateFixedSystemProxyConfigService(
++      io_task_runner, uri);
++}
++
+ std::unique_ptr<net::ProxyConfigService> CreateProxyConfigService(
+     const scoped_refptr<base::SequencedTaskRunner>& io_task_runner) {
+   return net::ProxyConfigService::CreateSystemProxyConfigService(
+diff --git a/components/cronet/native/cronet.idl b/components/cronet/native/cronet.idl
+index 8e83cb0cf70a4..0f8aa13af59d1 100644
+--- a/components/cronet/native/cronet.idl
++++ b/components/cronet/native/cronet.idl
+@@ -511,6 +511,12 @@ struct EngineParams {
+    */
+   string user_agent;
+ 
++  /**
++   *
++   *
++   */
++  string proxy_url;
++
+   /**
+    * Sets a default value for the Accept-Language header value for UrlRequests
+    * created by this engine. Explicitly setting the Accept-Language header
+diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
+index c35c4dbfc33ec..0bd1f623f3705 100644
+--- a/components/cronet/native/engine.cc
++++ b/components/cronet/native/engine.cc
+@@ -149,6 +149,7 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
+   context_config_builder.storage_path = params->storage_path;
+   context_config_builder.accept_language = params->accept_language;
+   context_config_builder.user_agent = params->user_agent;
++  context_config_builder.proxy_url = params->proxy_url;
+   context_config_builder.experimental_options = params->experimental_options;
+   context_config_builder.bypass_public_key_pinning_for_local_trust_anchors =
+       params->enable_public_key_pinning_bypass_for_local_trust_anchors;
+@@ -199,10 +200,17 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
+   // private and mark CronetLibraryLoader.postToInitThread() as
+   // @VisibleForTesting (as the only external use will be in a test).
+ 
++
+   // Initialize context on the init thread.
+-  cronet::PostTaskToInitThread(
+-      FROM_HERE, base::BindOnce(&CronetContext::InitRequestContextOnInitThread,
+-                                base::Unretained(context_.get())));
++  if (params->proxy_url.empty()) {
++    cronet::PostTaskToInitThread(
++        FROM_HERE, base::BindOnce(&CronetContext::InitRequestContextOnInitThread,
++                                  base::Unretained(context_.get())));
++  } else {
++    cronet::PostTaskToInitThread(
++        FROM_HERE, base::BindOnce(&CronetContext::InitRequestContextOnInitThreadWithUri,
++                                  base::Unretained(context_.get()), params->proxy_url));
++  }
+   return CheckResult(Cronet_RESULT_SUCCESS);
+ }
+ 
+diff --git a/components/cronet/native/generated/cronet.idl_c.h b/components/cronet/native/generated/cronet.idl_c.h
+index 988e6efacb0f3..b451cdc686f06 100644
+--- a/components/cronet/native/generated/cronet.idl_c.h
++++ b/components/cronet/native/generated/cronet.idl_c.h
+@@ -795,6 +795,9 @@ CRONET_EXPORT
+ void Cronet_EngineParams_user_agent_set(Cronet_EngineParamsPtr self,
+                                         const Cronet_String user_agent);
+ CRONET_EXPORT
++void Cronet_EngineParams_proxy_url_set(Cronet_EngineParamsPtr self,
++                                        const Cronet_String proxy_url);
++CRONET_EXPORT
+ void Cronet_EngineParams_accept_language_set(
+     Cronet_EngineParamsPtr self,
+     const Cronet_String accept_language);
+@@ -845,6 +848,9 @@ CRONET_EXPORT
+ Cronet_String Cronet_EngineParams_user_agent_get(
+     const Cronet_EngineParamsPtr self);
+ CRONET_EXPORT
++Cronet_String Cronet_EngineParams_proxy_url_get(
++    const Cronet_EngineParamsPtr self);
++CRONET_EXPORT
+ Cronet_String Cronet_EngineParams_accept_language_get(
+     const Cronet_EngineParamsPtr self);
+ CRONET_EXPORT
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.cc b/components/cronet/native/generated/cronet.idl_impl_struct.cc
+index b9120ff8c24f6..eb598226660d9 100644
+--- a/components/cronet/native/generated/cronet.idl_impl_struct.cc
++++ b/components/cronet/native/generated/cronet.idl_impl_struct.cc
+@@ -249,6 +249,12 @@ void Cronet_EngineParams_user_agent_set(Cronet_EngineParamsPtr self,
+   self->user_agent = user_agent;
+ }
+ 
++void Cronet_EngineParams_proxy_url_set(Cronet_EngineParamsPtr self,
++                                        const Cronet_String proxy_url) {
++  DCHECK(self);
++  self->proxy_url = proxy_url;
++}
++
+ void Cronet_EngineParams_accept_language_set(
+     Cronet_EngineParamsPtr self,
+     const Cronet_String accept_language) {
+@@ -342,6 +348,12 @@ Cronet_String Cronet_EngineParams_user_agent_get(
+   return self->user_agent.c_str();
+ }
+ 
++Cronet_String Cronet_EngineParams_proxy_url_get(
++    const Cronet_EngineParamsPtr self) {
++  DCHECK(self);
++  return self->proxy_url.c_str();
++}
++
+ Cronet_String Cronet_EngineParams_accept_language_get(
+     const Cronet_EngineParamsPtr self) {
+   DCHECK(self);
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.h b/components/cronet/native/generated/cronet.idl_impl_struct.h
+index badb341ce331c..1677263ce638f 100644
+--- a/components/cronet/native/generated/cronet.idl_impl_struct.h
++++ b/components/cronet/native/generated/cronet.idl_impl_struct.h
+@@ -82,6 +82,7 @@ struct Cronet_EngineParams {
+ 
+   bool enable_check_result = true;
+   std::string user_agent;
++  std::string proxy_url;
+   std::string accept_language;
+   std::string storage_path;
+   bool enable_quic = true;
+diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
+index 0cbbdce569e14..2e8aa0e81863f 100644
+--- a/components/cronet/native/sample/main.cc
++++ b/components/cronet/native/sample/main.cc
+@@ -12,6 +12,7 @@ Cronet_EnginePtr CreateCronetEngine() {
+   Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
+   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
+   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
++  Cronet_EngineParams_proxy_url_set(engine_params, "socks5://127.0.0.1:1080");
+   Cronet_EngineParams_enable_quic_set(engine_params, true);
+ 
+   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
+index 5ef2058149f28..8aa16118fefc3 100644
+--- a/components/cronet/url_request_context_config.cc
++++ b/components/cronet/url_request_context_config.cc
+@@ -265,6 +265,7 @@ URLRequestContextConfig::URLRequestContextConfig(
+     const std::string& storage_path,
+     const std::string& accept_language,
+     const std::string& user_agent,
++    const std::string& proxy_url,
+     base::Value::Dict experimental_options,
+     std::unique_ptr<net::CertVerifier> mock_cert_verifier,
+     bool enable_network_quality_estimator,
+@@ -279,6 +280,7 @@ URLRequestContextConfig::URLRequestContextConfig(
+       storage_path(storage_path),
+       accept_language(accept_language),
+       user_agent(user_agent),
++      proxy_url(proxy_url),
+       mock_cert_verifier(std::move(mock_cert_verifier)),
+       enable_network_quality_estimator(enable_network_quality_estimator),
+       bypass_public_key_pinning_for_local_trust_anchors(
+@@ -305,6 +307,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+     const std::string& storage_path,
+     const std::string& accept_language,
+     const std::string& user_agent,
++    const std::string& proxy_url,
+     const std::string& unparsed_experimental_options,
+     std::unique_ptr<net::CertVerifier> mock_cert_verifier,
+     bool enable_network_quality_estimator,
+@@ -322,7 +325,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+   }
+   return base::WrapUnique(new URLRequestContextConfig(
+       enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
+-      load_disable_cache, storage_path, accept_language, user_agent,
++      load_disable_cache, storage_path, accept_language, user_agent, proxy_url,
+       std::move(experimental_options).value(), std::move(mock_cert_verifier),
+       enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+@@ -800,6 +803,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+   }
+   context_builder->set_accept_language(accept_language);
+   context_builder->set_user_agent(user_agent);
++  context_builder->set_proxy_url(proxy_url);
+   net::HttpNetworkSessionParams session_params;
+   session_params.enable_http2 = enable_spdy;
+   session_params.enable_quic = enable_quic;
+@@ -829,7 +833,7 @@ std::unique_ptr<URLRequestContextConfig>
+ URLRequestContextConfigBuilder::Build() {
+   return URLRequestContextConfig::CreateURLRequestContextConfig(
+       enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
+-      load_disable_cache, storage_path, accept_language, user_agent,
++      load_disable_cache, storage_path, accept_language, user_agent, proxy_url,
+       experimental_options, std::move(mock_cert_verifier),
+       enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+diff --git a/components/cronet/url_request_context_config.h b/components/cronet/url_request_context_config.h
+index 3ce700f953184..4cab2d0935c82 100644
+--- a/components/cronet/url_request_context_config.h
++++ b/components/cronet/url_request_context_config.h
+@@ -127,6 +127,9 @@ struct URLRequestContextConfig {
+   // User-Agent request header field.
+   const std::string user_agent;
+ 
++  // URL of proxy server
++  const std::string proxy_url;
++
+   // Certificate verifier for testing.
+   std::unique_ptr<net::CertVerifier> mock_cert_verifier;
+ 
+@@ -199,6 +202,8 @@ struct URLRequestContextConfig {
+       const std::string& accept_language,
+       // User-Agent request header field.
+       const std::string& user_agent,
++      // URL of proxy server
++      const std::string& proxy_url,
+       // JSON encoded experimental options.
+       const std::string& unparsed_experimental_options,
+       // MockCertVerifier to use for testing purposes.
+@@ -233,6 +238,8 @@ struct URLRequestContextConfig {
+       const std::string& accept_language,
+       // User-Agent request header field.
+       const std::string& user_agent,
++      // URL of proxy
++      const std::string& proxy_url,
+       // Parsed experimental options.
+       base::Value::Dict experimental_options,
+       // MockCertVerifier to use for testing purposes.
+@@ -301,6 +308,8 @@ struct URLRequestContextConfigBuilder {
+   std::string accept_language = "";
+   // User-Agent request header field.
+   std::string user_agent = "";
++  // URL of proxy
++  std::string proxy_url = "";
+   // Experimental options encoded as a string in a JSON format containing
+   // experiments and their corresponding configuration options. The format
+   // is a JSON object with the name of the experiment as the key, and the
+diff --git a/net/proxy_resolution/proxy_config_service.cc b/net/proxy_resolution/proxy_config_service.cc
+index 4235120dbafc5..145577ece8549 100644
+--- a/net/proxy_resolution/proxy_config_service.cc
++++ b/net/proxy_resolution/proxy_config_service.cc
+@@ -11,7 +11,9 @@
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "build/build_config.h"
++#include "net/base/proxy_string_util.h"
+ #include "net/proxy_resolution/proxy_config_with_annotation.h"
++#include "net/proxy_resolution/proxy_config_service_fixed.h"
+ 
+ #if BUILDFLAG(IS_WIN)
+ #include "net/proxy_resolution/win/proxy_config_service_win.h"
+@@ -90,6 +92,21 @@ class ProxyConfigServiceDirect : public ProxyConfigService {
+ 
+ }  // namespace
+ 
++
++std::unique_ptr<ProxyConfigService>
++ProxyConfigService::CreateFixedSystemProxyConfigService(
++    const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri) {
++  ProxyConfig raw_proxy_config;
++  raw_proxy_config.proxy_rules().type = ProxyConfig::ProxyRules::Type::PROXY_LIST;
++  raw_proxy_config.proxy_rules().single_proxies.SetSingleProxyServer(ProxyUriToProxyServer(uri, ProxyServer::SCHEME_SOCKS5));
++#if (!defined(OS_WIN) && !defined(OS_LINUX)) || defined(OS_CHROMEOS)
++  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, NO_TRAFFIC_ANNOTATION_YET);
++#else
++  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, kSystemProxyConfigTrafficAnnotation);
++#endif
++  return std::make_unique<ProxyConfigServiceFixed>(proxy_config);
++}
++
+ // static
+ std::unique_ptr<ProxyConfigService>
+ ProxyConfigService::CreateSystemProxyConfigService(
+diff --git a/net/proxy_resolution/proxy_config_service.h b/net/proxy_resolution/proxy_config_service.h
+index 7d22c4e2d255a..a355c7d5a54aa 100644
+--- a/net/proxy_resolution/proxy_config_service.h
++++ b/net/proxy_resolution/proxy_config_service.h
+@@ -8,6 +8,7 @@
+ #include <memory>
+ 
+ #include "base/memory/scoped_refptr.h"
++#include "base/strings/string_piece.h"
+ #include "net/base/net_export.h"
+ 
+ namespace base {
+@@ -79,6 +80,9 @@ class NET_EXPORT ProxyConfigService {
+   // consumer of the ProxyConfigService will live.
+   static std::unique_ptr<ProxyConfigService> CreateSystemProxyConfigService(
+       scoped_refptr<base::SequencedTaskRunner> main_task_runner);
++
++  static std::unique_ptr<ProxyConfigService> CreateFixedSystemProxyConfigService(
++      const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, base::StringPiece uri);
+ };
+ 
+ }  // namespace net
+diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
+index 957d2ee53d911..aff26d40b29c9 100644
+--- a/net/url_request/url_request_context.h
++++ b/net/url_request/url_request_context.h
+@@ -233,6 +233,9 @@ class NET_EXPORT URLRequestContext final {
+   // context has been bound to.
+   handles::NetworkHandle bound_network() const { return bound_network_; }
+ 
++  void set_proxy_url(const std::string& proxy_url) { proxy_url_ = proxy_url; }
++  const std::string& proxy_url() const { return proxy_url_; }
++
+   void AssertCalledOnValidThread() {
+     DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+   }
+@@ -379,6 +382,8 @@ class NET_EXPORT URLRequestContext final {
+   // provided to a request when true.
+   bool require_network_anonymization_key_ = false;
+ 
++  std::string proxy_url_;
++
+   std::optional<std::string> cookie_deprecation_label_;
+ 
+   handles::NetworkHandle bound_network_;
+diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
+index 1649b10001b32..b5a2f658c4335 100644
+--- a/net/url_request/url_request_context_builder.cc
++++ b/net/url_request/url_request_context_builder.cc
+@@ -127,6 +127,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
+   user_agent_ = user_agent;
+ }
+ 
++void URLRequestContextBuilder::set_proxy_url(const std::string& proxy_url) {
++  proxy_url_ = proxy_url;
++}
++
+ void URLRequestContextBuilder::set_http_user_agent_settings(
+     std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings) {
+   http_user_agent_settings_ = std::move(http_user_agent_settings);
+diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
+index a15febef3b07a..6c82465a646fe 100644
+--- a/net/url_request/url_request_context_builder.h
++++ b/net/url_request/url_request_context_builder.h
+@@ -196,6 +196,11 @@ class NET_EXPORT URLRequestContextBuilder {
+   void set_accept_language(const std::string& accept_language);
+   void set_user_agent(const std::string& user_agent);
+ 
++  // XXX
++  //
++  //
++  void set_proxy_url(const std::string& proxy_url);
++
+   // Makes the created URLRequestContext use a particular HttpUserAgentSettings
+   // object. Not compatible with set_accept_language() / set_user_agent().
+   //
+@@ -417,6 +422,8 @@ class NET_EXPORT URLRequestContextBuilder {
+ 
+   std::string accept_language_;
+   std::string user_agent_;
++  std::string proxy_url_;
++
+   std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings_;
+ 
+   std::optional<std::string> cookie_deprecation_label_;

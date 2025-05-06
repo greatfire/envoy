@@ -1,0 +1,16 @@
+ components/cronet/tools/generate_javadoc.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/components/cronet/tools/generate_javadoc.py b/components/cronet/tools/generate_javadoc.py
+index 6a00f33043b6e..9f18a9df820fe 100755
+--- a/components/cronet/tools/generate_javadoc.py
++++ b/components/cronet/tools/generate_javadoc.py
+@@ -52,6 +52,8 @@ class CronetExtension(Extension):
+ 
+ 
+ def GenerateJavadoc(args, src_dir, output_dir):
++  # This is failing for Envoy with a weird error, disable for now
++  return
+   working_dir = os.path.join(args.input_dir, 'android', 'api')
+   overview_file = os.path.abspath(args.overview_file)
+ 
