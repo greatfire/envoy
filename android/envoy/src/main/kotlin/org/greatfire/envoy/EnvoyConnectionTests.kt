@@ -156,8 +156,8 @@ class EnvoyConnectionTests {
 
                     // set the scheme to a real one if needed
                     var tempUrl = url
-                    if (uri.getScheme() == "envoy+https") {
-                        tempUrl = url.replaceFirst("^envoy+https".toRegex(), "https")
+                    if (uri.scheme == "envoy+https") {
+                        tempUrl = url.replaceFirst("""^envoy\+https""".toRegex(), "https")
                     }
 
                     with(envoyTests) {
@@ -171,12 +171,13 @@ class EnvoyConnectionTests {
                     var tempUrl = url
                     if (uri.getScheme() == "proxy+https") {
                         tempUrl = url.replaceFirst(
-                            "^proxy+https".toRegex(), "proxy")
+                            """^proxy\+https""".toRegex(), "https")
+                        Log.d(TAG, "proxy URL: $tempUrl")
                     }
 
                     with (envoyTests) {
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
                     }
                 }
                 "envoy" -> {
