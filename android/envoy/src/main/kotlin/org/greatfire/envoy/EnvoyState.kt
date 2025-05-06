@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import emissary.Emissary // Envoy Go library
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.chromium.net.CronetEngine
 
 class EnvoyState private constructor() {
@@ -27,10 +29,15 @@ class EnvoyState private constructor() {
     // while testing
     var concurrency = 6 // XXX
 
+    // moving this back to state because it's state
+    var connected = AtomicBoolean(false)
+    var activeServiceType = AtomicInteger(EnvoyServiceType.UNKNOWN.ordinal)
+    var activeService: EnvoyTest? = null
+    val additionalWorkingConnections = mutableListOf<EnvoyTest>()
+
+
     // if set, wait an increasing amount of time before retrying blocked urls
     var backoffEnabled = false
-
-    // util class now handles test results
 
     // our Cronet engine
     var cronetEngine: CronetEngine? = null
@@ -70,14 +77,43 @@ class EnvoyState private constructor() {
 
     // called when the connection worker found a successful connection
     fun connectIfNeeded(test: EnvoyTest) {
-        if (test.selectedService && test.testType == EnvoyServiceType.CRONET_ENVOY) {
-            // Cronet is selected, create the cronet engine
-            Log.d(TAG, "CREATE CRONET ENGINE FOR " + test)
-            createCronetEngine()
+        // Check if we already have a working connection before continuing
+        // set that we do otherwise
+        if (connected.compareAndSet(false, true)) {
+
+            // start the cronet engine if we're using a cronet service
+            when (test.testType) {
+                EnvoyServiceType.CRONET_ENVOY,
+                EnvoyServiceType.CRONET_PROXY -> {
+                    createCronetEngine()
+                }
+                else -> return // nothing to do
+            }
+
+
+            activeServiceType.set(test.testType.ordinal)
+            activeService = test
+            test.selectedService = true
+            Log.i(TAG, "🚀🚀🚀 Envoy connected")
+        } else if(test.testType == EnvoyServiceType.DIRECT) {
+            Log.i(TAG, "DIRECT overriding previous connection")
+
+            val previousService = activeService
+
+            // activate the direct connection
+            activeServiceType.set(test.testType.ordinal)
+            activeService = test
+            test.selectedService = true
+
+            previousService?.let {
+                it.selectedService = false
+                it.stopService()
+            }
         } else {
-            // nothing to do?
-            Log.d(TAG, "NO SETUP REQUIRED FOR " + test)
-            // if direct selected, stop cronet?
+            // this one worked, but we already selected a service
+            // TODO use these later?
+            Log.d(TAG, "additional working service $test")
+            additionalWorkingConnections.add(test)
         }
     }
 }

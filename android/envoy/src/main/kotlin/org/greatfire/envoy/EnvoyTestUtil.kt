@@ -47,27 +47,7 @@ class EnvoyTestUtil() {
 
     var startTime = AtomicLong(System.currentTimeMillis())
 
-    // moving this here from state so it can be set as test results are handled
-    // do we need to save selected test info here too?
-    var connected = AtomicBoolean(false)
-    var service = AtomicInteger(EnvoyServiceType.UNKNOWN.ordinal)
-    var activeConnection: EnvoyTest? = null
-    val additionalWorkingConnections = mutableListOf<EnvoyTest>()
-
     val preferences = EnvoyPrefs()
-
-    fun reset() {
-        // Log.d(TAG, "RESET")
-
-        testCount.set(0)
-        blockedCount.set(0)
-        failedCount.set(0)
-        startTime.set(System.currentTimeMillis())
-        connected.set(false)
-        service.set(EnvoyServiceType.UNKNOWN.ordinal)
-        activeConnection = null
-        additionalWorkingConnections.clear()
-    }
 
     fun isTimeExpired(): Boolean {
         val time = System.currentTimeMillis() - startTime.get()
@@ -110,6 +90,10 @@ class EnvoyTestUtil() {
         }
     }
 
+    fun startAllTests() {
+        startTime.set(System.currentTimeMillis())
+    }
+
     fun startTest(test: EnvoyTest) {
         test.startTimer()
         val count = testCount.incrementAndGet()
@@ -119,37 +103,6 @@ class EnvoyTestUtil() {
     // Stop the test, it passed
     fun stopTestPassed(test: EnvoyTest): EnvoyTest {
         test.stopTimer()
-
-        // do we need to start envoy?
-        if (connected.compareAndSet(false, true)) {
-            // if this is the first test that passed, set flag and save type (and...?)
-            // too many flags?
-            service.set(test.testType.ordinal)
-            activeConnection = test
-            test.selectedService = true
-            Log.i(TAG, "🚀🚀🚀 Envoy connected")
-            Log.d(TAG,  "CONNECTED $test")
-        } else if(test.testType == EnvoyServiceType.DIRECT) {
-            // if direct connection worked, override type from previous success
-            // stop service?  stop cronet engine?
-            service.set(EnvoyServiceType.DIRECT.ordinal)
-            val currentActiveConnection = activeConnection
-            currentActiveConnection?.let {
-                // Log.d(TAG, "USE DIRECT, SET ASIDE PREVIOUS CONNECTION: " + currentActiveConnection.testType)
-                currentActiveConnection.selectedService = false
-                currentActiveConnection.stopService()
-                additionalWorkingConnections.add(currentActiveConnection)
-                activeConnection = null
-            }
-            test.selectedService = true
-            Log.i(TAG, "🚀🚀🚀 Envoy connected DIRECT")
-        } else {
-            // if this one wasn't selected, and the service is
-            // still running, stop it now
-            test.stopService()
-            additionalWorkingConnections.add(test)
-            Log.d(TAG, "additional working service $test")
-        }
 
         if (test.testType != EnvoyServiceType.DIRECT) {
             // passed, remove retry interval
@@ -192,7 +145,7 @@ class EnvoyTestUtil() {
 
         val time = System.currentTimeMillis() - startTime.get()
 
-        val passed = connected.get()
+        val passed = state.connected.get()
         val count = testCount.get()
         val runCount = blockedCount.get() + failedCount.get()
         val allBlocked = (count < 1)

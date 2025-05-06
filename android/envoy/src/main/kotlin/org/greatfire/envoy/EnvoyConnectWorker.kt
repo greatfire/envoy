@@ -43,7 +43,7 @@ class EnvoyConnectWorker(
             if (test == null) {
                 // Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 break
-            }  else if (util.connected.get()) {
+            }  else if (state.connected.get()) {
                 // Log.d(WTAG, "ALREADY CONNECTED, BREAK")
                 break
             } else if (util.isTimeExpired()) {
@@ -77,6 +77,10 @@ class EnvoyConnectWorker(
                 EnvoyServiceType.OKHTTP_PROXY -> {
                     tests.testStandardProxy(proxyUri)
                 }
+                // TODO, we have all the bits, hook them up
+                // EnvoyServiceType.CRONET_PROXY -> {
+                //     tests.testCronetProxy(proxyUri)
+                // }
                 EnvoyServiceType.HTTP_ECH -> {
                     tests.testECHProxy(test)
                 }
@@ -100,10 +104,8 @@ class EnvoyConnectWorker(
             }
 
             if (res) {
-                // first success sets connected flag, other successes stop services,
-                // report success in either case. if test returned with updated flag,
-                // create a cronet engine (depending on selected service)
-                state.connectIfNeeded(util.stopTestPassed(test))
+                util.stopTestPassed(test)
+                state.connectIfNeeded(test)
             } else {
                 // report test failure. failed tests will not be retried until time passes
                 util.stopTestFailed(test)
@@ -126,8 +128,8 @@ class EnvoyConnectWorker(
         Log.i(TAG,
             "Launching ${state.concurrency} coroutines for ${envoyTests.size} tests")
 
-        // clear state variables, start timer
-        util.reset()
+        // start timer
+        util.startAllTests()
 
         for (i in 1..state.concurrency) {
             // Log.d(TAG, "Launching worker: " + i)
