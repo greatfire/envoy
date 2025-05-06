@@ -139,6 +139,9 @@ class EnvoyConnectionTests {
 
         // and an Envoy proxy URL to the list to test
         //
+        // This should probably live somewhere else... it's here because
+        // this was the best place to put it at the time :)
+        //
         // XXX I'm making up some new schemes here, so we can tell between
         // an HTTPS proxy and an HTTPS Envoy URL (though for the latter
         // we could just require the use for envoy:// urls?)
