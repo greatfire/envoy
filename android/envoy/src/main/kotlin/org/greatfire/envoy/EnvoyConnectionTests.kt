@@ -599,7 +599,7 @@ class EnvoyConnectionTests {
 
         Log.d(TAG, "testing Shadowsocks $addr")
 
-        val res = testStandardProxy(URI(addr))
+        val res = testStandardProxy(Uri.parse(addr))
         // if (res == false) {
         //     test.stopService()
         // }
@@ -619,7 +619,7 @@ class EnvoyConnectionTests {
         test.proxyUrl = "socks5://$addr"
         Log.d(TAG, "Testing V2Ray SRTP ${test.proxyUrl}")
 
-        val res = testStandardProxy(URI(test.proxyUrl))
+        val res = testStandardProxy(Uri.parse(test.proxyUrl))
         if (res == false) {
             test.stopService()
         }
@@ -639,7 +639,7 @@ class EnvoyConnectionTests {
         test.proxyUrl = "socks5://$addr"
         Log.d(TAG, "testing V2Ray WeChat at ${test.proxyUrl}")
 
-        val res = testStandardProxy(URI(test.proxyUrl))
+        val res = testStandardProxy(Uri.parse(test.proxyUrl))
         if (res == false) {
             test.stopService()
         }
