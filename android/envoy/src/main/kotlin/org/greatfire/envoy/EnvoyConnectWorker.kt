@@ -142,10 +142,8 @@ class EnvoyConnectWorker(
             }
 
             if (res) {
-                // first success sets connected flag, other successes stop services,
-                // report success in either case. if test returned with updated flag,
-                // create a cronet engine (depending on selected service)
-                state.connectIfNeeded(util.stopTestPassed(test))
+                util.stopTestPassed(test)
+                state.connectIfNeeded(test)
             } else {
                 // report test failure. failed tests will not be retried until time passes
                 util.stopTestFailed(test)
