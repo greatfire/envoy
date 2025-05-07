@@ -1,33 +1,35 @@
 PODS:
   - GreatfireEnvoy/Core (0.3.0):
-    - IEnvoyProxy (~> 3.0)
+    - IEnvoyProxy (~> 3.3)
   - GreatfireEnvoy/Curl (0.3.0):
     - GreatfireEnvoy/Core
     - SwiftyCurl (~> 0.4)
   - GreatfireEnvoy/Curl/Tests (0.3.0):
     - GreatfireEnvoy/Core
     - SwiftyCurl (~> 0.4)
-  - IEnvoyProxy (3.0.0)
+  - IEnvoyProxy (3.3.0)
   - SwiftyCurl (0.4.1)
 
 DEPENDENCIES:
   - GreatfireEnvoy/Curl (from `../../`)
   - GreatfireEnvoy/Curl/Tests (from `../../`)
+  - IEnvoyProxy (from `https://raw.githubusercontent.com/stevenmcdonald/IEnvoyProxy/refs/tags/e3.3.0/IEnvoyProxy.podspec`)
 
 SPEC REPOS:
   https://github.com/CocoaPods/Specs.git:
-    - IEnvoyProxy
     - SwiftyCurl
 
 EXTERNAL SOURCES:
   GreatfireEnvoy:
     :path: "../../"
+  IEnvoyProxy:
+    :podspec: https://raw.githubusercontent.com/stevenmcdonald/IEnvoyProxy/refs/tags/e3.3.0/IEnvoyProxy.podspec
 
 SPEC CHECKSUMS:
-  GreatfireEnvoy: 5581f0c241b24298ac7610ca09fb8bd8d23a36e3
-  IEnvoyProxy: 7264306407958184669e9d90844e1f3014aef44d
+  GreatfireEnvoy: 431ee1a09a3838d037e48e09bac72df209e45595
+  IEnvoyProxy: 36082ddde97cf96f890b84271caf42138a5b1af6
   SwiftyCurl: 2fcde581b4fd161451e29076b2cca8624e3e347e
 
-PODFILE CHECKSUM: 7ab5a75273a64740d8d60515289326188d1226f6
+PODFILE CHECKSUM: b705fdcb445c614fd404d20d83682429812fffce
 
 COCOAPODS: 1.16.2
