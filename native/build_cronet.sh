@@ -49,10 +49,8 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PA
 
 
 # autoninja -C out/Default chrome_public_apk
-# gn gen out/Cronet-Desktop
-# autoninja -C out/Cronet-Desktop cronet # cronet_sample
-
-echo "STEVE put the desktop build back in :)"
+gn gen out/Cronet-Desktop
+autoninja -C out/Cronet-Desktop cronet # cronet_sample
 
 for arch in arm arm64 x86 x64; do
 
@@ -91,8 +89,6 @@ for arch in arm arm64 x86 x64; do
         cp -a "$out_dir/cronet/libs/"* "$out_dir/../Cronet-arm-$BUILD_VARIANT/cronet/libs/"
     fi
 done
-# gn gen out/Cronet --args='target_os="android" target_cpu="arm"'
-# autoninja -C out/Cronet -t clean
 
 # https://gn.googlesource.com/gn/+/master/docs/cross_compiles.md
 find "out/Cronet-arm-$BUILD_VARIANT/cronet/libs/" -name "libcronet.*.so" -not -name "libcronet.$CHROME_VERSION.so" -delete
