@@ -87,9 +87,8 @@ class EnvoyState private constructor() {
                 EnvoyServiceType.CRONET_PROXY -> {
                     createCronetEngine()
                 }
-                else -> return // nothing to do
+                else -> "" // nothing to do
             }
-
 
             activeServiceType.set(test.testType.ordinal)
             activeService = test
