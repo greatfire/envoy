@@ -1,7 +1,7 @@
 
 package org.greatfire.envoy
 
-// import android.content.SharedPreferences
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.preference.PreferenceManager
 
@@ -21,7 +21,18 @@ class EnvoyPrefs {
     }
 
     val state = EnvoyState.getInstance()
-    val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(state.ctx!!)
+    var sharedPreferences: SharedPreferences? = null
+
+    // defer loading this until the context is available
+    private fun getSharedPrefs(): SharedPreferences? {
+        if (sharedPreferences != null) {
+            return sharedPreferences
+        }
+        state.ctx?.let {
+            sharedPreferences = PreferenceManager.getDefaultSharedPreferences(it)
+        }
+        return sharedPreferences
+    }
 
     // URL test failure:
     //
@@ -29,34 +40,53 @@ class EnvoyPrefs {
     // a backoff policy
     //
     fun getFailureTimeForUrl(url: String): Long {
-        return sharedPreferences.getLong(url + TIME_SUFFIX, 0)
+        getSharedPrefs()?.let {
+            return it.getLong(url + TIME_SUFFIX, 0)
+        }
+        Log.e(TAG, "sharedPreferences is null")
+        return 0L
     }
 
     fun getFailureCountForUrl(url: String): Int {
-        return sharedPreferences.getInt(url + COUNT_SUFFIX, 0)
+        getSharedPrefs()?.let {
+            return it.getInt(url + COUNT_SUFFIX, 0)
+        }
+        Log.e(TAG, "sharedPreferences is null")
+        return 0
     }
 
     fun clearUrlFailure(url: String) {
-        // val editor = sharedPreferences.Editor = sharedPreferences.edit()
-        val editor = sharedPreferences.edit()
-        editor.remove(url + TIME_SUFFIX)
-        editor.remove(url + COUNT_SUFFIX)
-        editor.apply()
-        Log.d(TAG, "REMOVED PREFS: " + url + TIME_SUFFIX + " / " + url + COUNT_SUFFIX)
+        getSharedPrefs()?.let {
+            val editor = it.edit()
+            editor.remove(url + TIME_SUFFIX)
+            editor.remove(url + COUNT_SUFFIX)
+            editor.apply()
+            Log.d(TAG, "REMOVED PREFS: " + url + TIME_SUFFIX + " / " + url + COUNT_SUFFIX)
+            return
+        }
+
+        Log.e(TAG, "sharedPreferences is null")
+
     }
 
+    // This is not thread safe, so be careful :)
     fun incrementUrlFailure(url: String, time: Long) {
-        val failureCount = getFailureCountForUrl(url)
-        val editor = sharedPreferences.edit()
-        editor.putLong(url + TIME_SUFFIX, time)
-        editor.putInt(url + COUNT_SUFFIX, failureCount + 1)
-        editor.apply()
+        getSharedPrefs()?.let {
+            val failureCount = getFailureCountForUrl(url)
+            val editor = it.edit()
+            editor.putLong(url + TIME_SUFFIX, time)
+            editor.putInt(url + COUNT_SUFFIX, failureCount + 1)
+            editor.apply()
 
-        Log.d(
-            TAG,
-            "SAVED PREFS: " + url + TIME_SUFFIX + " - " + time
-                    + " / " + url + COUNT_SUFFIX + " - " + (failureCount + 1)
-        )
+            Log.d(
+                TAG,
+                "SAVED PREFS: " + url + TIME_SUFFIX + " - " + time
+                        + " / " + url + COUNT_SUFFIX + " - " + (failureCount + 1)
+            )
+            return
+        }
+
+        Log.e(TAG, "sharedPreferences is null")
     }
 
     // potential thoughts about storing URLs from network resources
