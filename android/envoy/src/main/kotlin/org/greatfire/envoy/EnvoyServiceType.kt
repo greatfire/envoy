@@ -4,6 +4,8 @@ enum class EnvoyServiceType {
     DIRECT,         // direct connection, no proxy
     OKHTTP_ENVOY,   // Use OkHttp via an Envoy proxy
     CRONET_ENVOY,   // Use Cronet via an Envoy proxy
+    OKHTTP_MASQUE,  // Use OkHttp via a MASQUE proxy
+    CRONET_MASQUE,  // Use Croent via a MASQUE proxy
     OKHTTP_PROXY,   // use OkHttp via a standard (HTTP/SOCKS) proxy
     CRONET_PROXY,   // use Cronet via a standard (HTTP/SOCKS) proxy
     HTTP_ECH,       // use ECH Envoy proxy (provided by Go code for now)

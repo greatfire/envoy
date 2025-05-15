@@ -168,6 +168,25 @@ data class EnvoyTest(
                 EnvoyConnectionTests.isItUpYet(addr)
                 return addr
             }
+            // XXX there's actually only one service for both
+            EnvoyServiceType.CRONET_MASQUE,
+            EnvoyServiceType.OKHTTP_MASQUE -> {
+                Log.d(TAG, "about to start MASQUE 👺")
+                val upstreamUri = Uri.parse(url)
+                var upstreamPort = upstreamUri.port
+                if (upstreamPort == -1) {
+                    upstreamPort = 443
+                }
+
+                upstreamUri.host?.let {
+                    val addr = state.emissary.startMasqueProxy(
+                        it, upstreamPort.toLong())
+                    Log.d(TAG, "👺 starting MASQUE $addr")
+                    return addr
+                }
+                Log.e(TAG, "MASQUE host is null?")
+                return ""
+            }
             else -> {
                 Log.e(TAG, "Tried to start an unknown service type $testType")
                 return ""
@@ -187,7 +206,12 @@ data class EnvoyTest(
             EnvoyServiceType.CRONET_ENVOY,
             EnvoyServiceType.OKHTTP_ENVOY,
             EnvoyServiceType.CRONET_PROXY,
-            EnvoyServiceType.OKHTTP_PROXY -> {
+            EnvoyServiceType.OKHTTP_PROXY,
+            EnvoyServiceType.CRONET_MASQUE,
+            EnvoyServiceType.OKHTTP_MASQUE -> {
+                // this is not entirely true, the ECH and MASQUE proxies could
+                // be stopped... but the Go code doesn't support it yet
+
                 // no service for these
                 Log.d(TAG, "No service to stop for $testType")
             }
