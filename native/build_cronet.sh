@@ -67,9 +67,6 @@ for arch in arm arm64 x86 x64; do
     fi
 
     "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
-    if ! grep "target_cpu = \"$arch\"" "$out_dir/args.gn"; then
-        echo "target_cpu = \"$arch\"" >>"$out_dir/args.gn"
-    fi
 
     # this defaults to true and errors out (thanks Google)
     sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"

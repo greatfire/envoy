@@ -57,10 +57,12 @@ class EnvoyState private constructor() {
 
     val shadowsocks: ShadowsocksService? = null
 
-    private fun createCronetEngine() {
+    private fun createCronetEngine(test: EnvoyTest) {
         // I think we can reuse the cache dir between runs?
         // XXX we used to have multiple tests cronet based tests
         // running in parallel...
+
+        // should this live somewhere else?
         val cacheDir = File(ctx!!.cacheDir, "cronet-cache")
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
@@ -69,8 +71,8 @@ class EnvoyState private constructor() {
         cronetEngine = CronetNetworking.buildEngine(
             context = ctx!!,
             cacheFolder = cacheDir.absolutePath,
-            envoyUrl = null,
-            strategy = 0,
+            proxyUrl = test.proxyUrl,
+            resolverRules = test.resolverRules,
             cacheSize = 10, // cache size in MB
         )
     }
@@ -80,12 +82,14 @@ class EnvoyState private constructor() {
         // Check if we already have a working connection before continuing
         // set that we do otherwise
         if (connected.compareAndSet(false, true)) {
+            Log.i(TAG, "🚀🚀🚀 Envoy connected")
 
             // start the cronet engine if we're using a cronet service
             when (test.testType) {
                 EnvoyServiceType.CRONET_ENVOY,
-                EnvoyServiceType.CRONET_PROXY -> {
-                    createCronetEngine()
+                EnvoyServiceType.CRONET_PROXY,
+                EnvoyServiceType.CRONET_MASQUE, -> {
+                    createCronetEngine(test)
                 }
                 else -> "" // nothing to do
             }
@@ -93,9 +97,11 @@ class EnvoyState private constructor() {
             activeServiceType.set(test.testType.ordinal)
             activeService = test
             test.selectedService = true
-            Log.i(TAG, "🚀🚀🚀 Envoy connected")
+
+            Log.d(TAG, "🍍 activeService is $activeService")
+
         } else if(test.testType == EnvoyServiceType.DIRECT) {
-            Log.i(TAG, "DIRECT overriding previous connection")
+            Log.i(TAG, "👉 DIRECT overriding previous connection")
 
             val previousService = activeService
 
@@ -111,7 +117,7 @@ class EnvoyState private constructor() {
         } else {
             // this one worked, but we already selected a service
             // TODO use these later?
-            Log.d(TAG, "additional working service $test")
+            Log.d(TAG, "💤 additional working service $test")
             additionalWorkingConnections.add(test)
         }
     }
