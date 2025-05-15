@@ -142,7 +142,11 @@ class EnvoyConnectWorker(
             }
 
             if (res) {
+                // We found a working connection!
+
+                // Report the success
                 util.stopTestPassed(test)
+                // Use this connection if we haven't found a working on already
                 state.connectIfNeeded(test)
             } else {
                 // report test failure. failed tests will not be retried until time passes
