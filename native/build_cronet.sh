@@ -31,7 +31,7 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PA
 
 # build related hack that probably needs more attention, the generate javadoc step
 # fails with a class not found error... hopefully goes away with newer Chromium sources
-#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/99-fixes.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/99-fixes.patch"
 
 # XXX hacky fix of build problem in M128
 if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
@@ -50,6 +50,7 @@ for arch in arm arm64 x86 x64; do
     if [[ -d "${out_dir}/cronet" ]]; then
         rm -r "${out_dir}/cronet"
     fi
+    mkdir -p "${out_dir}/cronet/javadoc"
 
     gn_args="--out_dir=$out_dir"
     if [[ $BUILD_VARIANT == release ]]; then
