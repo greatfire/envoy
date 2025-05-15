@@ -37,6 +37,8 @@ type Emissary struct {
 	echConfigList	[]byte
 
 	initialized		bool
+
+	masqueProxyRunning bool
 }
 
 type EnvoyResonse struct {
@@ -65,6 +67,8 @@ func NewEmissary() (*Emissary) {
 
 	    // XXX should we re-use the code in IEP to find a free port?
 	    ProxyListen: "127.0.0.1:27629",
+
+	    masqueProxyRunning: false,
 
 		Salt: randStringBytes(16),
 	}
@@ -109,6 +113,25 @@ func (e *Emissary) StopV2RayWechat() {
 	e.Controller.Stop(IEnvoyProxy.V2RayWechat)
 }
 
+
+func (e *Emissary) StartMasqueProxy(host string, port int) string {
+	if (e.masqueProxyRunning) {
+		zap.S().Warnf("StartMasqueProxy already running!")
+		return "127.0.0.1:-1"
+	}
+	e.masqueProxyRunning = true
+
+	envoyMasqueProxy := NewMasqueProxy()
+
+	envoyMasqueProxy.UpstreamServer = host
+	envoyMasqueProxy.UpstreamPort = port
+
+    go envoyMasqueProxy.Start()
+
+    zap.S().Debugf("Starting MASQUE proxy on port %d", envoyMasqueProxy.ListenPort)
+
+    return fmt.Sprintf("127.0.0.1:%d", envoyMasqueProxy.ListenPort)
+}
 
 // Set the Envoy URL used by the proxy
 // echConfigList must be looked up from DNS
