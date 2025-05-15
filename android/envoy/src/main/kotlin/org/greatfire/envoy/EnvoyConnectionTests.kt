@@ -236,7 +236,7 @@ class EnvoyConnectionTests {
 
                     with (envoyTests) {
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
-                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
                     }
                 }
                 "envoy" -> {
@@ -365,7 +365,7 @@ class EnvoyConnectionTests {
               builder.proxy(proxy)
         }
 
-        val client = builder.callTimeout(30, TimeUnit.SECONDS).build()
+        val client = builder.callTimeout(20, TimeUnit.SECONDS).build()
 
         Log.d(TAG, "testing request to: ${request.url} with proxy $proxy")
 
