@@ -1,0 +1,628 @@
+ components/cronet/android/api.txt                  |  8 ++++-
+ .../api/src/org/chromium/net/CronetEngine.java     | 18 ++++++++++
+ .../src/org/chromium/net/ICronetEngineBuilder.java |  6 ++++
+ components/cronet/android/api_version.txt          |  2 +-
+ .../cronet/android/cronet_context_adapter.cc       |  3 ++
+ .../net/impl/AndroidHttpEngineBuilderWrapper.java  | 24 +++++++++++++
+ .../chromium/net/impl/CronetEngineBuilderImpl.java | 33 +++++++++++++++++
+ .../chromium/net/impl/CronetUrlRequestContext.java | 12 +++++++
+ .../android/proto/request_context_config.proto     |  3 ++
+ .../cronet_sample_apk/CronetSampleApplication.java |  6 ++++
+ .../ExperimentalOptionsTranslationTestUtil.java    | 15 ++++++++
+ components/cronet/native/cronet.idl                |  7 ++++
+ components/cronet/native/engine.cc                 |  3 ++
+ components/cronet/native/generated/cronet.idl_c.h  | 18 ++++++++++
+ .../native/generated/cronet.idl_impl_struct.cc     | 36 +++++++++++++++++++
+ .../native/generated/cronet.idl_impl_struct.h      |  3 ++
+ components/cronet/native/sample/main.cc            |  3 ++
+ components/cronet/url_request_context_config.cc    | 41 ++++++++++++++++++++++
+ components/cronet/url_request_context_config.h     | 23 ++++++++++++
+ net/ssl/ssl_config_service_defaults.cc             |  5 +++
+ net/ssl/ssl_config_service_defaults.h              |  2 ++
+ 21 files changed, 269 insertions(+), 2 deletions(-)
+
+diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
+index 4e19af0db3542..eb3738e136276 100644
+--- a/components/cronet/android/api.txt
++++ b/components/cronet/android/api.txt
+@@ -86,6 +86,9 @@ public class org.chromium.net.CronetEngine$Builder {
+   public static final int HTTP_CACHE_IN_MEMORY;
+   public static final int HTTP_CACHE_DISK_NO_HTTP;
+   public static final int HTTP_CACHE_DISK;
++  public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
++  public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
++  public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
+   public org.chromium.net.CronetEngine$Builder(android.content.Context);
+   public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
+   public java.lang.String getDefaultUserAgent();
+@@ -328,6 +331,9 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+   public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
+   public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
++  public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
+   public abstract java.lang.String getDefaultUserAgent();
+   public abstract org.chromium.net.ExperimentalCronetEngine build();
+   protected java.util.Set<java.lang.Integer> getSupportedConfigOptions();
+@@ -635,4 +641,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
+   public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
+   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
+ }
+-Stamp: 31ef5e660d31d43015f23b6d5d5d2ce0
++Stamp: c11bf584850391d2d22b0f9c36cea18b
+diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+index d97ae131dc6f1..c4d58e576ced7 100644
+--- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
++++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
+@@ -135,6 +135,24 @@ public abstract class CronetEngine {
+         /** Reference to the actual builder implementation. {@hide exclude from JavaDoc}. */
+         protected final ICronetEngineBuilder mBuilderDelegate;
+ 
++        /**
++         * Additional arguments to configure the url request context.
++         */
++        public Builder setDisabledCipherSuites(String disabledCipherSuites) {
++            mBuilderDelegate.setDisabledCipherSuites(disabledCipherSuites);
++            return this;
++        }
++
++        public Builder setMinSslVersion(Short minSslVersion) {
++            mBuilderDelegate.setMinSslVersion(minSslVersion);
++            return this;
++        }
++
++        public Builder setMaxSslVersion(Short maxSslVersion) {
++            mBuilderDelegate.setMaxSslVersion(maxSslVersion);
++            return this;
++        }
++
+         /**
+          * A string argument to be passed into MappedHostResolver->SetRulesFromString. It can
+          * be used to create direct mappings from domains to ips that override dns lookups.
+diff --git a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+index 0dd5753e64404..d76e3194efe98 100644
+--- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
++++ b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
+@@ -79,6 +79,12 @@ public abstract class ICronetEngineBuilder {
+ 
+     public abstract ICronetEngineBuilder setResolverRules(String resolverRules);
+ 
++    public abstract ICronetEngineBuilder setDisabledCipherSuites(String disabledSuites);
++
++    public abstract ICronetEngineBuilder setMinSslVersion(Short minVersion);
++
++    public abstract ICronetEngineBuilder setMaxSslVersion(Short maxVersion);
++
+     public abstract String getDefaultUserAgent();
+ 
+     public abstract ExperimentalCronetEngine build();
+diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
+index f5c89552bd3e6..bb95160cb6e07 100644
+--- a/components/cronet/android/api_version.txt
++++ b/components/cronet/android/api_version.txt
+@@ -1 +1 @@
+-32
++33
+diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
+index ce696deaa53c4..baa63e9ceda4d 100644
+--- a/components/cronet/android/cronet_context_adapter.cc
++++ b/components/cronet/android/cronet_context_adapter.cc
+@@ -255,6 +255,9 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
+           /* accept_languages */ std::string(), configOptions.user_agent(),
+           configOptions.proxy_url(),
+           configOptions.resolver_rules(),
++          configOptions.disabled_cipher_suites(),
++          configOptions.min_ssl_version(),
++          configOptions.max_ssl_version(),
+           configOptions.experimental_options(),
+           base::WrapUnique(reinterpret_cast<net::CertVerifier*>(
+               configOptions.mock_cert_verifier())),
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java b/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
+index ec2d4ef033ff6..08fc12e4f7090 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/AndroidHttpEngineBuilderWrapper.java
+@@ -63,6 +63,30 @@ class AndroidHttpEngineBuilderWrapper extends ICronetEngineBuilder {
+         return this;
+     }
+ 
++    @Override
++    public ICronetEngineBuilder setDisabledCipherSuites(String disabledCipherSuites) {
++        // need to implement abstract method, but mBackend 
++        // class has not been updated with new parameters
++        // mBackend.setDisabledCipherSuites(disabledCipherSuites);
++        return this;
++    }
++
++    @Override
++    public ICronetEngineBuilder setMinSslVersion(Short minSslVersion) {
++        // need to implement abstract method, but mBackend 
++        // class has not been updated with new parameters
++        // mBackend.setMinSslVersion(minSslVersion);
++        return this;
++    }
++
++    @Override
++    public ICronetEngineBuilder setMaxSslVersion(Short maxSslVersion) {
++        // need to implement abstract method, but mBackend 
++        // class has not been updated with new parameters
++        // mBackend.setMaxSslVersion(maxSslVersion);
++        return this;
++    }
++
+     @Override
+     public ICronetEngineBuilder setStoragePath(String value) {
+         mBackend.setStoragePath(value);
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
+index 6bf8d9a1ea536..c9e171e26da36 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetEngineBuilderImpl.java
+@@ -144,6 +144,9 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
+     private String mUserAgent;
+     private String mProxyUrl;
+     private String mResolverRules;
++    private String mDisabledCipherSuites;
++    private Short mMinSslVersion;
++    private Short mMaxSslVersion;
+     private String mStoragePath;
+     private boolean mQuicEnabled;
+     private boolean mHttp2Enabled;
+@@ -254,6 +257,36 @@ public abstract class CronetEngineBuilderImpl extends ICronetEngineBuilder {
+         return mResolverRules;
+     }
+ 
++    @Override
++    public CronetEngineBuilderImpl setDisabledCipherSuites(String disabledCipherSuites) {
++        mDisabledCipherSuites = disabledCipherSuites;
++        return this;
++    }
++
++    public String getDisabledCipherSuites() {
++        return mDisabledCipherSuites;
++    }
++
++    @Override
++    public CronetEngineBuilderImpl setMinSslVersion(Short minSslVersion) {
++        mMinSslVersion = minSslVersion;
++        return this;
++    }
++
++    public Short getMinSslVersion() {
++        return mMinSslVersion;
++    }
++
++    @Override
++    public CronetEngineBuilderImpl setMaxSslVersion(Short maxSslVersion) {
++        mMaxSslVersion = maxSslVersion;
++        return this;
++    }
++
++    public Short getMaxSslVersion() {
++        return mMaxSslVersion;
++    }
++
+     @Override
+     public CronetEngineBuilderImpl setStoragePath(String value) {
+         if (!new File(value).isDirectory()) {
+diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+index 690b2d4e8d1c6..a2b879d4a0b02 100644
+--- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
++++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
+@@ -427,6 +427,18 @@ public class CronetUrlRequestContext extends CronetEngineBase {
+             resultBuilder.setResolverRules(engineBuilder.getResolverRules());
+         }
+ 
++        if (engineBuilder.getDisabledCipherSuites() != null) {
++            resultBuilder.setDisabledCipherSuites(engineBuilder.getDisabledCipherSuites());
++        }
++
++        if (engineBuilder.getMinSslVersion() != null) {
++            resultBuilder.setMinSslVersion(engineBuilder.getMinSslVersion());
++        }
++
++        if (engineBuilder.getMaxSslVersion() != null) {
++            resultBuilder.setMaxSslVersion(engineBuilder.getMaxSslVersion());
++        }
++
+         return resultBuilder.build();
+     }
+ 
+diff --git a/components/cronet/android/proto/request_context_config.proto b/components/cronet/android/proto/request_context_config.proto
+index 6d9df5f9ebcd9..7b16726042dd3 100644
+--- a/components/cronet/android/proto/request_context_config.proto
++++ b/components/cronet/android/proto/request_context_config.proto
+@@ -21,6 +21,9 @@ message RequestContextConfigOptions {
+   optional bool enable_network_quality_estimator = 12;
+   optional bool bypass_public_key_pinning_for_local_trust_anchors = 13;
+   optional int32 network_thread_priority = 14;
++  optional string disabled_cipher_suites = 100;
++  optional int32 min_ssl_version = 101;
++  optional int32 max_ssl_version = 102;
+   optional string proxy_url = 15;
+   optional string resolver_rules = 16;
+ }
+diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
+index c8c06e94ee7a5..55e3dce2e77b4 100644
+--- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
++++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
+@@ -26,6 +26,9 @@ public class CronetSampleApplication extends Application {
+                 .enableHttp2(true)
+                 .setProxyUrl("socks5://127.0.0.1:1080")
+                 .setResolverRules("MAP * 208.80.154.224")
++                .setDisabledCipherSuites("0xc024,0xc02f,0002")
++                .setMinSslVersion((short)0x0303) // net::SSL_PROTOCOL_VERSION_TLS1_2
++                .setMaxSslVersion((short)0x0304) // net::SSL_PROTOCOL_VERSION_TLS1_3
+                 .enableQuic(true);
+         mCronetEngine = myBuilder.build();
+     }
+@@ -63,6 +66,9 @@ public class CronetSampleApplication extends Application {
+                         .setDnsOptions(dnsOptionsBuilder)
+                         .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
+                         .enableHttp2(true)
++                        .setDisabledCipherSuites("0xc024,0xc02f,0002")
++                        .setMinSslVersion((short)771) // net::SSL_PROTOCOL_VERSION_TLS1_2 -> hex value 0x0303
++                        .setMaxSslVersion((short)772) // net::SSL_PROTOCOL_VERSION_TLS1_3 -> hex value 0x0304
+                         .enableQuic(true)
+                         .setProxyUrl("socks5://127.0.0.1:1080")
+                         .setResolverRules("MAP * 208.80.154.224")
+diff --git a/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java b/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
+index 27455a11f4553..5a45ee409a201 100644
+--- a/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
++++ b/components/cronet/android/test/javatests/src/org/chromium/net/ExperimentalOptionsTranslationTestUtil.java
+@@ -200,6 +200,21 @@ public class ExperimentalOptionsTranslationTestUtil {
+             throw new UnsupportedOperationException();
+         }
+ 
++        @Override
++        public ICronetEngineBuilder setDisabledCipherSuites(String disabledSuites) {
++            throw new UnsupportedOperationException();
++        }
++
++        @Override
++        public ICronetEngineBuilder setMinSslVersion(Short minVersion) {
++            throw new UnsupportedOperationException();
++        }
++
++        @Override
++        public ICronetEngineBuilder setMaxSslVersion(Short maxVersion) {
++            throw new UnsupportedOperationException();
++        }
++
+         @Override
+         public ICronetEngineBuilder setConnectionMigrationOptions(
+                 ConnectionMigrationOptions options) {
+diff --git a/components/cronet/native/cronet.idl b/components/cronet/native/cronet.idl
+index d991bcb3277b4..f2e4d8e81c347 100644
+--- a/components/cronet/native/cronet.idl
++++ b/components/cronet/native/cronet.idl
+@@ -511,6 +511,13 @@ struct EngineParams {
+    */
+   string user_agent;
+ 
++  /**
++   * Additional arguments to configure the url request context.
++   */
++  string disabled_cipher_suites;
++  uint16_t min_ssl_version;
++  uint16_t max_ssl_version;
++
+   /**
+    * A string argument to be passed into MappedHostResolver->SetRulesFromString. It can
+    * be used to create direct mappings from domains to ips that override dns lookups.
+diff --git a/components/cronet/native/engine.cc b/components/cronet/native/engine.cc
+index 1590dda780a2a..09d956ffdf446 100644
+--- a/components/cronet/native/engine.cc
++++ b/components/cronet/native/engine.cc
+@@ -151,6 +151,9 @@ Cronet_RESULT Cronet_EngineImpl::StartWithParams(
+   context_config_builder.user_agent = params->user_agent;
+   context_config_builder.proxy_url = params->proxy_url;
+   context_config_builder.resolver_rules = params->resolver_rules;
++  context_config_builder.disabled_cipher_suites = params->disabled_cipher_suites;
++  context_config_builder.min_ssl_version = params->min_ssl_version;
++  context_config_builder.max_ssl_version = params->max_ssl_version;
+   context_config_builder.experimental_options = params->experimental_options;
+   context_config_builder.bypass_public_key_pinning_for_local_trust_anchors =
+       params->enable_public_key_pinning_bypass_for_local_trust_anchors;
+diff --git a/components/cronet/native/generated/cronet.idl_c.h b/components/cronet/native/generated/cronet.idl_c.h
+index 76822f773a0c4..e53aa73159c78 100644
+--- a/components/cronet/native/generated/cronet.idl_c.h
++++ b/components/cronet/native/generated/cronet.idl_c.h
+@@ -801,6 +801,15 @@ CRONET_EXPORT
+ void Cronet_EngineParams_resolver_rules_set(Cronet_EngineParamsPtr self,
+                                         const Cronet_String resolver_rules);
+ CRONET_EXPORT
++void Cronet_EngineParams_disabled_cipher_suites_set(Cronet_EngineParamsPtr self,
++                                        const Cronet_String disabled_cipher_suites);
++CRONET_EXPORT
++void Cronet_EngineParams_min_ssl_version_set(Cronet_EngineParamsPtr self,
++                                        const uint16_t min_ssl_version);
++CRONET_EXPORT
++void Cronet_EngineParams_max_ssl_version_set(Cronet_EngineParamsPtr self,
++                                        const uint16_t max_ssl_version);
++CRONET_EXPORT
+ void Cronet_EngineParams_accept_language_set(
+     Cronet_EngineParamsPtr self,
+     const Cronet_String accept_language);
+@@ -857,6 +866,15 @@ CRONET_EXPORT
+ Cronet_String Cronet_EngineParams_resolver_rules_get(
+     const Cronet_EngineParamsPtr self);
+ CRONET_EXPORT
++Cronet_String Cronet_EngineParams_disabled_cipher_suites_get(
++    const Cronet_EngineParamsPtr self);
++CRONET_EXPORT
++uint16_t Cronet_EngineParams_min_ssl_version_get(
++    const Cronet_EngineParamsPtr self);
++CRONET_EXPORT
++uint16_t Cronet_EngineParams_max_ssl_version_get(
++    const Cronet_EngineParamsPtr self);
++CRONET_EXPORT
+ Cronet_String Cronet_EngineParams_accept_language_get(
+     const Cronet_EngineParamsPtr self);
+ CRONET_EXPORT
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.cc b/components/cronet/native/generated/cronet.idl_impl_struct.cc
+index 5f19a306b0ec1..d3555c3d46d1e 100644
+--- a/components/cronet/native/generated/cronet.idl_impl_struct.cc
++++ b/components/cronet/native/generated/cronet.idl_impl_struct.cc
+@@ -261,6 +261,24 @@ void Cronet_EngineParams_resolver_rules_set(Cronet_EngineParamsPtr self,
+   self->resolver_rules = resolver_rules;
+ }
+ 
++void Cronet_EngineParams_disabled_cipher_suites_set(Cronet_EngineParamsPtr self,
++                                        const Cronet_String disabled_cipher_suites) {
++  DCHECK(self);
++  self->disabled_cipher_suites = disabled_cipher_suites;
++}
++
++void Cronet_EngineParams_min_ssl_version_set(Cronet_EngineParamsPtr self,
++                                        const uint16_t min_ssl_version) {
++  DCHECK(self);
++  self->min_ssl_version = min_ssl_version;
++}
++
++void Cronet_EngineParams_max_ssl_version_set(Cronet_EngineParamsPtr self,
++                                        const uint16_t max_ssl_version) {
++  DCHECK(self);
++  self->max_ssl_version = max_ssl_version;
++}
++
+ void Cronet_EngineParams_accept_language_set(
+     Cronet_EngineParamsPtr self,
+     const Cronet_String accept_language) {
+@@ -366,6 +384,24 @@ Cronet_String Cronet_EngineParams_resolver_rules_get(
+   return self->resolver_rules.c_str();
+ }
+ 
++Cronet_String Cronet_EngineParams_disabled_cipher_suites_get(
++    const Cronet_EngineParamsPtr self) {
++  DCHECK(self);
++  return self->disabled_cipher_suites.c_str();
++}
++
++uint16_t Cronet_EngineParams_min_ssl_version_get(
++    const Cronet_EngineParamsPtr self) {
++  DCHECK(self);
++  return self->min_ssl_version;
++}
++
++uint16_t Cronet_EngineParams_max_ssl_version_get(
++    const Cronet_EngineParamsPtr self) {
++  DCHECK(self);
++  return self->max_ssl_version;
++}
++
+ Cronet_String Cronet_EngineParams_accept_language_get(
+     const Cronet_EngineParamsPtr self) {
+   DCHECK(self);
+diff --git a/components/cronet/native/generated/cronet.idl_impl_struct.h b/components/cronet/native/generated/cronet.idl_impl_struct.h
+index 3694104c6ce92..c9112eaa0f552 100644
+--- a/components/cronet/native/generated/cronet.idl_impl_struct.h
++++ b/components/cronet/native/generated/cronet.idl_impl_struct.h
+@@ -84,6 +84,9 @@ struct Cronet_EngineParams {
+   std::string user_agent;
+   std::string proxy_url;
+   std::string resolver_rules;
++  std::string disabled_cipher_suites;
++  uint16_t min_ssl_version;
++  uint16_t max_ssl_version;
+   std::string accept_language;
+   std::string storage_path;
+   bool enable_quic = true;
+diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
+index a484ac5ab9482..5bf6d5f853c81 100644
+--- a/components/cronet/native/sample/main.cc
++++ b/components/cronet/native/sample/main.cc
+@@ -14,6 +14,9 @@ Cronet_EnginePtr CreateCronetEngine() {
+   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
+   Cronet_EngineParams_proxy_url_set(engine_params, "socks5://127.0.0.1:1080");
+   Cronet_EngineParams_resolver_rules_set(engine_params, "MAP * 208.80.154.224");
++  Cronet_EngineParams_disabled_cipher_suites_set(engine_params, "0xc024,0xc02f,0002");
++  Cronet_EngineParams_min_ssl_version_set(engine_params, 0x0303); // TLS 1.2
++  Cronet_EngineParams_max_ssl_version_set(engine_params, 0x0304); // TLS 1.3
+   Cronet_EngineParams_enable_quic_set(engine_params, true);
+ 
+   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
+index 7bfebe190b4bb..d41a9be135d44 100644
+--- a/components/cronet/url_request_context_config.cc
++++ b/components/cronet/url_request_context_config.cc
+@@ -34,6 +34,9 @@
+ #include "net/nqe/network_quality_estimator_params.h"
+ #include "net/quic/set_quic_flag.h"
+ #include "net/socket/ssl_client_socket.h"
++#include "net/ssl/ssl_cipher_suite_names.h"
++#include "net/ssl/ssl_config.h"
++#include "net/ssl/ssl_config_service_defaults.h"
+ #include "net/ssl/ssl_key_logger_impl.h"
+ #include "net/third_party/quiche/src/quiche/quic/core/quic_packets.h"
+ #include "net/third_party/quiche/src/quiche/quic/core/quic_tag.h"
+@@ -267,6 +270,9 @@ URLRequestContextConfig::URLRequestContextConfig(
+     const std::string& user_agent,
+     const std::string& proxy_url,
+     const std::string& resolver_rules,
++    const std::string& disabled_cipher_suites,
++    const uint16_t min_ssl_version,
++    const uint16_t max_ssl_version,
+     base::Value::Dict experimental_options,
+     std::unique_ptr<net::CertVerifier> mock_cert_verifier,
+     bool enable_network_quality_estimator,
+@@ -283,6 +289,9 @@ URLRequestContextConfig::URLRequestContextConfig(
+       user_agent(user_agent),
+       proxy_url(proxy_url),
+       resolver_rules(resolver_rules),
++       disabled_cipher_suites(disabled_cipher_suites),
++      min_ssl_version(min_ssl_version),
++      max_ssl_version(max_ssl_version),
+       mock_cert_verifier(std::move(mock_cert_verifier)),
+       enable_network_quality_estimator(enable_network_quality_estimator),
+       bypass_public_key_pinning_for_local_trust_anchors(
+@@ -311,6 +320,9 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+     const std::string& user_agent,
+     const std::string& proxy_url,
+     const std::string& resolver_rules,
++    const std::string& disabled_cipher_suites,
++    const uint16_t min_ssl_version,
++    const uint16_t max_ssl_version,
+     const std::string& unparsed_experimental_options,
+     std::unique_ptr<net::CertVerifier> mock_cert_verifier,
+     bool enable_network_quality_estimator,
+@@ -329,6 +341,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+   return base::WrapUnique(new URLRequestContextConfig(
+       enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
+       load_disable_cache, storage_path, accept_language, user_agent, proxy_url, resolver_rules,
++      disabled_cipher_suites, min_ssl_version, max_ssl_version,
+       std::move(experimental_options).value(), std::move(mock_cert_verifier),
+       enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+@@ -808,6 +821,33 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+   context_builder->set_user_agent(user_agent);
+   context_builder->set_proxy_url(proxy_url);
+   context_builder->set_resolver_rules(resolver_rules);
++  net::SSLContextConfig ssl_context_config;
++  if (!disabled_cipher_suites.empty()) {
++    auto cipher_strings = base::SplitString(disabled_cipher_suites, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++    // see net::ParseCipherSuites(cipher_strings);
++    std::vector<uint16_t> cipher_suites;
++    cipher_suites.reserve(cipher_strings.size());
++
++    for (auto it = cipher_strings.begin(); it != cipher_strings.end(); ++it) {
++      uint16_t cipher_suite = 0;
++      if (!net::ParseSSLCipherString(*it, &cipher_suite)) {
++        continue;
++      }
++      cipher_suites.push_back(cipher_suite);
++    }
++    std::sort(cipher_suites.begin(), cipher_suites.end());
++
++    ssl_context_config.disabled_cipher_suites =  cipher_suites;
++  } 
++
++  if (min_ssl_version != net::kDefaultSSLVersionMin) {
++    ssl_context_config.version_min = min_ssl_version;
++  } 
++  if (max_ssl_version != net::kDefaultSSLVersionMax) {
++    ssl_context_config.version_max = max_ssl_version;
++  } 
++  auto ssl_config_service_ptr = std::make_unique<net::SSLConfigServiceDefaults>(ssl_context_config);
++  context_builder->set_ssl_config_service(std::move(ssl_config_service_ptr));
+   net::HttpNetworkSessionParams session_params;
+   session_params.enable_http2 = enable_spdy;
+   session_params.enable_quic = enable_quic;
+@@ -838,6 +878,7 @@ URLRequestContextConfigBuilder::Build() {
+   return URLRequestContextConfig::CreateURLRequestContextConfig(
+       enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
+       load_disable_cache, storage_path, accept_language, user_agent, proxy_url, resolver_rules,
++      disabled_cipher_suites, min_ssl_version, max_ssl_version,
+       experimental_options, std::move(mock_cert_verifier),
+       enable_network_quality_estimator,
+       bypass_public_key_pinning_for_local_trust_anchors,
+diff --git a/components/cronet/url_request_context_config.h b/components/cronet/url_request_context_config.h
+index 11f8fe4c8f4c9..6d5657185eb2c 100644
+--- a/components/cronet/url_request_context_config.h
++++ b/components/cronet/url_request_context_config.h
+@@ -16,6 +16,7 @@
+ #include "net/base/network_handle.h"
+ #include "net/cert/cert_verifier.h"
+ #include "net/nqe/effective_connection_type.h"
++#include "net/ssl/ssl_config.h"
+ #include "url/origin.h"
+ 
+ namespace net {
+@@ -133,6 +134,13 @@ struct URLRequestContextConfig {
+   // MappedHostResolver->SetRulesFromString argument
+   const std::string resolver_rules;
+ 
++  // cipher suite config field.
++  const std::string disabled_cipher_suites;
++
++  // ssl version config fields.
++  const uint16_t min_ssl_version;
++  const uint16_t max_ssl_version;
++
+   // Certificate verifier for testing.
+   std::unique_ptr<net::CertVerifier> mock_cert_verifier;
+ 
+@@ -209,6 +217,11 @@ struct URLRequestContextConfig {
+       const std::string& proxy_url,
+       // MappedHostResolver->SetRulesFromString argument
+       const std::string& resolver_rules,
++      // cipher suite config field.
++      const std::string& disabled_cipher_suites,
++      // ssl version config fields.
++      const uint16_t min_ssl_version,
++      const uint16_t max_ssl_version,
+       // JSON encoded experimental options.
+       const std::string& unparsed_experimental_options,
+       // MockCertVerifier to use for testing purposes.
+@@ -247,6 +260,11 @@ struct URLRequestContextConfig {
+       const std::string& proxy_url,
+       // MappedHostResolver->SetRulesFromString argument
+       const std::string& resolver_rules,
++      // cipher suite config field.
++      const std::string& disabled_cipher_suites,
++      // ssl version config fields.
++      const uint16_t min_ssl_version,
++      const uint16_t max_ssl_version,
+       // Parsed experimental options.
+       base::Value::Dict experimental_options,
+       // MockCertVerifier to use for testing purposes.
+@@ -319,6 +337,11 @@ struct URLRequestContextConfigBuilder {
+   std::string proxy_url = "";
+   // MappedHostResolver->SetRulesFromString argument
+   std::string resolver_rules = "";
++  // cipher suite config field.
++  std::string disabled_cipher_suites = "";
++  // ssl version config fields.
++  uint16_t min_ssl_version = net::kDefaultSSLVersionMin;
++  uint16_t max_ssl_version = net::kDefaultSSLVersionMax;
+   // Experimental options encoded as a string in a JSON format containing
+   // experiments and their corresponding configuration options. The format
+   // is a JSON object with the name of the experiment as the key, and the
+diff --git a/net/ssl/ssl_config_service_defaults.cc b/net/ssl/ssl_config_service_defaults.cc
+index 7d137e59662d3..099b4ef8209d7 100644
+--- a/net/ssl/ssl_config_service_defaults.cc
++++ b/net/ssl/ssl_config_service_defaults.cc
+@@ -9,6 +9,11 @@ namespace net {
+ SSLConfigServiceDefaults::SSLConfigServiceDefaults() = default;
+ SSLConfigServiceDefaults::~SSLConfigServiceDefaults() = default;
+ 
++SSLConfigServiceDefaults::SSLConfigServiceDefaults(SSLContextConfig default_config): default_config_(default_config) {
++  // TODO: copied commented line from patch, delete?
++  // default_config.disabled_cipher_suites = default_config_.disabled_cipher_suites;
++}
++
+ SSLContextConfig SSLConfigServiceDefaults::GetSSLContextConfig() {
+   return default_config_;
+ }
+diff --git a/net/ssl/ssl_config_service_defaults.h b/net/ssl/ssl_config_service_defaults.h
+index 32770a45d4f24..d6c7dde1d1a03 100644
+--- a/net/ssl/ssl_config_service_defaults.h
++++ b/net/ssl/ssl_config_service_defaults.h
+@@ -24,6 +24,8 @@ class NET_EXPORT SSLConfigServiceDefaults : public SSLConfigService {
+ 
+   ~SSLConfigServiceDefaults() override;
+ 
++  SSLConfigServiceDefaults(SSLContextConfig default_config);
++
+   // Returns the default SSL config settings.
+   SSLContextConfig GetSSLContextConfig() override;
+ 
