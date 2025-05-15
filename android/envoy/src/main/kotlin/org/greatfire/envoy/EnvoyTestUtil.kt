@@ -5,12 +5,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
-// MNB: Can you document this? What is it's job?
-
 /*
 This seems to be:
-* managing starting and stopping services
-* managing the active sevice
 * keeping track of statistics
 * reporting back to the caller
 * holding some test related logic

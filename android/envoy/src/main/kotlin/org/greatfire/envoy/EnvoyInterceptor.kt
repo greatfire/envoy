@@ -22,8 +22,6 @@ class EnvoyInterceptor : Interceptor {
         val req = chain.request()
 
         if (state.connected.get()) {
-            // MNB: does this mean if a service is set and then overridden
-            // to connect directly, no cleanup/restart is needed?
             if (state.activeServiceType.get() == EnvoyServiceType.DIRECT.ordinal) {
                 Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
