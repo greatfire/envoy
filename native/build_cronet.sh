@@ -26,12 +26,13 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PA
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
 
+# each patch has an api/api_text update now
 # api.txt and api_version.txt are updated after all the patches are applied
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-update_api.patch"
+#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-update_api.patch"
 
 # build related hack that probably needs more attention, the generate javadoc step
 # fails with a class not found error... hopefully goes away with newer Chromium sources
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/99-fixes.patch"
+#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/99-fixes.patch"
 
 # XXX hacky fix of build problem in M128
 if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
@@ -40,8 +41,8 @@ fi
 
 # Build the linux version
 # build cronet only(without java jni)
-gn gen out/Cronet-Desktop
-autoninja -C out/Cronet-Desktop cronet # cronet_sample
+#gn gen out/Cronet-Desktop
+#autoninja -C out/Cronet-Desktop cronet # cronet_sample
 
 # Build the various Android versions
 for arch in arm arm64 x86 x64; do
