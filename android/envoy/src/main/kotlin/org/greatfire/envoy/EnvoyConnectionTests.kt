@@ -41,7 +41,7 @@ class EnvoyConnectionTests {
         // these are set by helpers in EnvoyNetworking's companion object
         // Target URL/response code for testing
         var testUrl = "https://www.google.com/generate_204"
-        // using a 200 code makes it really easy to get false posatives
+        // using a 200 code makes it really easy to get false positives
         var testResponseCode = 204
         // direct URL to the site for testing
         var directUrl = ""
