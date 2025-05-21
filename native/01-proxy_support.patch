@@ -1,31 +1,36 @@
- components/cronet/android/api.txt                  |  4 +++-
- .../api/src/org/chromium/net/CronetEngine.java     | 10 ++++++++++
+ components/cronet/android/api.txt                  |  4 ++-
+ .../api/src/org/chromium/net/CronetEngine.java     | 10 ++++++
  .../src/org/chromium/net/ICronetEngineBuilder.java |  2 ++
  components/cronet/android/api_version.txt          |  2 +-
- .../cronet/android/cronet_context_adapter.cc       | 11 +++++++++++
- components/cronet/android/cronet_context_adapter.h |  8 ++++++++
- components/cronet/android/cronet_library_loader.cc |  9 +++++++++
- .../net/impl/AndroidHttpEngineBuilderWrapper.java  |  7 +++++++
- .../chromium/net/impl/CronetEngineBuilderImpl.java | 11 +++++++++++
- .../chromium/net/impl/CronetUrlRequestContext.java | 23 ++++++++++++++++++----
+ .../cronet/android/cronet_context_adapter.cc       | 11 ++++++
+ components/cronet/android/cronet_context_adapter.h |  8 +++++
+ components/cronet/android/cronet_library_loader.cc |  9 +++++
+ .../net/impl/AndroidHttpEngineBuilderWrapper.java  |  7 ++++
+ .../chromium/net/impl/CronetEngineBuilderImpl.java | 11 ++++++
+ .../chromium/net/impl/CronetUrlRequestContext.java | 23 +++++++++---
  .../android/proto/request_context_config.proto     |  1 +
  .../cronet_sample_apk/CronetSampleApplication.java |  2 ++
- .../ExperimentalOptionsTranslationTestUtil.java    |  5 +++++
- components/cronet/cronet_context.cc                | 13 ++++++++++++
+ .../ExperimentalOptionsTranslationTestUtil.java    |  5 +++
+ components/cronet/cronet_context.cc                | 13 +++++++
  components/cronet/cronet_context.h                 |  2 ++
- components/cronet/cronet_global_state.h            |  3 +++
- components/cronet/cronet_global_state_stubs.cc     |  6 ++++++
- components/cronet/native/cronet.idl                |  6 ++++++
- components/cronet/native/engine.cc                 | 16 +++++++++++----
- components/cronet/native/generated/cronet.idl_c.h  |  6 ++++++
- .../native/generated/cronet.idl_impl_struct.cc     | 12 +++++++++++
+ components/cronet/cronet_global_state.h            |  3 ++
+ components/cronet/cronet_global_state_stubs.cc     |  6 ++++
+ components/cronet/native/cronet.idl                |  6 ++++
+ components/cronet/native/engine.cc                 | 16 ++++++---
+ components/cronet/native/generated/cronet.idl_c.h  |  6 ++++
+ .../native/generated/cronet.idl_impl_struct.cc     | 12 +++++++
  .../native/generated/cronet.idl_impl_struct.h      |  1 +
  components/cronet/native/sample/main.cc            |  1 +
- components/cronet/url_request_context_config.cc    |  7 +++++--
- components/cronet/url_request_context_config.h     |  9 +++++++++
- net/proxy_resolution/proxy_config_service.cc       | 17 ++++++++++++++++
- net/proxy_resolution/proxy_config_service.h        |  3 +++
- 27 files changed, 185 insertions(+), 12 deletions(-)
+ components/cronet/native/test/test_util.cc         | 10 +++++-
+ components/cronet/native/test/test_util.h          |  1 +
+ components/cronet/native/test/url_request_test.cc  | 41 ++++++++++++++++++++--
+ .../cronet/testing/test_server/test_server.cc      | 14 ++++++++
+ .../cronet/testing/test_server/test_server.h       |  2 ++
+ components/cronet/url_request_context_config.cc    |  7 ++--
+ components/cronet/url_request_context_config.h     |  9 +++++
+ net/proxy_resolution/proxy_config_service.cc       | 17 +++++++++
+ net/proxy_resolution/proxy_config_service.h        |  3 ++
+ 32 files changed, 250 insertions(+), 15 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
 index 94a1e60e4ee38..07308c49b1015 100644
@@ -507,6 +512,174 @@ index fe9ff6f1ee279..0742ac675a5c8 100644
    Cronet_EngineParams_enable_quic_set(engine_params, true);
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
+diff --git a/components/cronet/native/test/test_util.cc b/components/cronet/native/test/test_util.cc
+index 07a2aaadbf46a..cd634f3ca528d 100644
+--- a/components/cronet/native/test/test_util.cc
++++ b/components/cronet/native/test/test_util.cc
+@@ -52,7 +52,7 @@ class TestCertVerifier : public net::MockCertVerifier {
+ namespace cronet {
+ namespace test {
+ 
+-Cronet_EnginePtr CreateTestEngine(int quic_server_port) {
++Cronet_EnginePtr CreateTestEngine(int quic_server_port, const std::string& proxy_url) {
+   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
+   Cronet_EngineParams_user_agent_set(engine_params, "test");
+   // Add Host Resolver Rules.
+@@ -75,6 +75,9 @@ Cronet_EnginePtr CreateTestEngine(int quic_server_port) {
+   Cronet_QuicHint_alternate_port_set(quic_hint, 443);
+   Cronet_EngineParams_quic_hints_add(engine_params, quic_hint);
+   Cronet_QuicHint_Destroy(quic_hint);
++  if(proxy_url != "") {
++    Cronet_EngineParams_proxy_url_set(engine_params, proxy_url.c_str());
++  }
+   // Create Cronet Engine.
+   Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
+   // Set Mock Cert Verifier.
+@@ -87,6 +90,11 @@ Cronet_EnginePtr CreateTestEngine(int quic_server_port) {
+   return cronet_engine;
+ }
+ 
++Cronet_EnginePtr CreateTestEngine(int quic_server_port) {
++  std::string foo = "";
++  return CreateTestEngine(quic_server_port, foo);
++}
++
+ Cronet_ExecutorPtr CreateTestExecutor() {
+   return Cronet_Executor_CreateWith(TestExecutor_Execute);
+ }
+diff --git a/components/cronet/native/test/test_util.h b/components/cronet/native/test/test_util.h
+index 767bb8149db51..da19270dfee08 100644
+--- a/components/cronet/native/test/test_util.h
++++ b/components/cronet/native/test/test_util.h
+@@ -13,6 +13,7 @@ namespace cronet {
+ namespace test {
+ 
+ // Create an engine that is configured to support local test servers.
++Cronet_EnginePtr CreateTestEngine(int quic_server_port, const std::string& proxy_url);
+ Cronet_EnginePtr CreateTestEngine(int quic_server_port);
+ 
+ // Create an executor that runs tasks on different background thread.
+diff --git a/components/cronet/native/test/url_request_test.cc b/components/cronet/native/test/url_request_test.cc
+index e65bfb14eaa4a..2c00490896bfb 100644
+--- a/components/cronet/native/test/url_request_test.cc
++++ b/components/cronet/native/test/url_request_test.cc
+@@ -306,8 +306,10 @@ class UrlRequestTest : public ::testing::TestWithParam<
+       std::unique_ptr<TestUrlRequestCallback> test_callback,
+       const std::string& http_method,
+       TestUploadDataProvider* test_upload_data_provider,
+-      int remapped_port) {
+-    Cronet_EnginePtr engine = cronet::test::CreateTestEngine(remapped_port);
++      int remapped_port,
++      const std::string& proxy_url) {
++    Cronet_EnginePtr engine = cronet::test::CreateTestEngine(remapped_port,
++                                                             proxy_url);
+     Cronet_UrlRequestPtr request = Cronet_UrlRequest_Create();
+     Cronet_UrlRequestParamsPtr request_params =
+         Cronet_UrlRequestParams_Create();
+@@ -363,6 +365,18 @@ class UrlRequestTest : public ::testing::TestWithParam<
+     return test_callback;
+   }
+ 
++  std::unique_ptr<TestUrlRequestCallback> StartAndWaitForComplete(
++      const std::string& url,
++      std::unique_ptr<TestUrlRequestCallback> test_callback,
++      const std::string& http_method,
++      TestUploadDataProvider* test_upload_data_provider,
++      int remapped_port) {
++    std::string empty = "";
++    return StartAndWaitForComplete(url, std::move(test_callback), http_method,
++                                   test_upload_data_provider, remapped_port,
++                                   /* proxy_url */ empty);
++  }
++
+   std::unique_ptr<TestUrlRequestCallback> StartAndWaitForComplete(
+       const std::string& url,
+       std::unique_ptr<TestUrlRequestCallback> test_callback,
+@@ -669,6 +683,29 @@ TEST_P(UrlRequestTest, SimpleGet) {
+   ExpectResponseInfoEquals(expected_response_info, *callback->response_info());
+ }
+ 
++TEST_P(UrlRequestTest, ProxyGet) {
++  const std::string url = cronet::TestServer::GetEchoMethodURL();
++  const std::string proxy_url = cronet::TestServer::GetConnectProxyURL();
++  auto callback = StartAndWaitForComplete(
++    url,
++    std::make_unique<TestUrlRequestCallback>(GetDirectExecutorParam()), // test_callback
++    std::string(), // http_method
++    nullptr, // test_upload_data_provider
++    0, // remapped_port
++    proxy_url);
++  EXPECT_EQ(200, callback->response_info()->http_status_code);
++  // Default method is 'GET'.
++  EXPECT_EQ("GET", callback->response_as_string());
++  EXPECT_EQ(0, callback->redirect_count());
++  EXPECT_EQ(callback->response_step(), callback->ON_SUCCEEDED);
++  CheckResponseInfo(*callback->response_info(), url, 200, "OK");
++  TestUrlRequestCallback::UrlResponseInfo expected_response_info(
++      std::vector<std::string>({url}), "OK", 200, 86,
++      std::vector<std::string>({"Connection", "close", "Content-Length", "3",
++                                "Content-Type", "text/plain"}));
++  ExpectResponseInfoEquals(expected_response_info, *callback->response_info());
++}
++
+ TEST_P(UrlRequestTest, UploadEmptyBodySync) {
+   const std::string url = cronet::TestServer::GetEchoRequestBodyURL();
+   TestUploadDataProvider data_provider(TestUploadDataProvider::SYNC,
+diff --git a/components/cronet/testing/test_server/test_server.cc b/components/cronet/testing/test_server/test_server.cc
+index d3d539998bd13..a40c2f3f1d58c 100644
+--- a/components/cronet/testing/test_server/test_server.cc
++++ b/components/cronet/testing/test_server/test_server.cc
+@@ -42,9 +42,12 @@ const char kSetCookiePath[] = "/set_cookie?";
+ const char kBigDataPath[] = "/big_data?";
+ const char kUseEncodingPath[] = "/use_encoding?";
+ const char kEchoBodyPath[] = "/echo_body";
++const char kConnectProxyPath[] = "/connect_proxy";
+ 
+ const char kSimpleResponse[] = "The quick brown fox jumps over the lazy dog.";
+ 
++const char kSimpleProxyResponse[] = "HTTP/1.1 200 Connection established\r\n\r\n";
++
+ std::unique_ptr<net::EmbeddedTestServer> g_test_server;
+ base::LazyInstance<std::string>::Leaky g_big_data_body =
+     LAZY_INSTANCE_INITIALIZER;
+@@ -166,6 +169,12 @@ std::unique_ptr<net::test_server::HttpResponse> CronetTestRequestHandler(
+     return std::move(response);
+   }
+ 
++  if (request.relative_url == kConnectProxyPath) {
++    response->set_code(net::HTTP_OK);
++    response->set_content(kSimpleProxyResponse);
++    return std::move(response);
++  }
++
+   // Unhandled requests result in the Embedded test server sending a 404.
+   return nullptr;
+ }
+@@ -267,6 +276,11 @@ std::string TestServer::GetExabyteResponseURL() {
+   return GetFileURL("/exabyte_response");
+ }
+ 
++/* static */
++std::string TestServer::GetConnectProxyURL() {
++  return GetFileURL(kConnectProxyPath);
++}
++
+ /* static */
+ std::string TestServer::PrepareBigDataURL(size_t data_size) {
+   DCHECK(g_test_server);
+diff --git a/components/cronet/testing/test_server/test_server.h b/components/cronet/testing/test_server/test_server.h
+index cd4d3635b4efa..acb079605d57f 100644
+--- a/components/cronet/testing/test_server/test_server.h
++++ b/components/cronet/testing/test_server/test_server.h
+@@ -61,6 +61,8 @@ class TestServer {
+   static std::string GetRedirectToEchoBodyURL();
+   // Returns a URL that the server will return an Exabyte of data.
+   static std::string GetExabyteResponseURL();
++  // Returns A URL to use as a CONNECT proxy to the TestServer.
++  static std::string GetConnectProxyURL();
+   // Prepares response and returns URL which respond with |data_size| of bytes
+   // in response body.
+   static std::string PrepareBigDataURL(size_t data_size);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
 index 8da024badd93a..773e643029f7c 100644
 --- a/components/cronet/url_request_context_config.cc
