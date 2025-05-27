@@ -10,3 +10,9 @@
 
 # Android Studio
 local.properties
+
+# macOS
+.DS_Store
+
+# Xcode
+.swiftpm/
