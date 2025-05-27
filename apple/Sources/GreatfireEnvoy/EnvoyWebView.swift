@@ -11,9 +11,9 @@
 /**
  This class helps you work around the limitations of `WKWebView` by
 
- - installing the selected proxy as a SOCKS5 proxy, *if* on iOS 17 or above *and if* the selected proxy supports that.
+ - installing the selected proxy as a SOCKS5 proxy, *if* on iOS 17/macOS 14 or above *and if* the selected proxy supports that.
  - installing a custom scheme handler for the schemes "envoy-http" and "envoy-https",
- - automatically sets `isInspectable = true` on newer iOS versions when in `DEBUG` mode,
+ - automatically sets `isInspectable = true` on newer iOS/macOS versions when in `DEBUG` mode,
  - replaces `http` and `https` request URL schemes with `envoy-http` and `envoy-https`, *if*  the Envoy custom HTTP proxy is used *or  if* the iOS version is below 17, to redirect processing to the `EnvoySchemeHandler`.
 
   **NOTES**:
@@ -26,7 +26,7 @@
 
   3. `WKWebView` has severe limitations which make it difficult to run in certain circumstances:
 
- - Before iOS 17, it didn't support SOCKS and HTTP proxies.
+ - Before iOS 17/macOS 14, it didn't support SOCKS and HTTP proxies.
  - Intercepting `http` and `https` schemes is not allowed.
 
   These limitations have the following implications:
@@ -34,10 +34,10 @@
  - Also requests, for which `WKWebView` asks about a `WKNavigationActionPolicy` can be rewritten.
  - Relative URLs will implicitly use the custom scheme.
  - Everything else (in other words all fully qualified links in HTML, CSS, JS, SVG and probably more file types) cannot be handled with the `EnvoySchemeHandler`.
- - `WKWebView` is dangerous to use *before* iOS 17, because it lacks real proxy support.
+ - `WKWebView` is dangerous to use *before* iOS 17/macOS 14, because it lacks real proxy support.
 
  In other words, your users are **safe** under the following conditions:
- - They run iOS 17.
+ - They run iOS 17/macOS 14.
  - They are using a proxy which can talk SOCKS5 directly: Anything which **does not use** the Envoy proxy in its chain!
 
  Unfortunately, the Envoy proxy works by modifying the HTTP request slightly. This cannot be achieved
@@ -51,7 +51,7 @@
  the following adivce applies:
 
  - **DO NOT USE** the Envoy proxy. Also not as the thing to wrap `Obfs4`, `Meek`, `WebTunnel` or `Snowflake` transports around.
- - **DO NOT** support iOS before version 17.
+ - **DO NOT** support iOS before version 17 and/or macOS before version 14.
  */
 open class EnvoyWebView: WKWebView, WKNavigationDelegate {
 
@@ -239,6 +239,9 @@ open class EnvoyWebView: WKWebView, WKNavigationDelegate {
                     return false
                 }
             }
+        }
+        else if Envoy.shared.proxy == .direct {
+            return false
         }
 
         return true
