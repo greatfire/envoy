@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'GreatfireEnvoy'
-  s.version          = '0.3.0'
+  s.version          = '0.3.1'
   s.summary          = "Greatfire's Envoy is a manager for various proxy implementations."
 
   s.description      = <<-DESC

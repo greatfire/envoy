@@ -1,10 +1,10 @@
 PODS:
-  - GreatfireEnvoy/Core (0.3.0):
+  - GreatfireEnvoy/Core (0.3.1):
     - IEnvoyProxy (~> 3.4)
-  - GreatfireEnvoy/Curl (0.3.0):
+  - GreatfireEnvoy/Curl (0.3.1):
     - GreatfireEnvoy/Core
     - SwiftyCurl (~> 0.4)
-  - GreatfireEnvoy/Curl/Tests (0.3.0):
+  - GreatfireEnvoy/Curl/Tests (0.3.1):
     - GreatfireEnvoy/Core
     - SwiftyCurl (~> 0.4)
   - IEnvoyProxy (3.4.0)
@@ -24,7 +24,7 @@ EXTERNAL SOURCES:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  GreatfireEnvoy: f1458e422b5e55e26d99924026f9d3bb724fa742
+  GreatfireEnvoy: f91391c16180afb5d765be5d50e17999221f8faa
   IEnvoyProxy: 41a9cbcaeb2f98218f8fff097e02082f347c4f2a
   SwiftyCurl: 6f6e8ef159f2d339fb4f545aac6ceaa0dd31e522
 
