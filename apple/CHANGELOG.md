@@ -1,5 +1,11 @@
 # Envoy for Apple Platforms CHANGELOG
 
+## 0.3.1
+
+- Updated `SwiftyCurl`/`libcurl` dependency.
+- Updated `IEnvoyProxy` dependency.
+- Minor improvements.
+
 ## 0.3.0
 
 - Added `libcurl` support: Read all about it in the [README](README.md).

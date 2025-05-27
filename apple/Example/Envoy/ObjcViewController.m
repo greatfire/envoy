@@ -68,6 +68,8 @@
             [self textFieldDidEndEditing:self.addressTf reason:UITextFieldDidEndEditingReasonCommitted];
         });
     }];
+
+    os_log_debug(log, "Curl version: %@", SwiftyCurl.libcurlVersion);
 }
 
 - (void)viewDidDisappear:(BOOL)animated

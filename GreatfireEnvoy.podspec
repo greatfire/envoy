@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'GreatfireEnvoy'
-  s.version          = '0.3.0'
+  s.version          = '0.3.1'
   s.summary          = "Greatfire's Envoy is a manager for various proxy implementations."
 
   s.description      = <<-DESC
@@ -49,7 +49,7 @@ Pod::Spec.new do |s|
   s.subspec 'Core' do |ss|
     ss.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
 
-    ss.dependency 'IEnvoyProxy', '~> 3.3'
+    ss.dependency 'IEnvoyProxy', '~> 3.4'
   end
 
   s.subspec 'Curl' do |ss|

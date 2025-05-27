@@ -222,7 +222,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 1540;
-				LastUpgradeCheck = 1610;
+				LastUpgradeCheck = 1630;
 				ORGANIZATIONNAME = GreatFire;
 				TargetAttributes = {
 					607FACCF1AFB9204008FA782 = {
