@@ -28,9 +28,9 @@
  .../cronet/testing/test_server/test_server.h       |  2 ++
  components/cronet/url_request_context_config.cc    |  7 ++--
  components/cronet/url_request_context_config.h     |  9 +++++
- net/proxy_resolution/proxy_config_service.cc       | 17 +++++++++
- net/proxy_resolution/proxy_config_service.h        |  3 ++
- 32 files changed, 250 insertions(+), 15 deletions(-)
+ net/proxy_resolution/proxy_config_service.cc       | 38 ++++++++++++++++++++
+ net/proxy_resolution/proxy_config_service.h        |  6 ++++
+ 32 files changed, 274 insertions(+), 15 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
 index 94a1e60e4ee38..07308c49b1015 100644
@@ -768,7 +768,7 @@ index 324525466cf24..fe91814bd3df6 100644
    // experiments and their corresponding configuration options. The format
    // is a JSON object with the name of the experiment as the key, and the
 diff --git a/net/proxy_resolution/proxy_config_service.cc b/net/proxy_resolution/proxy_config_service.cc
-index e32f7dd46b4d0..2e539ad614559 100644
+index e32f7dd46b4d0..2ce405b33b3ba 100644
 --- a/net/proxy_resolution/proxy_config_service.cc
 +++ b/net/proxy_resolution/proxy_config_service.cc
 @@ -11,7 +11,9 @@
@@ -781,37 +781,68 @@ index e32f7dd46b4d0..2e539ad614559 100644
  
  #if BUILDFLAG(IS_WIN)
  #include "net/proxy_resolution/win/proxy_config_service_win.h"
-@@ -90,6 +92,21 @@ class ProxyConfigServiceDirect : public ProxyConfigService {
+@@ -58,6 +60,30 @@ constexpr net::NetworkTrafficAnnotationTag kSystemProxyConfigTrafficAnnotation =
+           "Using 'ProxySettings' policy can set Chrome to use specific "
+           "proxy settings and avoid system proxy."
+       })");
++constexpr net::NetworkTrafficAnnotationTag kFixedSystemProxyConfigTrafficAnnotation =
++    net::DefineNetworkTrafficAnnotation("proxy_config_fixed", R"(
++      semantics {
++        sender: "Proxy Config"
++        description:
++          "Establishing a connection through a proxy server using fixed proxy."
++        trigger:
++          "Whenever a network request is made when the fixed proxy settings "
++          "are used, and they indicate to use a proxy server."
++        data:
++          "Proxy configuration."
++        destination: OTHER
++        destination_other:
++          "The proxy server specified in the configuration."
++      }
++      policy {
++        cookies_allowed: NO
++        setting:
++          "User cannot override system proxy settings, but can change them "
++          "through 'Advanced/System/Open proxy settings'."
++        policy_exception_justification:
++          "Using 'ProxySettings' policy can set Chrome to use specific "
++          "proxy settings and avoid system proxy."
++      })");
+ #endif
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -90,6 +116,18 @@ class ProxyConfigServiceDirect : public ProxyConfigService {
  
  }  // namespace
  
-+
++// static
 +std::unique_ptr<ProxyConfigService>
 +ProxyConfigService::CreateFixedSystemProxyConfigService(
 +    const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, std::string_view uri) {
 +  ProxyConfig raw_proxy_config;
 +  raw_proxy_config.proxy_rules().type = ProxyConfig::ProxyRules::Type::PROXY_LIST;
 +  raw_proxy_config.proxy_rules().single_proxies.SetSingleProxyServer(ProxyUriToProxyServer(uri, ProxyServer::SCHEME_SOCKS5));
-+#if (!defined(OS_WIN) && !defined(OS_LINUX)) || defined(OS_CHROMEOS)
-+  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, NO_TRAFFIC_ANNOTATION_YET);
-+#else
-+  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, kSystemProxyConfigTrafficAnnotation);
-+#endif
-+  return std::make_unique<ProxyConfigServiceFixed>(proxy_config);
++
++  // scm: does anything not support traffic annotations now?
++  return std::make_unique<ProxyConfigServiceFixed>(raw_proxy_config, kFixedSystemProxyConfigTrafficAnnotation);
 +}
 +
  // static
  std::unique_ptr<ProxyConfigService>
  ProxyConfigService::CreateSystemProxyConfigService(
 diff --git a/net/proxy_resolution/proxy_config_service.h b/net/proxy_resolution/proxy_config_service.h
-index 7d22c4e2d255a..9ef39773e4127 100644
+index 7d22c4e2d255a..032909f1390c1 100644
 --- a/net/proxy_resolution/proxy_config_service.h
 +++ b/net/proxy_resolution/proxy_config_service.h
-@@ -79,6 +79,9 @@ class NET_EXPORT ProxyConfigService {
+@@ -79,6 +79,12 @@ class NET_EXPORT ProxyConfigService {
    // consumer of the ProxyConfigService will live.
    static std::unique_ptr<ProxyConfigService> CreateSystemProxyConfigService(
        scoped_refptr<base::SequencedTaskRunner> main_task_runner);
 +
++  // Creats a config service that uses a (cronet) caller specified proxy.
++  // |main_task_runner| is the sequence where the consumer of the
++  // ProxyConfigService will live. |uri| is the URL of the proxy.
 +  static std::unique_ptr<ProxyConfigService> CreateFixedSystemProxyConfigService(
 +      const scoped_refptr<base::SequencedTaskRunner>& main_task_runner, std::string_view uri);
  };
