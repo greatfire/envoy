@@ -49,7 +49,7 @@ Pod::Spec.new do |s|
   s.subspec 'Core' do |ss|
     ss.source_files = 'apple/Sources/GreatfireEnvoy/**/*'
 
-    ss.dependency 'IEnvoyProxy', '~> 3.3'
+    ss.dependency 'IEnvoyProxy', '~> 3.4'
   end
 
   s.subspec 'Curl' do |ss|

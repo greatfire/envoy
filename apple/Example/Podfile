@@ -12,10 +12,8 @@ def curl
 end
 
 def ienvoyproxy
-  pod 'IEnvoyProxy',
-    :podspec => 'https://raw.githubusercontent.com/stevenmcdonald/IEnvoyProxy/refs/tags/e3.3.0/IEnvoyProxy.podspec'
+#  pod 'IEnvoyProxy',
 #    :path => '../../../IEnvoyProxy'
-#    :podspec => 'https://raw.githubusercontent.com/tladesignz/IEnvoyProxy/main/IEnvoyProxy.podspec'
 end
 
 
