@@ -1,36 +1,36 @@
- components/cronet/android/api.txt                  |  4 ++-
- .../api/src/org/chromium/net/CronetEngine.java     | 10 ++++++
- .../src/org/chromium/net/ICronetEngineBuilder.java |  2 ++
+ components/cronet/android/api.txt                  |  4 +-
+ .../api/src/org/chromium/net/CronetEngine.java     | 10 +++++
+ .../src/org/chromium/net/ICronetEngineBuilder.java |  2 +
  components/cronet/android/api_version.txt          |  2 +-
  .../cronet/android/cronet_context_adapter.cc       | 11 ++++++
- components/cronet/android/cronet_context_adapter.h |  8 +++++
+ components/cronet/android/cronet_context_adapter.h |  8 ++++
  components/cronet/android/cronet_library_loader.cc |  9 +++++
  .../net/impl/AndroidHttpEngineBuilderWrapper.java  |  7 ++++
  .../chromium/net/impl/CronetEngineBuilderImpl.java | 11 ++++++
- .../chromium/net/impl/CronetUrlRequestContext.java | 23 +++++++++---
+ .../chromium/net/impl/CronetUrlRequestContext.java | 23 ++++++++++--
  .../android/proto/request_context_config.proto     |  1 +
- .../cronet_sample_apk/CronetSampleApplication.java |  2 ++
+ .../cronet_sample_apk/CronetSampleApplication.java |  2 +
  .../ExperimentalOptionsTranslationTestUtil.java    |  5 +++
  components/cronet/cronet_context.cc                | 13 +++++++
- components/cronet/cronet_context.h                 |  2 ++
+ components/cronet/cronet_context.h                 |  2 +
  components/cronet/cronet_global_state.h            |  3 ++
- components/cronet/cronet_global_state_stubs.cc     |  6 ++++
- components/cronet/native/cronet.idl                |  6 ++++
- components/cronet/native/engine.cc                 | 16 ++++++---
- components/cronet/native/generated/cronet.idl_c.h  |  6 ++++
- .../native/generated/cronet.idl_impl_struct.cc     | 12 +++++++
+ components/cronet/cronet_global_state_stubs.cc     |  6 +++
+ components/cronet/native/cronet.idl                |  6 +++
+ components/cronet/native/engine.cc                 | 16 ++++++--
+ components/cronet/native/generated/cronet.idl_c.h  |  6 +++
+ .../native/generated/cronet.idl_impl_struct.cc     | 12 ++++++
  .../native/generated/cronet.idl_impl_struct.h      |  1 +
  components/cronet/native/sample/main.cc            |  1 +
- components/cronet/native/test/test_util.cc         | 10 +++++-
+ components/cronet/native/test/test_util.cc         | 10 ++++-
  components/cronet/native/test/test_util.h          |  1 +
- components/cronet/native/test/url_request_test.cc  | 41 ++++++++++++++++++++--
- .../cronet/testing/test_server/test_server.cc      | 14 ++++++++
- .../cronet/testing/test_server/test_server.h       |  2 ++
- components/cronet/url_request_context_config.cc    |  7 ++--
+ components/cronet/native/test/url_request_test.cc  | 41 ++++++++++++++++++++-
+ .../cronet/testing/test_server/test_server.cc      | 14 +++++++
+ .../cronet/testing/test_server/test_server.h       |  2 +
+ components/cronet/url_request_context_config.cc    |  7 +++-
  components/cronet/url_request_context_config.h     |  9 +++++
- net/proxy_resolution/proxy_config_service.cc       | 38 ++++++++++++++++++++
- net/proxy_resolution/proxy_config_service.h        |  6 ++++
- 32 files changed, 274 insertions(+), 15 deletions(-)
+ net/proxy_resolution/proxy_config_service.cc       | 43 ++++++++++++++++++++++
+ net/proxy_resolution/proxy_config_service.h        |  6 +++
+ 32 files changed, 279 insertions(+), 15 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
 index 94a1e60e4ee38..07308c49b1015 100644
@@ -768,7 +768,7 @@ index 324525466cf24..fe91814bd3df6 100644
    // experiments and their corresponding configuration options. The format
    // is a JSON object with the name of the experiment as the key, and the
 diff --git a/net/proxy_resolution/proxy_config_service.cc b/net/proxy_resolution/proxy_config_service.cc
-index e32f7dd46b4d0..2ce405b33b3ba 100644
+index e32f7dd46b4d0..02f51e4508cc1 100644
 --- a/net/proxy_resolution/proxy_config_service.cc
 +++ b/net/proxy_resolution/proxy_config_service.cc
 @@ -11,7 +11,9 @@
@@ -785,7 +785,7 @@ index e32f7dd46b4d0..2ce405b33b3ba 100644
            "Using 'ProxySettings' policy can set Chrome to use specific "
            "proxy settings and avoid system proxy."
        })");
-+constexpr net::NetworkTrafficAnnotationTag kFixedSystemProxyConfigTrafficAnnotation =
++constexpr net::NetworkTrafficAnnotationTag kFixedProxyConfigTrafficAnnotation =
 +    net::DefineNetworkTrafficAnnotation("proxy_config_fixed", R"(
 +      semantics {
 +        sender: "Proxy Config"
@@ -812,7 +812,7 @@ index e32f7dd46b4d0..2ce405b33b3ba 100644
  #endif
  
  #if BUILDFLAG(IS_CHROMEOS)
-@@ -90,6 +116,18 @@ class ProxyConfigServiceDirect : public ProxyConfigService {
+@@ -90,6 +116,23 @@ class ProxyConfigServiceDirect : public ProxyConfigService {
  
  }  // namespace
  
@@ -824,8 +824,13 @@ index e32f7dd46b4d0..2ce405b33b3ba 100644
 +  raw_proxy_config.proxy_rules().type = ProxyConfig::ProxyRules::Type::PROXY_LIST;
 +  raw_proxy_config.proxy_rules().single_proxies.SetSingleProxyServer(ProxyUriToProxyServer(uri, ProxyServer::SCHEME_SOCKS5));
 +
-+  // scm: does anything not support traffic annotations now?
-+  return std::make_unique<ProxyConfigServiceFixed>(raw_proxy_config, kFixedSystemProxyConfigTrafficAnnotation);
++  // scm: we should probably use a unique annotation, but I'm failing to make that work
++#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX)
++  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, kFixedProxyConfigTrafficAnnotation);
++#else
++  ProxyConfigWithAnnotation proxy_config = ProxyConfigWithAnnotation(raw_proxy_config, NO_TRAFFIC_ANNOTATION_YET);
++#endif
++  return std::make_unique<ProxyConfigServiceFixed>(proxy_config);
 +}
 +
  // static

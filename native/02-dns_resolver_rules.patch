@@ -1,5 +1,7 @@
+ components/cronet/android/api.txt                       |  4 +++-
  .../android/api/src/org/chromium/net/CronetEngine.java  |  9 +++++++++
  .../api/src/org/chromium/net/ICronetEngineBuilder.java  |  2 ++
+ components/cronet/android/api_version.txt               |  2 +-
  components/cronet/android/cronet_context_adapter.cc     |  1 +
  .../net/impl/AndroidHttpEngineBuilderWrapper.java       |  7 +++++++
  .../org/chromium/net/impl/CronetEngineBuilderImpl.java  | 11 +++++++++++
@@ -17,11 +19,37 @@
  components/cronet/url_request_context_config.h          |  9 +++++++++
  net/url_request/url_request_context.h                   |  5 +++++
  net/url_request/url_request_context_builder.cc          | 17 ++++++++++++++++-
- net/url_request/url_request_context_builder.h           |  5 +++++
- 20 files changed, 110 insertions(+), 3 deletions(-)
+ net/url_request/url_request_context_builder.h           |  7 +++++++
+ 22 files changed, 116 insertions(+), 5 deletions(-)
 
+diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
+index 07308c49b1015..109b78cefdb01 100644
+--- a/components/cronet/android/api.txt
++++ b/components/cronet/android/api.txt
+@@ -102,6 +102,7 @@ public class org.chromium.net.CronetEngine$Builder {
+   public org.chromium.net.CronetEngine$Builder setProxyUrl(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setQuicOptions(org.chromium.net.QuicOptions$Builder);
+   public org.chromium.net.CronetEngine$Builder setQuicOptions(org.chromium.net.QuicOptions);
++  public org.chromium.net.CronetEngine$Builder setResolverRules(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setStoragePath(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setThreadPriority(int);
+   public org.chromium.net.CronetEngine$Builder setUserAgent(java.lang.String);
+@@ -325,6 +326,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+   public abstract org.chromium.net.ICronetEngineBuilder setExperimentalOptions(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
+   public abstract org.chromium.net.ICronetEngineBuilder setProxyUrl(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setResolverRules(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
+   public org.chromium.net.ICronetEngineBuilder enableBrotli(boolean);
+@@ -642,4 +644,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
+   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<java.lang.String, org.chromium.net.apihelpers.StringCronetCallback> forStringBody(org.chromium.net.apihelpers.RedirectHandler);
+   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
+ }
+-Stamp: 36f42e9ef71cd2e1daecd0f32cb12791
++Stamp: 4eaafea85d8ec953fcf1cc69f433d320
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
-index c7c9f946ecc25..3aadc6220139d 100644
+index b7079e7be1622..8191ed277bc57 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 +++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 @@ -136,6 +136,15 @@ public abstract class CronetEngine {
@@ -53,8 +81,15 @@ index 427d0d0c224f6..0dd5753e64404 100644
      public abstract String getDefaultUserAgent();
  
      public abstract ExperimentalCronetEngine build();
+diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
+index 7facc89938bbc..81b5c5d06cc0b 100644
+--- a/components/cronet/android/api_version.txt
++++ b/components/cronet/android/api_version.txt
+@@ -1 +1 @@
+-36
++37
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index b092b818963ce..52d6c0555067e 100644
+index 05b7ceaf8dea3..a42718c77bf70 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -254,6 +254,7 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
@@ -113,7 +148,7 @@ index 039123da985e9..189991faf6bfc 100644
      public CronetEngineBuilderImpl setStoragePath(String value) {
          if (!new File(value).isDirectory()) {
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index 7105e9f007b5e..938cd0cd311e1 100644
+index 54c0d743313c5..eaf8eab9f107b 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 @@ -459,6 +459,10 @@ public class CronetUrlRequestContext extends CronetEngineBase {
@@ -441,7 +476,7 @@ index 4ac56ba26747c..a397be39ce364 100644
    if (ssl_config_service_) {
      context->set_ssl_config_service(std::move(ssl_config_service_));
 diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
-index 7a9022b3d789c..626c404cbc9ae 100644
+index 7a9022b3d789c..343adfcfec1af 100644
 --- a/net/url_request/url_request_context_builder.h
 +++ b/net/url_request/url_request_context_builder.h
 @@ -220,6 +220,11 @@ class NET_EXPORT URLRequestContextBuilder {
@@ -456,3 +491,12 @@ index 7a9022b3d789c..626c404cbc9ae 100644
    // Makes the created URLRequestContext use a particular HttpUserAgentSettings
    // object. Not compatible with set_accept_language() / set_user_agent().
    //
+@@ -480,6 +485,8 @@ class NET_EXPORT URLRequestContextBuilder {
+   bool suppress_setting_socket_performance_watcher_factory_for_testing_ = false;
+   bool stale_dns_enabled_ = false;
+ 
++  std::string resolver_rules_;
++
+   handles::NetworkHandle bound_network_ = handles::kInvalidNetworkHandle;
+   // Used only if the context is bound to a network to customize the
+   // HostResolver created internally.
