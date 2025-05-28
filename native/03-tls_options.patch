@@ -22,7 +22,7 @@
  21 files changed, 269 insertions(+), 2 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index 109b78cefdb01..110221a2a5eda 100644
+index 8b3c7cff08c3a..b780c7c1fd72b 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
 @@ -96,9 +96,12 @@ public class org.chromium.net.CronetEngine$Builder {
@@ -54,10 +54,10 @@ index 109b78cefdb01..110221a2a5eda 100644
    public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<java.lang.String, org.chromium.net.apihelpers.StringCronetCallback> forStringBody(org.chromium.net.apihelpers.RedirectHandler);
    public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
  }
--Stamp: 4eaafea85d8ec953fcf1cc69f433d320
-+Stamp: 3ac2062d6f96a381f1b94942e6fb7722
+-Stamp: 1aea4b219c8b51981b9d65881c8c2929
++Stamp: 750c039ef160b70a60c7ff0d88b0ff56
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
-index 8191ed277bc57..f0326827913c2 100644
+index 3aadc6220139d..a59a64e4ab356 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 +++ b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 @@ -136,6 +136,24 @@ public abstract class CronetEngine {
@@ -103,14 +103,14 @@ index 0dd5753e64404..d76e3194efe98 100644
  
      public abstract ExperimentalCronetEngine build();
 diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
-index 81b5c5d06cc0b..e522732c77ec9 100644
+index e522732c77ec9..a2720097dccb4 100644
 --- a/components/cronet/android/api_version.txt
 +++ b/components/cronet/android/api_version.txt
 @@ -1 +1 @@
--37
-+38
+-38
++39
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
-index a42718c77bf70..c7586efb77d52 100644
+index 52d6c0555067e..af2adf2bbca5b 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
 +++ b/components/cronet/android/cronet_context_adapter.cc
 @@ -255,6 +255,9 @@ static jlong JNI_CronetUrlRequestContext_CreateRequestContextConfig(
@@ -210,7 +210,7 @@ index 189991faf6bfc..37df9f52c381e 100644
      public CronetEngineBuilderImpl setStoragePath(String value) {
          if (!new File(value).isDirectory()) {
 diff --git a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
-index eaf8eab9f107b..4e1c1c26b64f4 100644
+index 938cd0cd311e1..c33c46a69de1b 100644
 --- a/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 +++ b/components/cronet/android/java/src/org/chromium/net/impl/CronetUrlRequestContext.java
 @@ -463,6 +463,18 @@ public class CronetUrlRequestContext extends CronetEngineBase {
