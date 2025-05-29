@@ -45,7 +45,7 @@ Once you've gotten the code, we have a couple more steps. Install the depenecies
 ./build/install-build-deps.sh --arm --lib32 --no-nacl
 ```
 
-This figures out what apt packages to install, and runs `apt` to install them. We ask for support to target 32 but ARM and x86, and we don't need NACL for Cronet. Now we run the hooks:
+This figures out what apt packages to install, and runs `apt` to install them. We ask for support to target 32 bit ARM and x86, and we don't need NACL for Cronet. Now we run the hooks:
 
 ```bash
 gclient runhooks
@@ -57,7 +57,7 @@ This will take a while to update things. Note that what we did here was delay ru
 Updating Cronet
 ---------------
 
-Whever you change versions of the Chromium sources, you need to "sync" the build environment. If you've just completed the install instructions, you should be ready to go, but at some point, you'll want to upgrade. Also, any time you switch the version of the chromium sources you're using, you need to re-do this step.
+Whenever you change versions of the Chromium sources, you need to "sync" the build environment. If you've just completed the install instructions, you should be ready to go, but at some point, you'll want to upgrade. Also, any time you switch the version of the chromium sources you're using, you need to re-do this step.
 
 You can, of course, always just `git pull` to get the newest sources, but you can also use the [checkout-to-tag.sh script](https://github.com/greatfire/envoy/blob/master/native/checkout-to-tag.sh) to fetch just the particlar verstion you need, this can be substantially faster.
 
@@ -68,6 +68,9 @@ Once you've switched the main git repo, you'll need to run:
 ```bash
 gclient sync
 ```
+
+If you get an error, just keep re-running `gclient sync` until it completes successfully.
+
 
 Building older versions
 -----------------------
