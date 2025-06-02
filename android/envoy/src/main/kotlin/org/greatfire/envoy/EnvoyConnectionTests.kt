@@ -632,7 +632,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            state.emissary.stopV2RayWechat() // probably unnecessary
+            test.stopService()
             return false
         }
 
