@@ -49,6 +49,8 @@ class UrlUtil {
             return newString
         }
 
+        // This tries to anonymize the URL we log so we're not logging
+        // all the secrets (I think)
         @JvmStatic
         fun sanitizeUrl(url: String, urlService: String): String {
 

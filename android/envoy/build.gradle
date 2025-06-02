@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    ndkVersion '21.0.6113669'
+    ndkVersion '27.0.12077973'
 
     defaultConfig {
         compileSdk 34
@@ -37,30 +37,43 @@ android {
     buildFeatures {
         buildConfig true
     }
+    compileSdk 35
 }
 
 dependencies {
     // resolves duplicate class error
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
+    implementation(platform('org.jetbrains.kotlin:kotlin-bom:2.1.20'))
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.20'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
+
+    implementation('androidx.work:work-runtime-ktx:2.10.0')
 
     //testImplementation 'junit:junit:4.12'
     //androidTestImplementation 'androidx.test:runner:1.1.1'
     //androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
 
-    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
-    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.4.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
+//    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0'
 
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
-    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.core:core-ktx:1.16.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+
+    // implementation 'org.greatfire.envoy:cronet:108.0.5359.195'
     //implementation 'org.greatfire.envoy:cronet:107.0.5304.150-1'
-    implementation 'org.greatfire:IEnvoyProxy:1.5.0'
+    // implementation 'org.greatfire:IEnvoyProxy:1.5.0'
+
+    implementation 'tech.relaycorp:doh:1.0.70'
 
     debugApi(name: 'cronet-debug', ext: 'aar')
-    releaseApi(name: 'cronet-release', ext: 'aar')
+    // releaseApi(name: 'cronet-release', ext: 'aar')
     // debugApi(name: 'IEnvoyProxy', ext: 'aar')
     // releaseApi(name: 'IEnvoyProxy', ext: 'aar')
+    // debugApi(name: 'plenipotentiary', ext: 'aar')
+    // releaseApi(name: 'plenipotentiary', ext: 'aar')
+    debugApi(name: 'Emissary', ext: 'aar')
+    releaseApi(name: 'Emissary', ext: 'aar')
 }
 
 def stdout = new ByteArrayOutputStream()

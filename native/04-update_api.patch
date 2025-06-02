@@ -1,0 +1,39 @@
+ components/cronet/android/api.txt         | 6 +++++-
+ components/cronet/android/api_version.txt | 2 +-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
+index eb3738e136276..c95a104b6c6d5 100644
+--- a/components/cronet/android/api.txt
++++ b/components/cronet/android/api.txt
+@@ -89,6 +89,8 @@ public class org.chromium.net.CronetEngine$Builder {
+   public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
+   public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
++  public org.chromium.net.CronetEngine$Builder setResolverRules(java.lang.String);
++  public org.chromium.net.CronetEngine$Builder setProxyUrl(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder(android.content.Context);
+   public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
+   public java.lang.String getDefaultUserAgent();
+@@ -331,6 +333,8 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+   public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
+   public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setProxyUrl(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setResolverRules(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
+   public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
+   public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
+@@ -641,4 +645,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
+   public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
+   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
+ }
+-Stamp: c11bf584850391d2d22b0f9c36cea18b
++Stamp: 972dc3d5842eb8f082a5b7eea2ca2090
+diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
+index bb95160cb6e07..a787364590245 100644
+--- a/components/cronet/android/api_version.txt
++++ b/components/cronet/android/api_version.txt
+@@ -1 +1 @@
+-33
++34

@@ -1,3 +1,5 @@
+// used in the Demo app
+
 package org.greatfire.envoy
 
 import android.util.Log
