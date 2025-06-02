@@ -10,7 +10,6 @@ upstream MASQUE server
 
 This is really close to being the example code from:
 https://github.com/Invisv-Privacy/masque/blob/main/example/relay-http-proxy/main.go
-
 converted in to a package
 
 */
