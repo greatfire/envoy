@@ -2,7 +2,7 @@ package org.greatfire.envoy
 
 import android.content.Context
 import android.util.Log
-import emissary.Emissary // Envoy Go library
+import IEnvoyProxy.IEnvoyProxy // Go library
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -50,7 +50,7 @@ class EnvoyState private constructor() {
     var ctx: Context? = null
 
     // Go library
-    val emissary = Emissary.newEmissary()
+    var iep: IEnvoyProxy.Controller? = null
 
     // DNS related code
     val dns = EnvoyDns()
@@ -75,6 +75,22 @@ class EnvoyState private constructor() {
             resolverRules = test.resolverRules,
             cacheSize = 10, // cache size in MB
         )
+    }
+
+    fun InitIEnvoyProxy() {
+        ctx?.let {
+            val ptState = File(it.cacheDir, "pt-state")
+            if(!ptState.exists()) {
+                ptState.mkdirs()
+            }
+
+            val enableLogging = true
+            val unsafeLogging = false
+            val logLevel = "DEBUG"
+
+            iep = IEnvoyProxy.newController(
+                ptState.toString(), enableLogging, unsafeLogging, logLevel, null)
+        }
     }
 
     // called when the connection worker found a successful connection

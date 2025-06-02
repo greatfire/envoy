@@ -70,12 +70,12 @@ dependencies {
 
     debugApi(name: 'cronet-debug', ext: 'aar')
     // releaseApi(name: 'cronet-release', ext: 'aar')
-    // debugApi(name: 'IEnvoyProxy', ext: 'aar')
-    // releaseApi(name: 'IEnvoyProxy', ext: 'aar')
+    debugApi(name: 'IEnvoyProxy', ext: 'aar')
+    releaseApi(name: 'IEnvoyProxy', ext: 'aar')
     // debugApi(name: 'plenipotentiary', ext: 'aar')
     // releaseApi(name: 'plenipotentiary', ext: 'aar')
-    debugApi(name: 'Emissary', ext: 'aar')
-    releaseApi(name: 'Emissary', ext: 'aar')
+    // debugApi(name: 'Emissary', ext: 'aar')
+    // releaseApi(name: 'Emissary', ext: 'aar')
 }
 
 def stdout = new ByteArrayOutputStream()

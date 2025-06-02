@@ -7,6 +7,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.*
 
+import IEnvoyProxy.IEnvoyProxy
+
 /*
     Establish a connection to a supported proxy
 
@@ -203,12 +205,22 @@ class EnvoyConnectWorker(
     }
 
     private suspend fun startEnvoy() = coroutineScope {
+        // Create IEP controller
+        // we need to do this now so we can call setDOHServer below
+        state.InitIEnvoyProxy()
+
         launch {
             // Pick a working DoH server
             state.dns.init()
             // if one was picked, pass it over to the Go code to use
-            state.dns.chosenServer?.let {
-                state.emissary.setDOHServer(it)
+            // state.dns.chosenServer?.let {
+            //     val server = it
+            //     state.iep?.let {
+            //         it.setDOHServer(server)
+            //     }
+            // }
+            if (state.dns.chosenServer != null && state.iep != null) {
+                IEnvoyProxy.setDOHServer(state.dns.chosenServer)
             }
 
             Log.d(TAG, "startEnvoy3: ${Thread.currentThread().name}")

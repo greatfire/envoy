@@ -358,18 +358,6 @@ class EnvoyConnectionTests {
         return Proxy(proxyType, addr)
     }
 
-    // Mutates the EnvoyTest
-    private fun startMasqueProxy(
-        host: String,
-        port: Int): Int
-    {
-        val proxyPort = state.emissary.startMasqueProxy(host, port.toLong())
-
-        Log.d(TAG, "MASQUE proxy to $host:$port started on $proxyPort")
-
-        return proxyPort.toInt()
-    }
-
     // Test a standard SOCKS or HTTP proxy
     // !! OkHttp does not support HTTPS (yet)
     suspend fun testStandardProxy(proxyUri: Uri): Boolean {
@@ -441,16 +429,15 @@ class EnvoyConnectionTests {
 
     // ECH
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
-        Log.d(TAG, "Testing Envoy URL with Emissary: " + test)
+        Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + test)
 
         test.startService()
-        val url = state.emissary.findEnvoyUrl()
-        // XXX this is a weird case, emissary returns a new
+        // XXX this is a weird case, IEP returns a new
         // URL to use
         // if it comes back, it's tested and working
-        test.proxyUrl = url
+        test.proxyUrl = test.getEnvoyUrl()
         test.proxyIsEnvoy = true
-        Log.d(TAG, "Emissary URL: " + url)
+        Log.d(TAG, "IEP Envoy URL: " + test.proxyUrl)
         return true
     }
 
@@ -517,7 +504,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            state.emissary.stopV2RaySrtp() // probably unnecessary
+            test.stopService()
             return false
         }
 
@@ -537,7 +524,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            state.emissary.stopV2RayWechat() // probably unnecessary
+            test.stopService()
             return false
         }
 
