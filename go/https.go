@@ -1,7 +1,7 @@
 package emissary
 /*
-	This part of Emissary provides a proxy that forwards to a "real"
-	Envoy proxy, using HTTP/2 or HTTP/3 with ECH
+	This part of Emissary tests connecting to an Envoy proxy with ECH
+	using HTTP/2 and HTTP/3
 
 	This mostly exists because Android/Conscrypt doesn't support ECH yet
 */
@@ -122,7 +122,8 @@ func (e *Emissary) doTestHttps(ctx context.Context, useHttp3 bool, resultChan ch
 }
 
 ///
-// Test HTTPS with ECH, trying both HTTP/2 and HTTP/3 in parallel
+// Test HTTPS with ECH, trying both HTTP/2 and HTTP/3 in parallel.
+// Returns an envoy_url to use as an Envoy proxy
 //
 func (e *Emissary) testHttps() (string) {
 	// XXX do we need to wait for it to start?
