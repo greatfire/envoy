@@ -3,7 +3,7 @@ package org.greatfire.envoy
 import android.content.Context
 import android.util.Log
 import IEnvoyProxy.IEnvoyProxy // Go library
-]\import java.io.File
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import org.chromium.net.CronetEngine
