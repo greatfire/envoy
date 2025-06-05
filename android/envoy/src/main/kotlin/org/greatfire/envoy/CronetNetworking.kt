@@ -95,6 +95,47 @@ object CronetNetworking {
         return requestBuilder.build()
     }
 
+    /*
+        Like buildRequest, but assumes an unpatched Cronet
+    */
+    @JvmStatic
+    @Throws(IOException::class)
+    fun buildEnvoyRequest(
+        envoyUrl: String,
+        request: Request,
+        callback: UrlRequest.Callback?,
+        cronetEngine: CronetEngine,
+        executorService: ExecutorService
+    ) : UrlRequest {
+        val targetUrl = request.url.toString()
+        val targetHost = URI(targetUrl).getHost()
+
+        val requestBuilder = cronetEngine.newUrlRequestBuilder(envoyUrl, callback, executorService)
+        requestBuilder.setHttpMethod(request.method)
+        request.headers.forEach {
+            if (it.first.lowercase(Locale.ENGLISH) != "accept-encoding") {
+                requestBuilder.addHeader(it.first, it.second)
+            }
+        }
+        // set Envoy headers
+        requestBuilder.addHeader("Host-Orig", targetHost)
+        requestBuilder.addHeader("Url-Orig", targetUrl)
+
+        val requestBody = request.body
+        if (requestBody != null) {
+            val contentType = requestBody.contentType()
+            if (contentType != null) {
+                requestBuilder.addHeader("Content-Type", contentType.toString())
+            }
+            val buffer = Buffer()
+            requestBody.writeTo(buffer)
+            val uploadDataProvider = UploadDataProviders.create(buffer.readByteArray())
+            requestBuilder.setUploadDataProvider(uploadDataProvider, executorService)
+        }
+
+        return requestBuilder.build()
+    }
+
     @JvmStatic
     @Throws(IOException::class)
     fun buildRequest(request: Request, callback: UrlRequest.Callback?, cronetEngine: CronetEngine): UrlRequest {

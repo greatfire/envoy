@@ -6,11 +6,13 @@ import android.os.ConditionVariable
 import android.util.Log
 import java.io.IOException
 import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
 import java.net.Proxy
 import java.net.Socket
 // import java.net.URI
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import javax.net.ssl.*
 import kotlinx.coroutines.delay
 import okhttp3.*
 import org.chromium.net.CronetException
@@ -39,7 +41,7 @@ class EnvoyConnectionTests {
         // these are set by helpers in EnvoyNetworking's companion object
         // Target URL/response code for testing
         var testUrl = "https://www.google.com/generate_204"
-        // using a 200 code makes it really easy to get false posatives
+        // using a 200 code makes it really easy to get false positives
         var testResponseCode = 204
         // direct URL to the site for testing
         var directUrl = ""
@@ -167,17 +169,29 @@ class EnvoyConnectionTests {
                         add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
-                "socks5", "proxy+https" -> {
-                    var tempUrl = url
-                    if (uri.getScheme() == "proxy+https") {
-                        tempUrl = url.replaceFirst(
-                            """^proxy\+https""".toRegex(), "https")
-                        Log.d(TAG, "proxy URL: $tempUrl")
+
+                "masque" -> {
+                    with(envoyTests) {
+                        add(EnvoyTest(EnvoyServiceType.OKHTTP_MASQUE, url))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_MASQUE, url))
                     }
+                }
+                // These aren't "officially" supported by Envoy, but they're
+                // easy to support
+                "socks5", "proxy+http" -> {
+                    val tempUrl = when(uri.scheme) {
+                        "proxy+https" -> url.replaceFirst(
+                            """^proxy\+http""".toRegex(), "http")
+                        // OkHttp doesn't yet support HTTPS CONNECT proxies (!)
+                        // https://github.com/square/okhttp/issues/8373
+                        else -> url
+                    }
+
+                    Log.d(TAG, "proxy URL: $tempUrl")
 
                     with (envoyTests) {
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
-                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
                     }
                 }
                 "envoy" -> {
@@ -258,9 +272,9 @@ class EnvoyConnectionTests {
             builder.proxy(proxy)
         }
 
-        val client = builder.callTimeout(30, TimeUnit.SECONDS).build()
+        val client = builder.callTimeout(20, TimeUnit.SECONDS).build()
 
-        Log.d(TAG, "testing request to: " + request.url)
+        Log.d(TAG, "testing request to: ${request.url} with proxy $proxy")
 
         try {
             val response = client.newCall(request).execute()
@@ -286,42 +300,56 @@ class EnvoyConnectionTests {
         return runTest(request, null)
     }
 
-    private fun getProxy(proxyType: Proxy.Type, host: String, port: Int): Proxy {
+    private fun getProxy(
+        proxyType: Proxy.Type,
+        host: String,
+        port: Int,
+    ): Proxy {
         val addr = InetSocketAddress(host, port)
         return Proxy(proxyType, addr)
     }
 
-    // Test a standard SOCKS or HTTP(S) proxy
+    // Test a standard SOCKS or HTTP proxy
+    // !! OkHttp does not support HTTPS (yet)
     suspend fun testStandardProxy(proxyUri: Uri): Boolean {
         Log.d(TAG, "Testing standard proxy $proxyUri")
 
-        var proxyType = Proxy.Type.HTTP
-        if (proxyUri.scheme == "socks5") {
-            proxyType = Proxy.Type.SOCKS
-        }
-        val host = proxyUri.host
-        var port = proxyUri.port
-
-        if (port == -1) {
-            // apparently knowing the default port for the protocol is too
-            // much for the Uri libaray
-            port = when(proxyUri.scheme) {
-                "http"   -> 80
-                "socks5" -> 1080
-                else  -> 443 // https port by default?
-            }
-        }
-
-        Log.d(TAG, "🦐🦐 proxy $host:$port")
-
-        if (host.isNullOrEmpty()) {
+        if (proxyUri.host.isNullOrEmpty()) {
+            Log.e(TAG, "Empty proxy host!?")
             return false
         }
 
-        val proxy = getProxy(proxyType, host, port)
-        val request = Request.Builder().url(testUrl).build()
+        // only socks5 and http are supported here
+        var proxyType = when(proxyUri.scheme) {
+            "socks5" -> Proxy.Type.SOCKS
+            "http" -> Proxy.Type.HTTP
+            else -> {
+                Log.e(TAG, "Unsupported proxy scheme")
+                return false
+            }
+        }
 
-        return runTest(request, proxy)
+        // apparently knowing the default port for the protocol is too
+        // much for the Uri libaray
+        var port = proxyUri.port
+        if (port == -1) {
+            port = when(proxyUri.scheme) {
+                "http"   -> 80
+                "socks5" -> 1080
+                else  -> 80 // ? error?
+            }
+        }
+
+        Log.d(TAG, "🦐🦐 proxy ${proxyUri.host}:$port")
+
+        proxyUri.host?.let {
+            val proxy = getProxy(proxyType, it, port)
+            val request = Request.Builder().url(testUrl).build()
+
+            return runTest(request, proxy)
+        }
+        // proxyUri.host is null somehow
+        return false
     }
 
     // Test using an Envoy HTTP(s) proxy
@@ -352,17 +380,40 @@ class EnvoyConnectionTests {
 
     // ECH
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
-        Log.d(TAG, "Testing Envoy URL with Emissary: " + test)
+        Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + test)
 
         test.startService()
-        val url = state.emissary.findEnvoyUrl()
-        // XXX this is a weird case, emissary returns a new
+        // XXX this is a weird case, IEP returns a new
         // URL to use
         // if it comes back, it's tested and working
-        test.proxyUrl = url
+        test.proxyUrl = test.getEnvoyUrl()
         test.proxyIsEnvoy = true
-        Log.d(TAG, "Emissary URL: " + url)
+        Log.d(TAG, "IEP Envoy URL: " + test.proxyUrl)
         return true
+    }
+
+    // MASQUE
+    suspend fun testMasqueOkHttp(test: EnvoyTest): Boolean {
+        if (test.proxyUrl == null) {
+            // the other test hasn't started it yet
+            val addr = test.startService()
+            test.proxyUrl = "http://$addr"
+            Log.d(TAG, "Starting MASQUE: $addr")
+        }
+
+        return testStandardProxy(Uri.parse(test.proxyUrl))
+    }
+
+    // MASQUE Cronet XXX does Cronet support this natively?
+    suspend fun testMasqueCronet(test: EnvoyTest, context: Context): Boolean {
+        if (test.proxyUrl == null) {
+            // the other test hasn't started it yet
+            val addr = test.startService()
+            test.proxyUrl = "http://$addr"
+            Log.d(TAG, "Starting MASQUE: $addr")
+        }
+
+        return testCronetProxy(test, context)
     }
 
     // IEnvoyProxy PTs
@@ -404,7 +455,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            state.emissary.stopV2RaySrtp() // probably unnecessary
+            test.stopService()
             return false
         }
 
@@ -424,7 +475,7 @@ class EnvoyConnectionTests {
         if (addr == "") {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
-            state.emissary.stopV2RayWechat() // probably unnecessary
+            test.stopService()
             return false
         }
 
@@ -441,8 +492,7 @@ class EnvoyConnectionTests {
     /////////////////
     // Cronet section
 
-    inner class TestUrlRequestCallback(
-        private val test: EnvoyTest) : UrlRequest.Callback()
+    inner class TestUrlRequestCallback() : UrlRequest.Callback()
     {
         var succeeded = false
         private val requestDone = ConditionVariable()
@@ -510,6 +560,7 @@ class EnvoyConnectionTests {
     }
 
     suspend fun testCronetEnvoy(test: EnvoyTest, context: Context): Boolean {
+        // proxyUrl might be an Envoy proxy or a standard (socks/http) proxy
         var proxyUrl: String? = null
         if (test.proxyUrl != null && !test.proxyIsEnvoy) {
             proxyUrl = test.proxyUrl
@@ -520,9 +571,9 @@ class EnvoyConnectionTests {
             cacheFolder = null, // no cache XXX?
             proxyUrl = proxyUrl,
             resolverRules = test.resolverRules,
-            cacheSize = 0, // what are the units here?
+            cacheSize = 0, // cache size in MB
         )
-        val callback = TestUrlRequestCallback(test)
+        val callback = TestUrlRequestCallback()
         // aim at the Envoy proxy instead of the real target
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             test.url, // Envoy proxy URL
@@ -534,6 +585,36 @@ class EnvoyConnectionTests {
         // XXX cache param
         requestBuilder.addHeader("Host-Orig", targetHost)
         requestBuilder.addHeader("Url-Orig", testUrl)
+
+        val request = requestBuilder.build()
+        request.start()
+        callback.blockForResponse()
+
+        // test is now complete
+        return callback.succeeded
+    }
+
+    suspend fun testCronetProxy(test: EnvoyTest, context: Context): Boolean {
+        var proxyUrl = test.url
+        // proxyIsEnvoy should never be true here?
+        if (test.proxyUrl != null && !test.proxyIsEnvoy) {
+            proxyUrl = test.proxyUrl!!
+        }
+
+        val cronetEngine = CronetNetworking.buildEngine(
+            context = context,
+            cacheFolder = null, // no cache XXX?
+            proxyUrl = proxyUrl,
+            resolverRules = test.resolverRules,
+            cacheSize = 0, // what are the units here?
+        )
+        val callback = TestUrlRequestCallback()
+        // We're just making a standard request via Cronet to a standard proxy
+        val requestBuilder = cronetEngine.newUrlRequestBuilder(
+            testUrl,
+            callback,
+            cronetThreadPool
+        )
 
         val request = requestBuilder.build()
         request.start()
