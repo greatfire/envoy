@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
 object CronetNetworking {
     private var mCronetEngine: CronetEngine? = null
     private val mExecutorService = Executors.newSingleThreadExecutor()
-    private var mCustomCronetBuilder: CustomCronetBuilder? = null
+    // private var mCustomCronetBuilder: CustomCronetBuilder? = null
 
     private const val TAG = "Envoy"
 
