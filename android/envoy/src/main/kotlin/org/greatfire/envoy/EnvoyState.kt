@@ -57,6 +57,9 @@ class EnvoyState private constructor() {
 
     val shadowsocks: ShadowsocksService? = null
 
+    // for debugging, simulate a connection timeout
+    var debugTimeoutDriect = false
+
     private fun createCronetEngine(test: EnvoyTest) {
         // I think we can reuse the cache dir between runs?
         // XXX we used to have multiple tests cronet based tests

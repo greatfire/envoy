@@ -6,6 +6,9 @@ import okhttp3.*
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
+import java.net.SocketTimeoutException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 
 class EnvoyInterceptor : Interceptor {
 
@@ -71,6 +74,17 @@ class EnvoyInterceptor : Interceptor {
                 return chain.proceed(chain.request())
             }
         } else {
+
+            if(state.debugTimeoutDriect) {
+                Log.w(TAG, "DEBUG - simulating timeout!")
+                // I don't know if doing this with runBlocking/delay
+                // blocks less than just a sleep here...
+                runBlocking {
+                    delay(10000)
+                    throw SocketTimeoutException("DEBUG timeout connection")
+                }
+            }
+
             // let requests pass though and see record if they succeed
             // failures are likely to be timeouts, so don't wait for that
             return observingInterceptor(chain)
@@ -149,7 +163,7 @@ class EnvoyInterceptor : Interceptor {
 
             val proxyType = when(uri.scheme) {
                 "http" -> Proxy.Type.HTTP
-                "socks" -> Proxy.Type.SOCKS
+                "socks5" -> Proxy.Type.SOCKS
                 else -> {
                     Log.e(TAG, "only http and socks are support for OkHttp proxies")
                     return
@@ -184,7 +198,7 @@ class EnvoyInterceptor : Interceptor {
 
         val client = OkHttpClient.Builder().proxy(proxy).build()
 
-        Log.d(TAG, "Standard Proxy Request: ")
+        Log.d(TAG, "Standard Proxy Request: ${chain.request().url}")
 
         val req = chain.request().newBuilder().build()
         return client.newCall(req).execute()

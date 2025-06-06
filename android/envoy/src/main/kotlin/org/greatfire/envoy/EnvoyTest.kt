@@ -256,6 +256,7 @@ data class EnvoyTest(
             EnvoyServiceType.HTTP_ECH -> {
                 Log.d(TAG, "TODO: we can stop the ECH proxy")
             }
+            EnvoyServiceType.DIRECT -> "no op"
             else -> {
                 Log.e(TAG, "Tried to stop an unknown service $testType")
             }
