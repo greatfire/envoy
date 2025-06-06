@@ -177,13 +177,7 @@ class EnvoyConnectWorker(
             // Pick a working DoH server
             state.dns.init()
             // if one was picked, pass it over to the Go code to use
-            // state.dns.chosenServer?.let {
-            //     val server = it
-            //     state.iep?.let {
-            //         it.setDOHServer(server)
-            //     }
-            // }
-            if (state.dns.chosenServer != null && state.iep != null) {
+            if (state.dns.chosenServer != null) {
                 IEnvoyProxy.setDOHServer(state.dns.chosenServer)
             }
 
