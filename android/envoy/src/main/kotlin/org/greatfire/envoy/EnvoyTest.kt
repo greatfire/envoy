@@ -127,6 +127,13 @@ data class EnvoyTest(
                     val echConfigList = state.dns.getECHConfig(hostname)
                     state.iep?.let {
                         it.setEnvoyUrl(url, echConfigList)
+
+                        Log.d(TAG, "Starting ECH with $url $echConfigList")
+
+                        // this uses the Go version of IsItUpYet before return
+                        it.start(IEnvoyProxy.EnvoyEch, "")
+                        val addr = it.localAddress(IEnvoyProxy.EnvoyEch)
+                        return addr
                     }
                 }
                 return ""
