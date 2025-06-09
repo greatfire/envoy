@@ -51,6 +51,7 @@ class EnvoyInterceptor : Interceptor {
                         // interface. We used to pass these through Cronet,
                         // should we test both? Just use OkHttp for now
                         EnvoyServiceType.OKHTTP_MASQUE,
+                        EnvoyServiceType.HTTP_ECH,
                         EnvoyServiceType.HYSTERIA2,
                         EnvoyServiceType.V2WS,
                         EnvoyServiceType.V2SRTP,
