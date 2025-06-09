@@ -70,6 +70,7 @@ class EnvoyConnectionTests {
             // just use Cronet if those features are called for?
             val okTest = EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, realUrl)
             val crTest = EnvoyTest(EnvoyServiceType.CRONET_ENVOY, realUrl)
+            val echTest = EnvoyTest(EnvoyServiceType.HTTP_ECH, realUrl)
 
             // `header_` params
             tempUri.getQueryParameterNames().forEach {
@@ -84,13 +85,14 @@ class EnvoyConnectionTests {
                     value?.let {
                         okTest.headers.add(Pair(name, it))
                         crTest.headers.add(Pair(name, it))
+                        echTest.headers.add(Pair(name, it))
                     }
                 }
             }
 
             // 'resolver' param
             tempUri.getQueryParameter("resolver")?.let {
-                // okHttp is never going to support this?
+                // OkHttp is never going to support this?
                 okTest.resolverRules = it
                 crTest.resolverRules = it
             }
@@ -164,8 +166,8 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
@@ -386,7 +388,13 @@ class EnvoyConnectionTests {
         // XXX this is a weird case, IEP returns a new
         // URL to use
         // if it comes back, it's tested and working
-        test.proxyUrl = test.getEnvoyUrl()
+        val url = test.getEnvoyUrl()
+
+        if (url.isNullOrEmpty()) {
+            return false
+        }
+
+        test.proxyUrl = url
         test.proxyIsEnvoy = true
         Log.d(TAG, "IEP Envoy URL: " + test.proxyUrl)
         return true
