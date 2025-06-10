@@ -194,7 +194,8 @@ class EnvoyConnectWorker(
     override suspend fun doWork(): Result {
         // test direct connection first
         if (EnvoyConnectionTests.directUrl != "") {
-            val test = EnvoyTest(EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
+            // val test = EnvoyTest(EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
+            val test = EnvoyDirectTest(EnvoyConnectionTests.directUrl)
             envoyTests.add(test)
         }
         // We preserve the original list of tests in EnvoyNetworking
