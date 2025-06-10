@@ -21,8 +21,8 @@ import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
 // for a PT, that gets stored in proxyUrl
 // proxyiSEnvoy lets us know if proxyUrl is an Envoy proxy or SOCKS/HTTP
 
-data class EnvoyTest(
-    var testType: EnvoyServiceType,
+open class EnvoyTest(
+    var testType: EnvoyServiceType = EnvoyServiceType.UNKNOWN,
     var url: String,
 ) {
     companion object {
@@ -51,19 +51,19 @@ data class EnvoyTest(
     var resolverRules: String? = null
 
     // Envoy Global settings and state
-    private val state = EnvoyState.getInstance()
+    protected val state = EnvoyState.getInstance()
 
     // used to time how long it takes to connect and test
-    private var timer: Timer? = null
+    protected var timer: Timer? = null
     // should this be in settings?
     // private var shadowsocks: EnvoyShadowsocks? = null
-    private val shadowsocksIntent: Intent? = null
+    protected val shadowsocksIntent: Intent? = null
 
     override fun toString(): String {
         return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
     }
 
-    private fun getTimer(): Timer {
+    protected fun getTimer(): Timer {
         if (timer == null) {
             timer = Timer()
         }
@@ -89,12 +89,23 @@ data class EnvoyTest(
         }
     }
 
+    open suspend fun startService(): String {
+        Log.e(TAG, "Tried to start an unknown service type")
+        return ""
+    }
+
+    open fun stopService() {
+        Log.e(TAG, "Tried to stop an unknown service")
+    }
+
+    /*
     private fun getV2RayUuid(url: String): String {
         val san = UrlQuerySanitizer()
         san.setAllowUnregisteredParamaters(true)
         san.parseUrl(url)
         return san.getValue("id")
     }
+    */
 
     fun getEnvoyUrl(): String {
         // XXX this needs cleanup? get the Envoy URL from IEP
@@ -105,6 +116,7 @@ data class EnvoyTest(
         return ""
     }
 
+    /*
     // returns a string $host:$port where the running service can be found
     suspend fun startService(): String {
         if (serviceRunning) {
@@ -206,7 +218,7 @@ data class EnvoyTest(
                 }
                 return ""
             }
-            // XXX there's actually only one service for both
+           // XXX there's actually only one service for both
             EnvoyServiceType.CRONET_MASQUE,
             EnvoyServiceType.OKHTTP_MASQUE -> {
                 Log.d(TAG, "about to start MASQUE 👺")
@@ -269,6 +281,7 @@ data class EnvoyTest(
             }
         }
     }
+    */
 
     fun startTimer() {
         getTimer() // this starts the timer as a side effect

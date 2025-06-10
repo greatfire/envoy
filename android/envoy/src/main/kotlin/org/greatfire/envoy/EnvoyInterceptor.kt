@@ -105,7 +105,7 @@ class EnvoyInterceptor : Interceptor {
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX we probably shouldn't need to make an EnvoyTest
                 // instance here :)
-                state.connectIfNeeded(EnvoyTest(EnvoyServiceType.DIRECT, "direct://"))
+                state.connectIfNeeded(EnvoyDirectTest("direct://"))
             }
         }
 

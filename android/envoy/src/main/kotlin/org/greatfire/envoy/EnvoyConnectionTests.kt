@@ -6,7 +6,6 @@ import android.os.ConditionVariable
 import android.util.Log
 import java.io.IOException
 import java.net.InetSocketAddress
-import java.net.PasswordAuthentication
 import java.net.Proxy
 import java.net.Socket
 // import java.net.URI
@@ -69,9 +68,9 @@ class EnvoyConnectionTests {
             // We also can't support all the options (like resolver rules)
             // with OkHttp... should we ignore them and try anyway, or
             // just use Cronet if those features are called for?
-            val okTest = EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, realUrl)
-            val crTest = EnvoyTest(EnvoyServiceType.CRONET_ENVOY, realUrl)
-            val echTest = EnvoyTest(EnvoyServiceType.HTTP_ECH, realUrl)
+            val okTest = EnvoyHttpEnvoyTest(realUrl)
+            val crTest = EnvoyCronetEnvoyTest(realUrl)
+            val echTest = EnvoyHttpEchTest(realUrl)
 
             // `header_` params
             tempUri.getQueryParameterNames().forEach {
@@ -175,17 +174,19 @@ class EnvoyConnectionTests {
                     }
 
                     with(envoyTests) {
-                        // should we always test all?
-                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
+                        // XXX should we always test both?
+                        add(EnvoyHttpEnvoyTest(tempUrl))
+                        add(EnvoyCronetEnvoyTest(tempUrl))
+                        add(EnvoyHttpEchTest(tempUrl))
                     }
                 }
 
                 "masque" -> {
                     with(envoyTests) {
-                        add(EnvoyTest(EnvoyServiceType.OKHTTP_MASQUE, url))
+                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_MASQUE, url))
                         // add(EnvoyTest(EnvoyServiceType.CRONET_MASQUE, url))
+                        add(EnvoyHttpMasqueTest(url))
+                        add(EnvoyCronetMasqueTest(url))
                     }
                 }
                 // These aren't "officially" supported by Envoy, but they're
@@ -202,24 +203,30 @@ class EnvoyConnectionTests {
                     Log.d(TAG, "proxy URL: $tempUrl")
 
                     with (envoyTests) {
-                        add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
+                        add(EnvoyHttpProxyTest(tempUrl))
+                        add(EnvoyCronetProxyTest(tempUrl))
                     }
                 }
                 "envoy" -> {
                     addEnvoySechemeUrl(url)
                 }
                 "hysteria2" -> {
-                    envoyTests.add(EnvoyTest(EnvoyServiceType.HYSTERIA2, url))
+                    // envoyTests.add(EnvoyTest(EnvoyServiceType.HYSTERIA2, url))
+                    envoyTests.add(EnvoyHysteriaTest(url))
                 }
                 "v2srtp" -> {
-                    envoyTests.add(EnvoyTest(EnvoyServiceType.V2SRTP, url))
+                    // envoyTests.add(EnvoyTest(EnvoyServiceType.V2SRTP, url))
+                    envoyTests.add(EnvoyV2srtpTest(url))
                 }
                 "v2wechat" -> {
-                    envoyTests.add(EnvoyTest(EnvoyServiceType.V2WECHAT, url))
+                    // envoyTests.add(EnvoyTest(EnvoyServiceType.V2WECHAT, url))
+                    envoyTests.add(EnvoyV2wechatTest(url))
                 }
                 "ss" -> {
-                    envoyTests.add(EnvoyTest(EnvoyServiceType.SHADOWSOCKS, url))
+                    // envoyTests.add(EnvoyTest(EnvoyServiceType.SHADOWSOCKS, url))
+                    envoyTests.add(EnvoyShadowsocksTest(url))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
