@@ -161,10 +161,16 @@ class EnvoyConnectionTests {
                 } else {
                     okTest.resolverRules = rule
                 }
+                if (echTest.resolverRules != null) {
+                    echTest.resolverRules += (',' + rule)
+                } else {
+                    echTest.resolverRules = rule
+                }
 
                 // currently unused, but stash away the value
                 okTest.address = it
                 crTest.address = it
+                echTest.address = it
             }
 
             // 'socks5' param
@@ -365,7 +371,7 @@ class EnvoyConnectionTests {
               builder.proxy(proxy)
         }
 
-        val client = builder.callTimeout(20, TimeUnit.SECONDS).build()
+        val client = builder.callTimeout(30, TimeUnit.SECONDS).build()
 
         Log.d(TAG, "testing request to: ${request.url} with proxy $proxy")
 
