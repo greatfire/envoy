@@ -64,6 +64,7 @@ class EnvoyConnectionTests {
             // this is the only case where the test.url isn't the
             // caller provided URL.. not sure that matters, but
             // it seems worth calling out the oddity
+            // XXX should we preserve the original envoy:// URL?
             //
             // We also can't support all the options (like resolver rules)
             // with OkHttp... should we ignore them and try anyway, or
@@ -95,6 +96,7 @@ class EnvoyConnectionTests {
                 // OkHttp is never going to support this?
                 okTest.resolverRules = it
                 crTest.resolverRules = it
+                echTest.resolverRules = it
             }
 
             // `address` param
@@ -122,10 +124,16 @@ class EnvoyConnectionTests {
                 } else {
                     okTest.resolverRules = rule
                 }
+                if (echTest.resolverRules != null) {
+                    echTest.resolverRules += (',' + rule)
+                } else {
+                    echTest.resolverRules = rule
+                }
 
                 // currently unused, but stash away the value
                 okTest.address = it
                 crTest.address = it
+                echTest.address = it
             }
 
             // 'socks5' param
@@ -133,11 +141,13 @@ class EnvoyConnectionTests {
             tempUri.getQueryParameter("socks5")?.let {
                 okTest.proxyUrl = it
                 crTest.proxyUrl = it
+                echTest.proxyUrl = it
             }
 
             with(envoyTests) {
                 add(okTest)
                 add(crTest)
+                add(echTest)
             }
         }
 
@@ -165,9 +175,9 @@ class EnvoyConnectionTests {
                     }
 
                     with(envoyTests) {
-                        // XXX should we always test both?
-                        // add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
-                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
+                        // should we always test all?
+                        add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
+                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
@@ -271,10 +281,10 @@ class EnvoyConnectionTests {
     private fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
         val builder = OkHttpClient.Builder();
         if (proxy != null) {
-            builder.proxy(proxy)
+              builder.proxy(proxy)
         }
 
-        val client = builder.callTimeout(20, TimeUnit.SECONDS).build()
+        val client = builder.callTimeout(30, TimeUnit.SECONDS).build()
 
         Log.d(TAG, "testing request to: ${request.url} with proxy $proxy")
 
@@ -357,27 +367,26 @@ class EnvoyConnectionTests {
     // Test using an Envoy HTTP(s) proxy
     // see examples at https://github.com/greatfire/envoy/
     suspend fun testEnvoyOkHttp(proxyUrl: Uri): Boolean {
-        if (proxyUrl.getScheme() == "envoy") {
-            // XXX handle envoy:// URLs
-            Log.e(TAG, "envoy:// URLs aren't supported yet ☹️")
-            return false
-        } else {
-            // assume this is an http(s) Evnoy proxy
-            val host = Uri.parse(testUrl).host
-            if (host == null) {
-                // this shouldn't happen
-                return false
-            }
-            // XXX cache param, this is hacky :)
-            val t = System.currentTimeMillis()
-            val url = proxyUrl.toString() + "?test=" + t
-            val request = Request.Builder().url(url).head()
-                .addHeader("Url-Orig", testUrl)
-                .addHeader("Host-Orig", host)
-                .build()
 
-            return runTest(request, null)
+        val host = Uri.parse(testUrl).host
+        if (host == null) {
+            Log.e(TAG, "Test URL has no host!?")
+            return false
         }
+
+        // XXX cache param, this is hacky :)
+        // this nshould be updated to use the same checksum param
+        // that the C++ patches used to use
+        val t = System.currentTimeMillis()
+        val url = proxyUrl.toString() + "?test=" + t
+        val request = Request.Builder()
+            .url(url)
+            // .head()  // a HEAD request is enough to test it works
+            .addHeader("Url-Orig", testUrl)
+            .addHeader("Host-Orig", host)
+            .build()
+
+        return runTest(request, null)
     }
 
     // ECH
