@@ -4,9 +4,32 @@ import android.net.Uri
 import android.net.UrlQuerySanitizer
 import android.util.Log
 
-class EnvoyV2srtpTest(url: String) : EnvoyTest(EnvoyServiceType.V2SRTP, url) {
+import IEnvoyProxy.IEnvoyProxy
+import android.content.Context
+
+class EnvoyV2srtpTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.V2SRTP, envoyUrl, testUrl, testResponseCode) {
     companion object {
         private const val TAG = "EnvoyV2srtpTest"
+    }
+
+    override suspend fun startTest(context: Context): Boolean {
+        var addr = startService()
+
+        if (addr == "") {
+            // The go code doesn't handle failures well, but an empty
+            // string here indicates failure
+            stopService()
+            return false
+        }
+
+        proxyUrl = "socks5://$addr"
+        Log.d(TAG, "Testing V2Ray SRTP ${proxyUrl}")
+
+        val res = testStandardProxy(Uri.parse(proxyUrl), testResponseCode)
+        if (res == false) {
+            stopService()
+        }
+        return res
     }
 
     override suspend fun startService(): String {
@@ -20,11 +43,11 @@ class EnvoyV2srtpTest(url: String) : EnvoyTest(EnvoyServiceType.V2SRTP, url) {
         serviceRunning = true
 
         state.iep?.let {
-            val server = Uri.parse(url)
+            val server = Uri.parse(envoyUrl)
 
             it.v2RayServerAddress = server.host
             it.v2RayServerPort = server.port.toString()
-            it.v2RayId = getV2RayUuid(url)
+            it.v2RayId = getV2RayUuid(envoyUrl)
 
             it.start(IEnvoyProxy.V2RaySrtp, "")
             val addr = it.localAddress(IEnvoyProxy.V2RaySrtp)

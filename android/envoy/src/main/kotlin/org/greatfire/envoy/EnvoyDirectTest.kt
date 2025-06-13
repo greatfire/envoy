@@ -1,5 +1,19 @@
 package org.greatfire.envoy
 
-class EnvoyDirectTest(url: String) : EnvoyTest(EnvoyServiceType.DIRECT, url) {
-    // nothing to implement?
+import android.content.Context
+import android.util.Log
+import okhttp3.Request
+
+class EnvoyDirectTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.DIRECT, envoyUrl, testUrl, testResponseCode) {
+    companion object {
+        private const val TAG = "EnvoyDirectTest"
+    }
+
+    override suspend fun startTest(context: Context): Boolean {
+        Log.d(TAG, "Testing direct connection")
+
+        val request = Request.Builder().url(testUrl).head().build()
+
+        return runTest(request, null)
+    }
 }

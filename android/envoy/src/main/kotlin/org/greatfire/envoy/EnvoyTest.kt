@@ -1,14 +1,26 @@
 package org.greatfire.envoy
 
-import android.net.Uri
-import android.net.UrlQuerySanitizer
+import android.content.Context
 import android.util.Log
 
 // old shadowsocks
 import android.content.Intent
-import androidx.core.content.ContextCompat
-
-import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
+import android.net.Uri
+import android.os.ConditionVariable
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.chromium.net.CronetException
+import org.chromium.net.UrlRequest
+import org.chromium.net.UrlResponseInfo
+import org.greatfire.envoy.EnvoyConnectionTests.Companion
+import org.greatfire.envoy.EnvoyConnectionTests.Companion.cronetThreadPool
+import org.greatfire.envoy.EnvoyConnectionTests.Companion.testUrl
+import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
 
 // This class represents an Envoy connection: type and URL,
 // and tracks additional information, such as a URL to any
@@ -23,7 +35,9 @@ import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
 
 open class EnvoyTest(
     var testType: EnvoyServiceType = EnvoyServiceType.UNKNOWN,
-    var url: String,
+    var envoyUrl: String,
+    var testUrl: String = "https://www.google.com/generate_204",
+    var testResponseCode: Int = 204
 ) {
     companion object {
         private const val TAG = "EnvoyTest"
@@ -60,10 +74,10 @@ open class EnvoyTest(
     protected val shadowsocksIntent: Intent? = null
 
     override fun toString(): String {
-        return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
+        return UrlUtil.sanitizeUrl(envoyUrl) + " (" + testType + ")"
     }
 
-    protected fun getTimer(): Timer {
+    fun checkTimer(): Timer {
         if (timer == null) {
             timer = Timer()
         }
@@ -90,12 +104,182 @@ open class EnvoyTest(
     }
 
     open suspend fun startService(): String {
-        Log.e(TAG, "Tried to start an unknown service type")
+        Log.e(TAG, "Tried to start an unknown service")
         return ""
     }
 
     open fun stopService() {
         Log.e(TAG, "Tried to stop an unknown service")
+    }
+
+    open suspend fun startTest(context: Context): Boolean {
+        Log.e(TAG, "Tried to test an unknown service")
+        return false
+    }
+
+    // helper, given a request and optional proxy, test the connection
+    protected fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
+        val builder = OkHttpClient.Builder();
+        if (proxy != null) {
+            builder.proxy(proxy)
+        }
+
+        val client = builder.callTimeout(20, TimeUnit.SECONDS).build()
+
+        Log.d(TAG, "testing request to: ${request.url} with proxy $proxy")
+
+        try {
+            val response = client.newCall(request).execute()
+            val code = response.code
+            Log.d(TAG, "request: " + request + ", got code: " + code)
+            return(code == testResponseCode)
+        } catch (e: InterruptedIOException) {
+            Log.e(TAG, "Test timed out for request" + request)
+            return false
+        } catch (e: Exception) {
+            Log.e(TAG, "Test threw an error for request" + request)
+            Log.e(TAG, "error: " + e)
+            return false
+        }
+    }
+
+    inner class TestUrlRequestCallback() : UrlRequest.Callback()
+    {
+        var succeeded = false
+        private val requestDone = ConditionVariable()
+
+        override fun onRedirectReceived(
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            newLocationUrl: String?
+        ) {
+            // we shouldn't get these in testing, but follow it anyway
+            request?.followRedirect()
+        }
+
+        override fun onResponseStarted(
+            request: UrlRequest?,
+            info: UrlResponseInfo
+        ) {
+            // is this the best thing to do with the ignored data?
+            request?.read(ByteBuffer.allocateDirect(102400))
+        }
+
+        override fun onReadCompleted(
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            byteBuffer: ByteBuffer?,
+        ) {
+            request?.read(byteBuffer)
+        }
+
+        override fun onSucceeded(
+            request: UrlRequest?,
+            info: UrlResponseInfo?
+        ) {
+            if (info?.httpStatusCode == testResponseCode) {
+                Log.d(TAG, "Cronet worked!")
+                succeeded = true
+            } else {
+                Log.d(TAG, "Cronet failed")
+            }
+            requestDone.open()
+        }
+
+        override fun onFailed(
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+            error: CronetException?,
+        ) {
+            Log.d(TAG, "Cronet failed: " + error)
+            requestDone.open()
+        }
+
+        override fun onCanceled(
+            request: UrlRequest?,
+            info: UrlResponseInfo?,
+        ) {
+            Log.d(TAG, "Cronet canceled.")
+            requestDone.open()
+        }
+
+        // Wait until cronet is done
+        @Throws(IOException::class)
+        fun blockForResponse() {
+            requestDone.block()
+        }
+    }
+
+    suspend fun testStandardProxy(proxyUri: Uri, testResponseCode: Int): Boolean {
+        Log.d(TAG, "Testing standard proxy $proxyUri")
+
+        if (proxyUri.host.isNullOrEmpty()) {
+            Log.e(TAG, "Empty proxy host!?")
+            return false
+        }
+
+        // only socks5 and http are supported here
+        var proxyType = when(proxyUri.scheme) {
+            "socks5" -> Proxy.Type.SOCKS
+            "http" -> Proxy.Type.HTTP
+            else -> {
+                Log.e(TAG, "Unsupported proxy scheme")
+                return false
+            }
+        }
+
+        // apparently knowing the default port for the protocol is too
+        // much for the Uri libaray
+        var port = proxyUri.port
+        if (port == -1) {
+            port = when(proxyUri.scheme) {
+                "http"   -> 80
+                "socks5" -> 1080
+                else  -> 80 // ? error?
+            }
+        }
+
+        Log.d(TAG, "🦐🦐 proxy ${proxyUri.host}:$port")
+
+        proxyUri.host?.let {
+            val proxy = getProxy(proxyType, it, port)
+            val request = Request.Builder().url(testUrl).build()
+
+            return runTest(request, proxy)
+        }
+        // proxyUri.host is null somehow
+        return false
+    }
+
+
+    suspend fun testCronetProxy(testResponseCode: Int, context: Context): Boolean {
+        var proxyUrl = envoyUrl
+        // proxyIsEnvoy should never be true here?
+        if (proxyUrl != null && !proxyIsEnvoy) {
+            proxyUrl = proxyUrl!!
+        }
+
+        val cronetEngine = CronetNetworking.buildEngine(
+            context = context,
+            cacheFolder = null, // no cache XXX?
+            proxyUrl = proxyUrl,
+            resolverRules = resolverRules,
+            cacheSize = 0, // what are the units here?
+        )
+        val callback = TestUrlRequestCallback()
+        // We're just making a standard request via Cronet to a standard proxy
+        val requestBuilder = cronetEngine.newUrlRequestBuilder(
+            testUrl,
+            callback,
+            cronetThreadPool
+        )
+
+        val request = requestBuilder.build()
+        request.start()
+        callback.blockForResponse()
+
+        // test is now complete
+        return callback.succeeded
     }
 
     /*
@@ -107,7 +291,17 @@ open class EnvoyTest(
     }
     */
 
-    fun getEnvoyUrl(): String {
+    fun getProxy(
+        proxyType: Proxy.Type,
+        host: String,
+        port: Int,
+    ): Proxy {
+        val addr = InetSocketAddress(host, port)
+        return Proxy(proxyType, addr)
+    }
+
+    // was getEnvoyUrl but returns only ech url? (if available)
+    fun getEchUrl(): String {
         // XXX this needs cleanup? get the Envoy URL from IEP
         state.iep?.let {
             return it.echProxyUrl
@@ -284,14 +478,14 @@ open class EnvoyTest(
     */
 
     fun startTimer() {
-        getTimer() // this starts the timer as a side effect
+        checkTimer() // this starts the timer as a side effect
     }
 
     fun stopTimer(): Long {
-        return getTimer().stop()
+        return checkTimer().stop()
     }
 
     fun timeSpent(): Long {
-        return getTimer().timeSpent()
+        return checkTimer().timeSpent()
     }
 }

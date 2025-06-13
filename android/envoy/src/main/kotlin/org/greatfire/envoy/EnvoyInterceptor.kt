@@ -97,15 +97,16 @@ class EnvoyInterceptor : Interceptor {
 
     private fun observingInterceptor(chain: Interceptor.Chain): Response {
 
+        // attempt to connect directly (without using EnvoyDirectTest)
         val res = chain.proceed(chain.request())
 
         if (res.isSuccessful) {
             if (EnvoyNetworking.initialized && EnvoyNetworking.passivelyTestDirect) {
                 // XXX is a single 200 enough to say it's working?
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
-                // XXX we probably shouldn't need to make an EnvoyTest
-                // instance here :)
-                state.connectIfNeeded(EnvoyDirectTest("direct://"))
+                // XXX direct test instance passed purely to disable any active envoy service
+                //   this test should never be run, so actual values shouldn't matter
+                state.connectIfNeeded(EnvoyDirectTest("direct://", "", 0))
             }
         }
 
@@ -127,7 +128,7 @@ class EnvoyInterceptor : Interceptor {
             with (builder) {
                 addHeader("Host-Orig", url.host)
                 addHeader("Url-Orig", url.toString())
-                url(state.activeService!!.url + "?test=" + t)
+                url(state.activeService!!.envoyUrl + "?test=" + t)
             }
         }
 

@@ -4,9 +4,29 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
 
-class EnvoyShadowsocksTest(url: String) : EnvoyTest(EnvoyServiceType.SHADOWSOCKS, url) {
+import android.content.Context
+import android.net.Uri
+
+class EnvoyShadowsocksTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.SHADOWSOCKS, envoyUrl, testUrl, testResponseCode) {
     companion object {
         private const val TAG = "EnvoyShadowsocksTest"
+    }
+
+    override suspend fun startTest(context: Context): Boolean {
+        Log.d(TAG, "Testing Shadowsocks " + this)
+        val addr = startService()
+
+        // this already has the socks5:// prefix, I guess
+        // we're not consistent there :)
+        proxyUrl = addr
+
+        Log.d(TAG, "testing Shadowsocks $addr")
+
+        val res = testStandardProxy(Uri.parse(addr), testResponseCode)
+        // if (res == false) {
+        //     test.stopService()
+        // }
+        return res
     }
 
     override suspend fun startService(): String {
@@ -32,7 +52,7 @@ class EnvoyShadowsocksTest(url: String) : EnvoyTest(EnvoyServiceType.SHADOWSOCKS
         // return "socks5://127.0.0.1:${EnvoyShadowsocks.LOCAL_PORT}"
 
         val shadowsocksIntent = Intent(state.ctx!!, ShadowsocksService::class.java)
-        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", url)
+        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", envoyUrl)
         // XXX shouldn't this be background?
         ContextCompat.startForegroundService(state.ctx!!, shadowsocksIntent)
 

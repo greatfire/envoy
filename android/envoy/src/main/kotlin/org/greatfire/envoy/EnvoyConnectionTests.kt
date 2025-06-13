@@ -30,6 +30,8 @@ class EnvoyConnectionTests {
     companion object {
         private const val TAG = "EnvoyConnectionTests"
 
+        var directTest: EnvoyDirectTest? = null;
+
         // This list of tests persists
         // should this move to the global state/settings
         // object?
@@ -68,9 +70,9 @@ class EnvoyConnectionTests {
             // We also can't support all the options (like resolver rules)
             // with OkHttp... should we ignore them and try anyway, or
             // just use Cronet if those features are called for?
-            val okTest = EnvoyHttpEnvoyTest(realUrl)
-            val crTest = EnvoyCronetEnvoyTest(realUrl)
-            val echTest = EnvoyHttpEchTest(realUrl)
+            val okTest = EnvoyHttpEnvoyTest(realUrl, testUrl, testResponseCode)
+            val crTest = EnvoyCronetEnvoyTest(realUrl, testUrl, testResponseCode)
+            val echTest = EnvoyHttpEchTest(realUrl, testUrl, testResponseCode)
 
             // `header_` params
             tempUri.getQueryParameterNames().forEach {
@@ -150,6 +152,12 @@ class EnvoyConnectionTests {
             }
         }
 
+        @JvmStatic
+        fun addDirectUrl(url: String) {
+            directUrl = url;
+            directTest = EnvoyDirectTest(url, testUrl, testResponseCode)
+        }
+
         // and an Envoy proxy URL to the list to test
         //
         // This should probably live somewhere else... it's here because
@@ -175,9 +183,9 @@ class EnvoyConnectionTests {
 
                     with(envoyTests) {
                         // XXX should we always test both?
-                        add(EnvoyHttpEnvoyTest(tempUrl))
-                        add(EnvoyCronetEnvoyTest(tempUrl))
-                        add(EnvoyHttpEchTest(tempUrl))
+                        add(EnvoyHttpEnvoyTest(tempUrl, testUrl, testResponseCode))
+                        add(EnvoyCronetEnvoyTest(tempUrl, testUrl, testResponseCode))
+                        add(EnvoyHttpEchTest(tempUrl, testUrl, testResponseCode))
                     }
                 }
 
@@ -185,8 +193,8 @@ class EnvoyConnectionTests {
                     with(envoyTests) {
                         // add(EnvoyTest(EnvoyServiceType.OKHTTP_MASQUE, url))
                         // add(EnvoyTest(EnvoyServiceType.CRONET_MASQUE, url))
-                        add(EnvoyHttpMasqueTest(url))
-                        add(EnvoyCronetMasqueTest(url))
+                        add(EnvoyHttpMasqueTest(url, testUrl, testResponseCode))
+                        add(EnvoyCronetMasqueTest(url, testUrl, testResponseCode))
                     }
                 }
                 // These aren't "officially" supported by Envoy, but they're
@@ -205,8 +213,8 @@ class EnvoyConnectionTests {
                     with (envoyTests) {
                         // add(EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, tempUrl))
                         // add(EnvoyTest(EnvoyServiceType.CRONET_PROXY, tempUrl))
-                        add(EnvoyHttpProxyTest(tempUrl))
-                        add(EnvoyCronetProxyTest(tempUrl))
+                        add(EnvoyHttpProxyTest(tempUrl, testUrl, testResponseCode))
+                        add(EnvoyCronetProxyTest(tempUrl, testUrl, testResponseCode))
                     }
                 }
                 "envoy" -> {
@@ -214,19 +222,19 @@ class EnvoyConnectionTests {
                 }
                 "hysteria2" -> {
                     // envoyTests.add(EnvoyTest(EnvoyServiceType.HYSTERIA2, url))
-                    envoyTests.add(EnvoyHysteriaTest(url))
+                    envoyTests.add(EnvoyHysteriaTest(url, testUrl, testResponseCode))
                 }
                 "v2srtp" -> {
                     // envoyTests.add(EnvoyTest(EnvoyServiceType.V2SRTP, url))
-                    envoyTests.add(EnvoyV2srtpTest(url))
+                    envoyTests.add(EnvoyV2srtpTest(url, testUrl, testResponseCode))
                 }
                 "v2wechat" -> {
                     // envoyTests.add(EnvoyTest(EnvoyServiceType.V2WECHAT, url))
-                    envoyTests.add(EnvoyV2wechatTest(url))
+                    envoyTests.add(EnvoyV2wechatTest(url, testUrl, testResponseCode))
                 }
                 "ss" -> {
                     // envoyTests.add(EnvoyTest(EnvoyServiceType.SHADOWSOCKS, url))
-                    envoyTests.add(EnvoyShadowsocksTest(url))
+                    envoyTests.add(EnvoyShadowsocksTest(url, testUrl, testResponseCode))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
@@ -282,9 +290,10 @@ class EnvoyConnectionTests {
         }
     }
 
-    private val state = EnvoyState.getInstance()
+    //private val state = EnvoyState.getInstance()
 
     // helper, given a request and optional proxy, test the connection
+    /*
     private fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
         val builder = OkHttpClient.Builder();
         if (proxy != null) {
@@ -309,8 +318,10 @@ class EnvoyConnectionTests {
             return false
         }
     }
+    */
 
     // Test a direct connection to the target site
+    /*
     fun testDirectConnection(): Boolean {
         Log.d(TAG, "Testing direct connection")
 
@@ -318,7 +329,9 @@ class EnvoyConnectionTests {
 
         return runTest(request, null)
     }
+    */
 
+    /*
     private fun getProxy(
         proxyType: Proxy.Type,
         host: String,
@@ -327,9 +340,11 @@ class EnvoyConnectionTests {
         val addr = InetSocketAddress(host, port)
         return Proxy(proxyType, addr)
     }
+    */
 
     // Test a standard SOCKS or HTTP proxy
     // !! OkHttp does not support HTTPS (yet)
+    /*
     suspend fun testStandardProxy(proxyUri: Uri): Boolean {
         Log.d(TAG, "Testing standard proxy $proxyUri")
 
@@ -370,9 +385,11 @@ class EnvoyConnectionTests {
         // proxyUri.host is null somehow
         return false
     }
+    */
 
     // Test using an Envoy HTTP(s) proxy
     // see examples at https://github.com/greatfire/envoy/
+    /*
     suspend fun testEnvoyOkHttp(proxyUrl: Uri): Boolean {
 
         val host = Uri.parse(testUrl).host
@@ -395,8 +412,10 @@ class EnvoyConnectionTests {
 
         return runTest(request, null)
     }
+    */
 
     // ECH
+    /*
     suspend fun testECHProxy(test: EnvoyTest): Boolean {
         Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + test)
 
@@ -415,8 +434,10 @@ class EnvoyConnectionTests {
         Log.d(TAG, "IEP Envoy URL: " + test.proxyUrl)
         return true
     }
+    */
 
     // MASQUE
+    /*
     suspend fun testMasqueOkHttp(test: EnvoyTest): Boolean {
         if (test.proxyUrl == null) {
             // the other test hasn't started it yet
@@ -427,8 +448,10 @@ class EnvoyConnectionTests {
 
         return testStandardProxy(Uri.parse(test.proxyUrl))
     }
+    */
 
     // MASQUE Cronet XXX does Cronet support this natively?
+    /*
     suspend fun testMasqueCronet(test: EnvoyTest, context: Context): Boolean {
         if (test.proxyUrl == null) {
             // the other test hasn't started it yet
@@ -439,8 +462,10 @@ class EnvoyConnectionTests {
 
         return testCronetProxy(test, context)
     }
+    */
 
     // IEnvoyProxy PTs
+    /*
     suspend fun testHysteria2(test: EnvoyTest): Boolean {
         val addr = test.startService()
 
@@ -454,8 +479,10 @@ class EnvoyConnectionTests {
         }
         return res
     }
+    */
 
     // Shadowsocks
+    /*
     suspend fun testShadowsocks(test: EnvoyTest): Boolean {
         Log.d(TAG, "Testing Shadowsocks " + test)
         val addr = test.startService()
@@ -472,7 +499,9 @@ class EnvoyConnectionTests {
         // }
         return res
     }
+    */
 
+    /*
     suspend fun testV2RaySrtp(test: EnvoyTest): Boolean {
         var addr = test.startService()
 
@@ -492,7 +521,9 @@ class EnvoyConnectionTests {
         }
         return res
     }
+    */
 
+    /*
     suspend fun testV2RayWechat(test: EnvoyTest): Boolean {
         val addr = test.startService()
 
@@ -512,10 +543,12 @@ class EnvoyConnectionTests {
         }
         return res
     }
+    */
 
     /////////////////
     // Cronet section
 
+    /*
     inner class TestUrlRequestCallback() : UrlRequest.Callback()
     {
         var succeeded = false
@@ -582,7 +615,9 @@ class EnvoyConnectionTests {
             requestDone.block()
         }
     }
+    */
 
+    /*
     suspend fun testCronetEnvoy(test: EnvoyTest, context: Context): Boolean {
         // proxyUrl might be an Envoy proxy or a standard (socks/http) proxy
         var proxyUrl: String? = null
@@ -617,7 +652,9 @@ class EnvoyConnectionTests {
         // test is now complete
         return callback.succeeded
     }
+    */
 
+    /*
     suspend fun testCronetProxy(test: EnvoyTest, context: Context): Boolean {
         var proxyUrl = test.url
         // proxyIsEnvoy should never be true here?
@@ -647,4 +684,5 @@ class EnvoyConnectionTests {
         // test is now complete
         return callback.succeeded
     }
+    */
 }

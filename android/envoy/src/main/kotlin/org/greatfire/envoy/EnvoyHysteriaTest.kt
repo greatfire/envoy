@@ -2,9 +2,27 @@ package org.greatfire.envoy
 
 import android.util.Log
 
-class EnvoyHysteriaTest(url: String) : EnvoyTest(EnvoyServiceType.HYSTERIA2, url) {
+import IEnvoyProxy.IEnvoyProxy
+import android.content.Context
+import android.net.Uri
+
+class EnvoyHysteriaTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.HYSTERIA2, envoyUrl, testUrl, testResponseCode) {
     companion object {
         private const val TAG = "EnvoyHysteriaTest"
+    }
+
+    override suspend fun startTest(context: Context): Boolean {
+        val addr = startService()
+
+        proxyUrl = "socks5://$addr"
+
+        Log.d(TAG, "testing hysteria2 at ${proxyUrl}")
+
+        val res = testStandardProxy(Uri.parse(proxyUrl), testResponseCode)
+        if (res == false) {
+            stopService()
+        }
+        return res
     }
 
     override suspend fun startService(): String {
@@ -18,7 +36,7 @@ class EnvoyHysteriaTest(url: String) : EnvoyTest(EnvoyServiceType.HYSTERIA2, url
         serviceRunning = true
 
         state.iep?.let {
-            it.hysteria2Server = url
+            it.hysteria2Server = envoyUrl
             it.start(IEnvoyProxy.Hysteria2, "")
             val addr = it.localAddress(IEnvoyProxy.Hysteria2)
             EnvoyConnectionTests.isItUpYet(addr)

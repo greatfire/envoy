@@ -70,6 +70,9 @@ class EnvoyConnectWorker(
 
             // is there some better way to structure this? It's going to
             // get ungainly
+            // YES
+            val res = test.startTest(context)
+            /*
             val proxyUri = Uri.parse(test.url)
             val res = when(test.testType) {
                 EnvoyServiceType.DIRECT -> {
@@ -118,6 +121,7 @@ class EnvoyConnectWorker(
                     false
                 }
             }
+            */
 
             if (res) {
                 // We found a working connection!
@@ -193,11 +197,17 @@ class EnvoyConnectWorker(
     // Main entry point
     override suspend fun doWork(): Result {
         // test direct connection first
-        if (EnvoyConnectionTests.directUrl != "") {
+        //if (EnvoyConnectionTests.directUrl != "") {
             // val test = EnvoyTest(EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
-            val test = EnvoyDirectTest(EnvoyConnectionTests.directUrl)
-            envoyTests.add(test)
+            //val test = EnvoyDirectTest(EnvoyConnectionTests.directUrl)
+            //envoyTests.add(test)
+        //}
+
+        val directTest = EnvoyConnectionTests.directTest
+        if (directTest != null) {
+            envoyTests.add(directTest)
         }
+
         // We preserve the original list of tests in EnvoyNetworking
         // for use if we need to reconnect. This is just our working
         // copy
