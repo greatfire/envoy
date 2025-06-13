@@ -3,9 +3,30 @@ package org.greatfire.envoy
 import android.net.Uri
 import android.util.Log
 
-class EnvoyHttpEchTest(url: String) : EnvoyTest(EnvoyServiceType.HTTP_ECH, url) {
+import android.content.Context
+
+class EnvoyHttpEchTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.HTTP_ECH, envoyUrl, testUrl, testResponseCode) {
     companion object {
         private const val TAG = "EnvoyHttpEchTest"
+    }
+
+    override suspend fun startTest(context: Context): Boolean {
+        Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + this)
+
+        startService()
+        // XXX this is a weird case, IEP returns a new
+        // URL to use
+        // if it comes back, it's tested and working
+        val url = getEchUrl()
+
+        if (url.isNullOrEmpty()) {
+            return false
+        }
+
+        proxyUrl = url
+        proxyIsEnvoy = true
+        Log.d(TAG, "IEP Ech URL: " + proxyUrl)
+        return true
     }
 
     override suspend fun startService(): String {
@@ -18,7 +39,7 @@ class EnvoyHttpEchTest(url: String) : EnvoyTest(EnvoyServiceType.HTTP_ECH, url) 
 
         serviceRunning = true
 
-        val hostname = Uri.parse(url).getHost()
+        val hostname = Uri.parse(envoyUrl).getHost()
 
         // XXX set DOH server for Go code here?
         // or keep it in connect()?
@@ -26,7 +47,7 @@ class EnvoyHttpEchTest(url: String) : EnvoyTest(EnvoyServiceType.HTTP_ECH, url) 
         hostname?.let {
             val echConfigList = state.dns.getECHConfig(hostname)
             state.iep?.let {
-                it.setEnvoyUrl(url, echConfigList)
+                it.setEnvoyUrl(envoyUrl, echConfigList)
             }
         }
 

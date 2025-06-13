@@ -3,9 +3,23 @@ package org.greatfire.envoy
 import android.net.Uri
 import android.util.Log
 
-class EnvoyCronetMasqueTest(url: String) : EnvoyTest(EnvoyServiceType.CRONET_MASQUE, url) {
+import IEnvoyProxy.IEnvoyProxy
+import android.content.Context
+
+class EnvoyCronetMasqueTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.CRONET_MASQUE, envoyUrl, testUrl, testResponseCode) {
     companion object {
         private const val TAG = "EnvoyCronetMasqueTest"
+    }
+
+    override suspend fun startTest(context: Context): Boolean {
+        if (proxyUrl == null) {
+            // the other test hasn't started it yet
+            val addr = startService()
+            proxyUrl = "http://$addr"
+            Log.d(TAG, "Starting MASQUE: $addr")
+        }
+
+        return testCronetProxy(testResponseCode, context)
     }
 
     override suspend fun startService(): String {
@@ -20,7 +34,7 @@ class EnvoyCronetMasqueTest(url: String) : EnvoyTest(EnvoyServiceType.CRONET_MAS
 
         Log.d(TAG, "about to start MASQUE 👺")
 
-        val upstreamUri = Uri.parse(url)
+        val upstreamUri = Uri.parse(envoyUrl)
         if (upstreamUri.host == null) {
             Log.e(TAG, "MASQUE host is null!?")
             return ""
