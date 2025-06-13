@@ -1,7 +1,6 @@
 package org.greatfire.envoy
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -68,60 +67,8 @@ class EnvoyConnectWorker(
                 util.startTest(test)
             }
 
-            // is there some better way to structure this? It's going to
-            // get ungainly
-            // YES
+            // each test type has a corresponding implementation of startTest
             val res = test.startTest(context)
-            /*
-            val proxyUri = Uri.parse(test.url)
-            val res = when(test.testType) {
-                EnvoyServiceType.DIRECT -> {
-                    tests.testDirectConnection()
-                }
-                EnvoyServiceType.OKHTTP_ENVOY -> {
-                    tests.testEnvoyOkHttp(proxyUri)
-                }
-                EnvoyServiceType.CRONET_ENVOY -> {
-                    tests.testCronetEnvoy(test, context)
-                }
-                EnvoyServiceType.OKHTTP_MASQUE -> {
-                    tests.testMasqueOkHttp(test)
-                }
-                EnvoyServiceType.CRONET_MASQUE -> {
-                    tests.testMasqueCronet(test, context)
-                }
-                EnvoyServiceType.OKHTTP_PROXY -> {
-                    // url is a proxy URL, so set it as the proxyUrl as well
-                    // all the other services set something in proxyUrl
-                    // so this avoids a special case in the interceptor
-                    test.proxyUrl = test.url
-                    tests.testStandardProxy(proxyUri)
-                }
-                EnvoyServiceType.CRONET_PROXY -> {
-                    tests.testCronetProxy(test, context)
-                }
-                EnvoyServiceType.HTTP_ECH -> {
-                    tests.testECHProxy(test)
-                }
-                EnvoyServiceType.SHADOWSOCKS -> {
-                    tests.testShadowsocks(test)
-                }
-                EnvoyServiceType.HYSTERIA2 -> {
-                    Log.d(WTAG, "Testing Hysteria")
-                    tests.testHysteria2(test)
-                }
-                EnvoyServiceType.V2SRTP -> {
-                    tests.testV2RaySrtp(test)
-                }
-                EnvoyServiceType.V2WECHAT -> {
-                    tests.testV2RayWechat(test)
-                }
-                else -> {
-                    Log.e(WTAG, "Unsupported test type: " + test.testType)
-                    false
-                }
-            }
-            */
 
             if (res) {
                 // We found a working connection!
@@ -197,12 +144,6 @@ class EnvoyConnectWorker(
     // Main entry point
     override suspend fun doWork(): Result {
         // test direct connection first
-        //if (EnvoyConnectionTests.directUrl != "") {
-            // val test = EnvoyTest(EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
-            //val test = EnvoyDirectTest(EnvoyConnectionTests.directUrl)
-            //envoyTests.add(test)
-        //}
-
         val directTest = EnvoyConnectionTests.directTest
         if (directTest != null) {
             envoyTests.add(directTest)
