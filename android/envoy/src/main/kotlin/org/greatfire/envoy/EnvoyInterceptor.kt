@@ -38,7 +38,11 @@ class EnvoyInterceptor : Interceptor {
                             Log.d(TAG, "Cronet request to Envoy server")
                             cronetToEnvoy(chain)
                         }
-                        EnvoyServiceType.OKHTTP_ENVOY -> {
+                        EnvoyServiceType.OKHTTP_ENVOY,
+                        // this could also use cronet?
+                        // Instead of using the Envoy proxy driectly,
+                        // we use Go code as an Envoy proxy here
+                        EnvoyServiceType.HTTP_ECH -> {
                             Log.d(TAG, "OkHttp request to Envoy server")
                             okHttpToEnvoy(chain)
                         }
@@ -47,7 +51,6 @@ class EnvoyInterceptor : Interceptor {
                         // interface. We used to pass these through Cronet,
                         // should we test both? Just use OkHttp for now
                         EnvoyServiceType.OKHTTP_MASQUE,
-                        EnvoyServiceType.HTTP_ECH,
                         EnvoyServiceType.HYSTERIA2,
                         EnvoyServiceType.V2WS,
                         EnvoyServiceType.V2SRTP,
