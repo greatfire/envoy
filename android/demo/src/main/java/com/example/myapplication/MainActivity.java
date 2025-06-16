@@ -1,44 +1,37 @@
 package com.example.myapplication;
 
-import static org.greatfire.envoy.ConstantsKt.ENVOY_BROADCAST_VALIDATION_ENDED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_BROADCAST_VALIDATION_FAILED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_BROADCAST_VALIDATION_SUCCEEDED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_SERVICE_FAILED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_SERVICE_SUCCEEDED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_FAILED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_URL_SUCCEEDED;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_ENDED_CAUSE;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_DATA_VALIDATION_MS;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_DIRECT;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_ENVOY;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HTTPS;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_HYSTERIA;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_MEEK;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_SNOWFLAKE;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_SS;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_V2SRTP;
-import static org.greatfire.envoy.ConstantsKt.ENVOY_SERVICE_V2WECHAT;
+import static org.greatfire.envoy.EnvoyServiceType.DIRECT;
+import static org.greatfire.envoy.EnvoyServiceType.OKHTTP_ENVOY;
+import static org.greatfire.envoy.EnvoyServiceType.CRONET_ENVOY;
+import static org.greatfire.envoy.EnvoyServiceType.OKHTTP_MASQUE;
+import static org.greatfire.envoy.EnvoyServiceType.CRONET_MASQUE;
+import static org.greatfire.envoy.EnvoyServiceType.OKHTTP_PROXY;
+import static org.greatfire.envoy.EnvoyServiceType.CRONET_PROXY;
+import static org.greatfire.envoy.EnvoyServiceType.HTTP_ECH;
+import static org.greatfire.envoy.EnvoyServiceType.HYSTERIA2;
+import static org.greatfire.envoy.EnvoyServiceType.V2WS;
+import static org.greatfire.envoy.EnvoyServiceType.V2SRTP;
+import static org.greatfire.envoy.EnvoyServiceType.V2WECHAT;
+import static org.greatfire.envoy.EnvoyServiceType.SHADOWSOCKS;
 
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
+import static org.greatfire.envoy.EnvoyTestStatus.PASSED;
+import static org.greatfire.envoy.EnvoyTestStatus.FAILED;
+import static org.greatfire.envoy.EnvoyTestStatus.EMPTY;
+import static org.greatfire.envoy.EnvoyTestStatus.BLOCKED;
+import static org.greatfire.envoy.EnvoyTestStatus.TIMEOUT;
+import static org.greatfire.envoy.EnvoyTestStatus.UNKNOWN;
+
+
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import org.chromium.net.CronetEngine;
-import org.greatfire.envoy.CronetInterceptor;
-import org.greatfire.envoy.CronetNetworking;
-import org.greatfire.envoy.NetworkIntentService;
-import org.greatfire.envoy.UrlUtil;
+import org.greatfire.envoy.EnvoyNetworking;
+import org.greatfire.envoy.EnvoyTestCallback;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -57,8 +50,35 @@ public class MainActivity extends FragmentActivity {
     private static final String WIKI_URL = "https://www.wikipedia.org/";
     private static final String TAG = "EnvoyDemoApp";
 
+    class DemoCallback implements EnvoyTestCallback {
+        @Override
+        public void reportTestSuccess(String testedUrl, String testedService, long time) {
+            Log.d(TAG, "URL: " + testedUrl + " SUCCESS! Took: " + time + " ms");
+            displayOutput("VALID: " + testedService);
+            displayResults(testedService, true);
+        }
+
+        @Override
+        public void reportTestFailure(String testedUrl, String testedService, long time) {
+            Log.d(TAG, "URL: " + testedUrl + " failed. Took: " + time + " ms");
+            displayOutput("INVALID: " + testedService);
+            displayResults(testedService, false);
+        }
+
+        @Override
+        public void reportTestBlocked(String testedUrl, String testedService) {
+            Log.e(TAG, "URL: " + testedUrl + " is blocked, this shouldn't happen");
+        }
+
+        @Override
+        public void reportOverallStatus(String status, long time) {
+            Log.d(TAG, "All done, took: " + time + " ms");
+            Log.d(TAG, "Final status: " + status);
+        }
+    }
+
     Secrets mSecrets;
-    NetworkIntentService mService;
+    // NetworkIntentService mService;
     boolean mBound = false;
     TextView mOutputTextView;
     int mUrlCount = 0;
@@ -77,19 +97,12 @@ public class MainActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // register to receive test results
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ENVOY_BROADCAST_VALIDATION_SUCCEEDED);
-        filter.addAction(ENVOY_BROADCAST_VALIDATION_FAILED);
-        filter.addAction(ENVOY_BROADCAST_VALIDATION_ENDED);
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, filter);
-
         findViewById(R.id.runButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Log.d(TAG, "button pushed, submit urls");
                 resetResults();
-                submit();
+                start();
                 findViewById(R.id.runButton).setEnabled(false);
             }
         });
@@ -104,246 +117,32 @@ public class MainActivity extends FragmentActivity {
         } else {
             Log.d(TAG, "on create, submit urls");
             mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
-            submit();
+            // submit();
+            start();
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        // Bind to NetworkIntentService
-        Intent intent = new Intent(this, NetworkIntentService.class);
-        bindService(intent, connection, Context.BIND_AUTO_CREATE);
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        unbindService(connection);
-        mBound = false;
-    }
-
-    /**
-     * Defines callbacks for service binding, passed to bindService()
-     */
-    private final ServiceConnection connection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
-            NetworkIntentService.NetworkBinder binder = (NetworkIntentService.NetworkBinder) service;
-            mService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mBound = false;
-        }
-    };
-
-    protected final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-
-        private static final String TAG = "EnvoyDemoReceiver";
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            Log.d(TAG, "broadcast receiver triggered");
-
-            if (intent != null && context != null) {
-
-                Log.d(TAG, "action received: " + intent.getAction());
-
-                if (intent.getAction().equals(ENVOY_BROADCAST_VALIDATION_SUCCEEDED)) {
-
-                    // if an unknown cronet engine is running, shut it down
-                    if (CronetNetworking.cronetEngine() != null) {
-                        Log.d(TAG, "cronet already running (ignore)");
-                    }
-
-                    String validUrl = intent.getStringExtra(ENVOY_DATA_URL_SUCCEEDED);
-                    if (validUrl == null || validUrl.isEmpty()) {
-                        Log.w(TAG, "received a valid url that was empty or null");
-                    } else {
-                        Log.d(TAG, "received a valid url: " + validUrl);
-                    }
-
-                    String validService = intent.getStringExtra(ENVOY_DATA_SERVICE_SUCCEEDED);
-                    if (validService == null || validService.isEmpty()) {
-                        Log.w(TAG, "received a valid service that was empty or null");
-                    } else {
-                        Log.d(TAG, "received a valid service: " + validService);
-                    }
-
-                    String sanitizedUrl = "***";
-                    if (validUrl != null && validService != null) {
-                        sanitizedUrl = UrlUtil.sanitizeUrl(validUrl, validService);
-                        if (validUrl.startsWith(ENVOY_SERVICE_ENVOY) && validService.startsWith(ENVOY_SERVICE_HTTPS)) {
-                            validService = ENVOY_SERVICE_ENVOY;
-                        }
-                    }
-
-                    Long validationMs = intent.getLongExtra(ENVOY_DATA_VALIDATION_MS, 0L);
-                    Long validationSeconds = 0L;
-                    if (validationMs <= 0L) {
-                        Log.w(TAG, "received a successful validation with an invalid duration");
-                    } else {
-                        validationSeconds = validationMs / 1000L;
-                        if (validationSeconds < 1L) {
-                            validationSeconds = 1L;
-                        }
-                        Log.d(TAG, "received a successful validation with a duration: " + validationSeconds);
-                    }
-
-                    final String finalService = validService;
-                    final String finalUrl = sanitizedUrl;
-                    final Long finalSeconds = validationSeconds;
-
-                    if (validUrl == null || validUrl.isEmpty()) {
-                        Log.w(TAG, "success status included no valid cronet url, can't continue");
-                        displayOutput("validation returned no url");
-                        displayOutput("INVALID: " + validService);
-                        displayResults(finalService, false);
-                        return;
-                    }
-
-                    if (validUrl.equals(WIKI_URL)) {
-                        Log.d(TAG, "success status for the direct connection url, don't continue");
-                        displayOutput("validation returned direct url");
-                        displayOutput("VALID: " + validService + " - " + sanitizedUrl + " (" + validationSeconds + " seconds)");
-                        displayResults(finalService, true);
-                        return;
-                    }
-
-                    // envoy success, try to connect
-                    Log.d(TAG, "set up cronet engine with envoy url " + validUrl);
-                    CronetNetworking.initializeCronetEngine(context, validUrl); // reInitializeIfNeeded set to false
-                    CronetEngine engine = CronetNetworking.cronetEngine();
-                    Log.d(TAG, "cronet engine created, version " + engine.getVersionString());
-
-                    new Thread() {
-                        @Override
-                        public void run() {
-
-                            OkHttpClient client = new OkHttpClient.Builder()
-                                    .addInterceptor(new CronetInterceptor(engine))
-                                    .build();
-                            okhttp3.Request request = new okhttp3.Request.Builder().url(WIKI_URL).build();
-                            try (okhttp3.Response response = client.newCall(request).execute()) {
-
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        Log.d(TAG, "update ui with response");
-                                        displayOutput("successful connection with " + finalService + " - " + finalUrl);
-                                        displayOutput("VALID: " + finalService + " - " + finalUrl + " (" + finalSeconds + " seconds)");
-                                        displayResults(finalService, true);
-                                    }
-                                });
-
-                                Log.d(TAG, "proxied request succeeded");
-
-                            } catch (IOException e) {
-                                Log.e(TAG, "proxied request caused okhttp error: ", e);
-                                displayOutput("failed connection with " + finalService + " - " + finalUrl);
-                                displayOutput("INVALID: " + finalService + " - " + finalUrl);
-                                displayResults(finalService, false);
-                            }
-                        }
-                    }.start();
-
-                } else if (intent.getAction() == ENVOY_BROADCAST_VALIDATION_FAILED) {
-
-                    String invalidUrl = intent.getStringExtra(ENVOY_DATA_URL_FAILED);
-                    if (invalidUrl == null || invalidUrl.isEmpty()) {
-                        Log.e(TAG, "received an invalid url that was empty or null");
-                    }
-
-                    String invalidService = intent.getStringExtra(ENVOY_DATA_SERVICE_FAILED);
-                    if (invalidService == null || invalidService.isEmpty()) {
-                        Log.e(TAG, "received an invalid service that was empty or null");
-                    }
-
-                    String sanitizedUrl = "";
-                    if (invalidUrl != null && invalidService != null) {
-                        sanitizedUrl = UrlUtil.sanitizeUrl(invalidUrl, invalidService);
-                        if (invalidUrl.startsWith(ENVOY_SERVICE_ENVOY) && invalidService.startsWith(ENVOY_SERVICE_HTTPS)) {
-                            invalidService = ENVOY_SERVICE_ENVOY;
-                        }
-                    }
-
-                    displayOutput("INVALID: " + invalidService + " - " + sanitizedUrl);
-                    displayResults(invalidService, false);
-
-                    Log.e(TAG, "validation failed");
-
-                } else if (intent.getAction() == ENVOY_BROADCAST_VALIDATION_ENDED) {
-
-                    Long validationMs = intent.getLongExtra(ENVOY_DATA_VALIDATION_MS, 0L);
-                    Long validationSeconds = 0L;
-                    if (validationMs <= 0L) {
-                        Log.e(TAG, "received a validation ended with an invalid duration");
-                    } else {
-                        validationSeconds = validationMs / 1000L;
-                        if (validationSeconds < 1L) {
-                            validationSeconds = 1L;
-                        }
-                    }
-
-                    String validationCause = intent.getStringExtra(ENVOY_DATA_VALIDATION_ENDED_CAUSE);
-                    if (validationCause == null || validationCause.isEmpty()) {
-                        Log.e(TAG, "received a validation cause that was empty or null");
-                    }
-
-                    displayOutput("COMPLETE: " + validationSeconds + " seconds");
-                    Log.e(TAG, "validation ended");
-
-                } else {
-                    Log.e(TAG, "received an unexpected intent: " + intent.getAction());
-                }
-            } else {
-                Log.e(TAG, "receiver triggered but context or intent was null");
-            }
-        }
-    };
-
-    private void submit() {
-
-        // reset log file
-        try {
-            File logPath = getApplicationContext().getExternalFilesDir(null);
-            File logFile = new File(logPath, "demo_log");
-            FileOutputStream logStream = new FileOutputStream(logFile, false);
-            try {
-                logStream.write("".getBytes());
-            } finally {
-                logStream.close();
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "exception when clearing log", e);
-        }
-
+    private void start() {
         String proxyList = mSecrets.getdefProxy(getPackageName());
         String[] proxyParts = proxyList.split(",");
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
         mUrlCount = 0;
 
+        EnvoyNetworking envoy = new EnvoyNetworking();
+
+        // XXX where to get the context?
+        // envoy.setContext()
+
         for (int i = 0; i < testUrls.size(); i++) {
             mUrlCount = mUrlCount + 1;
+
+            // This feels a little silly
             if (testUrls.get(i).equals(WIKI_URL)) {
                 // NO-OP
             } else if (testUrls.get(i).startsWith("https")) {
                 httpsUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("envoy")) {
+            } else if (testUrls.get(i).startsWith("masque")) {
                 envoyUrl = testUrls.get(i);
             } else if (testUrls.get(i).startsWith("ss")) {
                 ssUrl = testUrls.get(i);
@@ -358,34 +157,14 @@ public class MainActivity extends FragmentActivity {
             } else if (testUrls.get(i).startsWith("meek")) {
                 meekUrl = testUrls.get(i);
             }
+
+            if (!testUrls.get(i).equals(WIKI_URL)) {
+                envoy.addEnvoyUrl(testUrls.get(i));
+            }
         }
 
-        if (mSecrets.gethystCert(getPackageName()) != null) {
-            submit(testUrls, mSecrets.gethystCert(getPackageName()), directUrls);
-        } else {
-            submit(testUrls, null, directUrls);
-        }
-    }
-
-    private void submit(ArrayList<String> testUrls, String testCert, ArrayList<String> directUrls) {
-
-        Log.d(TAG, "submit " + testUrls.size() + " urls");
-
-        // clear result window
-        mOutputTextView.setText("waiting for results...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
-
-        ArrayList<String> emptyList = new ArrayList<String>();
-
-        //NetworkIntentService.submit(
-        //        this,
-        //        testUrls,
-        //        directUrls,
-        //        testCert,
-        //        emptyList,
-        //        1,
-        //        1,
-        //        1
-        //);
+        envoy.setCallback(new DemoCallback())
+            .connect();
     }
 
     void resetResults() {
@@ -401,7 +180,7 @@ public class MainActivity extends FragmentActivity {
     }
 
     void displayResults(String service, boolean success) {
-        if (service.equals(ENVOY_SERVICE_DIRECT)) {
+        if (service.equals(DIRECT)) {
             findViewById(R.id.directResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.directSuccess).setVisibility(View.VISIBLE);
@@ -410,7 +189,10 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.directSuccess).setVisibility(View.GONE);
                 findViewById(R.id.directFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+        // XXX these should probably all be separate?
+        } else if (service.equals(OKHTTP_ENVOY)
+                || service.equals(CRONET_ENVOY)
+                || service.equals(HTTP_ECH)) {
             findViewById(R.id.httpsResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.httpsSuccess).setVisibility(View.VISIBLE);
@@ -419,7 +201,8 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.httpsSuccess).setVisibility(View.GONE);
                 findViewById(R.id.httpsFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
+        // XXX this is the Envoy result not MASQUE
+        } else if (service.equals(OKHTTP_MASQUE)) {
             findViewById(R.id.envoyResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.envoySuccess).setVisibility(View.VISIBLE);
@@ -428,7 +211,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.envoySuccess).setVisibility(View.GONE);
                 findViewById(R.id.envoyFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_SS)) {
+        } else if (service.equals(SHADOWSOCKS)) {
             findViewById(R.id.ssResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.ssSuccess).setVisibility(View.VISIBLE);
@@ -437,7 +220,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.ssSuccess).setVisibility(View.GONE);
                 findViewById(R.id.ssFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_HYSTERIA)) {
+        } else if (service.equals(HYSTERIA2)) {
             findViewById(R.id.hysteriaResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.hysteriaSuccess).setVisibility(View.VISIBLE);
@@ -446,7 +229,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.hysteriaSuccess).setVisibility(View.GONE);
                 findViewById(R.id.hysteriaFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_V2SRTP)) {
+        } else if (service.equals(V2SRTP)) {
             findViewById(R.id.v2sResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.v2sSuccess).setVisibility(View.VISIBLE);
@@ -455,7 +238,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.v2sSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2sFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_V2WECHAT)) {
+        } else if (service.equals(V2WECHAT)) {
             findViewById(R.id.v2wResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.v2wSuccess).setVisibility(View.VISIBLE);
@@ -464,24 +247,24 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.v2wSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2wFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
-            findViewById(R.id.snowflakeResult).setVisibility(View.VISIBLE);
-            if (success) {
-                findViewById(R.id.snowflakeSuccess).setVisibility(View.VISIBLE);
-                findViewById(R.id.snowflakeFailure).setVisibility(View.GONE);
-            } else {
-                findViewById(R.id.snowflakeSuccess).setVisibility(View.GONE);
-                findViewById(R.id.snowflakeFailure).setVisibility(View.VISIBLE);
-            }
-        } else if (service.equals(ENVOY_SERVICE_MEEK)) {
-            findViewById(R.id.meekResult).setVisibility(View.VISIBLE);
-            if (success) {
-                findViewById(R.id.meekSuccess).setVisibility(View.VISIBLE);
-                findViewById(R.id.meekFailure).setVisibility(View.GONE);
-            } else {
-                findViewById(R.id.meekSuccess).setVisibility(View.GONE);
-                findViewById(R.id.meekFailure).setVisibility(View.VISIBLE);
-            }
+        // } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+        //     findViewById(R.id.snowflakeResult).setVisibility(View.VISIBLE);
+        //     if (success) {
+        //         findViewById(R.id.snowflakeSuccess).setVisibility(View.VISIBLE);
+        //         findViewById(R.id.snowflakeFailure).setVisibility(View.GONE);
+        //     } else {
+        //         findViewById(R.id.snowflakeSuccess).setVisibility(View.GONE);
+        //         findViewById(R.id.snowflakeFailure).setVisibility(View.VISIBLE);
+        //     }
+        // } else if (service.equals(ENVOY_SERVICE_MEEK)) {
+        //     findViewById(R.id.meekResult).setVisibility(View.VISIBLE);
+        //     if (success) {
+        //         findViewById(R.id.meekSuccess).setVisibility(View.VISIBLE);
+        //         findViewById(R.id.meekFailure).setVisibility(View.GONE);
+        //     } else {
+        //         findViewById(R.id.meekSuccess).setVisibility(View.GONE);
+        //         findViewById(R.id.meekFailure).setVisibility(View.VISIBLE);
+        //     }
         } else {
             // unsupported service
             Log.w(TAG, "unsupported service (display): " + service);
@@ -506,23 +289,25 @@ public class MainActivity extends FragmentActivity {
 
     void logOutput(String service, boolean success) {
         String originalUrl = "???";
-        if (service.equals(ENVOY_SERVICE_DIRECT)) {
+        if (service.equals(DIRECT)) {
             originalUrl = WIKI_URL;
-        } else if (service.equals(ENVOY_SERVICE_HTTPS)) {
+        } else if (service.equals(OKHTTP_ENVOY)
+                || service.equals(CRONET_ENVOY)
+                || service.equals(HTTP_ECH)) {
             originalUrl = httpsUrl;
-        } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
+        } else if (service.equals(OKHTTP_MASQUE)) {
             originalUrl = envoyUrl;
-        } else if (service.equals(ENVOY_SERVICE_SS)) {
+        } else if (service.equals(SHADOWSOCKS)) {
             originalUrl = ssUrl;
-        } else if (service.equals(ENVOY_SERVICE_HYSTERIA)) {
+        } else if (service.equals(HYSTERIA2)) {
             originalUrl = hystUrl;
-        } else if (service.equals(ENVOY_SERVICE_V2SRTP)) {
+        } else if (service.equals(V2SRTP)) {
             originalUrl = v2sUrl;
-        } else if (service.equals(ENVOY_SERVICE_V2WECHAT)) {
+        } else if (service.equals(V2WECHAT)) {
             originalUrl = v2wUrl;
-        } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
+        } else if (service.equals("SNOWFLAKE")) {
             originalUrl = snowUrl;
-        } else if (service.equals(ENVOY_SERVICE_MEEK)) {
+        } else if (service.equals("MEEK")) {
             originalUrl = meekUrl;
         } else {
             // unsupported service
