@@ -9,7 +9,6 @@ import org.chromium.net.UploadDataProviders
 import org.chromium.net.UrlRequest
 import java.io.File
 import java.io.IOException
-import java.lang.reflect.Field
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -18,7 +17,6 @@ import java.util.concurrent.Executors
 object CronetNetworking {
     private var mCronetEngine: CronetEngine? = null
     private val mExecutorService = Executors.newSingleThreadExecutor()
-    // private var mCustomCronetBuilder: CustomCronetBuilder? = null
 
     private const val TAG = "Envoy"
 
@@ -48,7 +46,6 @@ object CronetNetworking {
 
         envoyUrl?.let {
             Log.e(TAG, "envoyUrl is unsupported here now!")
-            // builder = builder.setEnvoyUrl(it)
         }
 
         proxyUrl?.let {
