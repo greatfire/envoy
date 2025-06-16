@@ -109,7 +109,7 @@ class EnvoyTestUtil() {
             preferences.clearUrlFailure(test.url)
         }
 
-        state.callback!!.reportTestSuccess(test.url, test.testType, test.timeSpent())
+        state.callback!!.reportTestSuccess(test.url, test.testType.name, test.timeSpent())
         // return test with updated state (including selected flag)
         return test
     }
@@ -129,7 +129,7 @@ class EnvoyTestUtil() {
             preferences.incrementUrlFailure(test.url, currentTime)
         }
 
-        state.callback!!.reportTestFailure(test.url, test.testType, test.timeSpent())
+        state.callback!!.reportTestFailure(test.url, test.testType.name, test.timeSpent())
     }
 
     fun stopTestBlocked(test: EnvoyTest) {
@@ -137,7 +137,7 @@ class EnvoyTestUtil() {
         val count = blockedCount.incrementAndGet()
         Log.d(TAG, "BLOCKED COUNT UPDATED: " + count)
 
-        state.callback!!.reportTestBlocked(test.url, test.testType)
+        state.callback!!.reportTestBlocked(test.url, test.testType.name)
     }
 
     fun testsComplete() {
@@ -163,6 +163,6 @@ class EnvoyTestUtil() {
             }
         }
 
-        state.callback!!.reportOverallStatus(result, time)
+        state.callback!!.reportOverallStatus(result.name, time)
     }
 }
