@@ -8,6 +8,8 @@ import android.util.Log
 import android.content.Intent
 import androidx.core.content.ContextCompat
 
+import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
+
 // This class represents an Envoy connection: type and URL,
 // and tracks additional information, such as a URL to any
 // proxy used, e.g. Shadowsocks provides a SOCKS5 interface
@@ -94,6 +96,15 @@ data class EnvoyTest(
         return san.getValue("id")
     }
 
+    fun getEnvoyUrl(): String {
+        // XXX this needs cleanup? get the Envoy URL from IEP
+        state.iep?.let {
+            return it.echProxyUrl
+        }
+        Log.e(TAG, "No EchProxyUrl in IEP")
+        return ""
+    }
+
     // returns a string $host:$port where the running service can be found
     suspend fun startService(): String {
         if (serviceRunning) {
@@ -114,15 +125,28 @@ data class EnvoyTest(
 
                 hostname?.let {
                     val echConfigList = state.dns.getECHConfig(hostname)
-                    state.emissary.setEnvoyUrl(url, echConfigList)
+                    state.iep?.let {
+                        it.setEnvoyUrl(url, echConfigList)
+
+                        Log.d(TAG, "Starting ECH with $url $echConfigList")
+
+                        // this uses the Go version of IsItUpYet before return
+                        it.start(IEnvoyProxy.EnvoyEch, "")
+                        val addr = it.localAddress(IEnvoyProxy.EnvoyEch)
+                        return addr
+                    }
                 }
                 return ""
             }
             EnvoyServiceType.HYSTERIA2 -> {
-                val addr = state.emissary.startHysteria2(url)
-                EnvoyConnectionTests.isItUpYet(addr)
-                return addr
-
+                state.iep?.let {
+                    it.hysteria2Server = url
+                    it.start(IEnvoyProxy.Hysteria2, "")
+                    val addr = it.localAddress(IEnvoyProxy.Hysteria2)
+                    EnvoyConnectionTests.isItUpYet(addr)
+                    return addr
+                }
+                return ""
             }
             EnvoyServiceType.SHADOWSOCKS -> {
                 // sadly this new code doesn't work, see the comments there
@@ -149,24 +173,64 @@ data class EnvoyTest(
                 return "socks5://127.0.0.1:1080"
             }
             EnvoyServiceType.V2SRTP -> {
-                val server = Uri.parse(url)
-                val host = server.host
-                val port = server.port.toString()
-                val uuid = getV2RayUuid(url)
+                state.iep?.let {
+                    val server = Uri.parse(url)
 
-                val addr = state.emissary.startV2RaySrtp(host, port, uuid)
-                EnvoyConnectionTests.isItUpYet(addr)
-                return addr
+                    it.v2RayServerAddress = server.host
+                    it.v2RayServerPort = server.port.toString()
+                    it.v2RayId = getV2RayUuid(url)
+
+                    it.start(IEnvoyProxy.V2RaySrtp, "")
+                    val addr = it.localAddress(IEnvoyProxy.V2RaySrtp)
+                    EnvoyConnectionTests.isItUpYet(addr)
+                    return addr
+                }
+                return ""
             }
             EnvoyServiceType.V2WECHAT -> {
-                val server = Uri.parse(url)
-                val host = server.host
-                val port = server.port.toString()
-                val uuid = getV2RayUuid(url)
+                state.iep?.let {
+                    val server = Uri.parse(url)
 
-                val addr = state.emissary.startV2RayWechat(host, port, uuid)
-                EnvoyConnectionTests.isItUpYet(addr)
-                return addr
+                    it.v2RayServerAddress = server.host
+                    it.v2RayServerPort = server.port.toString()
+                    it.v2RayId = getV2RayUuid(url)
+
+                    val host = server.host
+                    val port = server.port.toString()
+                    val uuid = getV2RayUuid(url)
+
+                    it.start(IEnvoyProxy.V2RayWechat, "")
+                    val addr = it.localAddress(IEnvoyProxy.V2RayWechat)
+                    EnvoyConnectionTests.isItUpYet(addr)
+                    return addr
+                }
+                return ""
+            }
+            // XXX there's actually only one service for both
+            EnvoyServiceType.CRONET_MASQUE,
+            EnvoyServiceType.OKHTTP_MASQUE -> {
+                Log.d(TAG, "about to start MASQUE 👺")
+
+                val upstreamUri = Uri.parse(url)
+                if (upstreamUri.host == null) {
+                    Log.e(TAG, "MASQUE host is null!?")
+                    return ""
+                }
+
+                state.iep?.let {
+                    it.masqueHost = upstreamUri.host
+
+                    var upstreamPort = upstreamUri.port
+                    if (upstreamPort == -1) {
+                        upstreamPort = 443
+                    }
+                    it.masquePort = upstreamPort.toLong()
+
+                    it.start(IEnvoyProxy.Masque, "")
+                    val addr = it.localAddress(IEnvoyProxy.Masque)
+                    return addr
+                }
+                return ""
             }
             else -> {
                 Log.e(TAG, "Tried to start an unknown service type $testType")
@@ -179,11 +243,16 @@ data class EnvoyTest(
         // stop the associated service
         // this is called to stop unused services
         when (testType) {
-            EnvoyServiceType.HYSTERIA2 -> state.emissary.stopHysteria2()
+            EnvoyServiceType.HYSTERIA2 -> state.iep?.let { it.stop(IEnvoyProxy.Hysteria2) }
             // EnvoyServiceType.SHADOWSOCKS -> shadowsocks?.let { it.stop() }
             // EnvoyServiceType.SHADOWSOCKS -> state.ctx!!.stopService(shadowsocksIntent)
-            EnvoyServiceType.V2SRTP -> state.emissary.stopV2RaySrtp()
-            EnvoyServiceType.V2WECHAT -> state.emissary.stopV2RayWechat()
+            EnvoyServiceType.V2SRTP -> state.iep?.let { it.stop(IEnvoyProxy.V2RaySrtp) }
+            EnvoyServiceType.V2WECHAT -> state.iep?.let { it.stop(IEnvoyProxy.V2RayWechat) }
+            EnvoyServiceType.CRONET_MASQUE,
+            EnvoyServiceType.OKHTTP_MASQUE -> {
+                // this is currently a no-op, but call it in case it ever isn't :)
+                state.iep?.let { it.stop(IEnvoyProxy.Masque) }
+            }
             EnvoyServiceType.CRONET_ENVOY,
             EnvoyServiceType.OKHTTP_ENVOY,
             EnvoyServiceType.CRONET_PROXY,
@@ -194,6 +263,7 @@ data class EnvoyTest(
             EnvoyServiceType.HTTP_ECH -> {
                 Log.d(TAG, "TODO: we can stop the ECH proxy")
             }
+            EnvoyServiceType.DIRECT -> "no op"
             else -> {
                 Log.e(TAG, "Tried to stop an unknown service $testType")
             }

@@ -74,6 +74,11 @@ class EnvoyNetworking {
         return this
     }
 
+    fun DEBUGsetTimeoutDirect(enabled: Boolean): EnvoyNetworking {
+        state.debugTimeoutDriect = enabled
+        return this
+    }
+
     fun connect(): EnvoyNetworking {
         initialized = true
         Log.d(TAG, "🏄‍♂️🏄‍♂️🏄‍♂️ Starting Envoy connect...")
