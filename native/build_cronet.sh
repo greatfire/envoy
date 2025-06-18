@@ -33,6 +33,11 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PA
 #gn gen out/Cronet-Desktop
 #autoninja -C out/Cronet-Desktop cronet # cronet_sample
 
+# XXX hacky fix of build problem in M128
+#if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
+#    ln -s "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/linux//chromium-browser-clang" "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang"
+#fi
+
 # Build the various Android versions
 for arch in arm arm64 x86 x64; do
 
@@ -56,7 +61,14 @@ for arch in arm arm64 x86 x64; do
         gn_args="$gn_args --x86"
     fi
 
-    "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
+    # XXX this doesn't work for arm64 in 138.0.7204.35 (and below?) we can skip the gn gen
+    # if we have an existing build dir
+    if [[ $arch != "arm64" ]]; then
+        "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn gen $gn_args
+        if ! grep "target_cpu = \"$arch\"" "$out_dir/args.gn"; then
+            echo "target_cpu = \"$arch\"" >>"$out_dir/args.gn"
+        fi
+    fi
 
     # this defaults to true and errors out (thanks Google)
     sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"
