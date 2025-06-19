@@ -168,7 +168,7 @@ public class MainActivity extends FragmentActivity {
                 masqueUrl = testUrls.get(i);
             } else if (testUrls.get(i).startsWith("ss")) {
                 ssUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("hysteria")) {
+            } else if (testUrls.get(i).startsWith("hysteria2")) {
                 hystUrl = testUrls.get(i);
             } else if (testUrls.get(i).startsWith("v2srtp")) {
                 v2sUrl = testUrls.get(i);
