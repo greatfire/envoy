@@ -65,7 +65,7 @@ public class VolleyFragment extends BaseFragment {
         CronetStack(String envoyUrl, Context context) {
             CronetEngine.Builder engineBuilder = new CronetEngine.Builder(context);
             if (envoyUrl != null && !envoyUrl.isEmpty()) {
-                engineBuilder.setEnvoyUrl(envoyUrl);
+                //engineBuilder.setEnvoyUrl(envoyUrl);
             }
             engine = engineBuilder.build();
         }

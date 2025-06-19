@@ -70,7 +70,7 @@ public class HttpURLConnectionFragment extends BaseFragment {
             String errorMsg;
             try {
                 CronetEngine.Builder engineBuilder = new CronetEngine.Builder(activityReference.get().getActivity());
-                engineBuilder.setEnvoyUrl(uri[1]);
+                //engineBuilder.setEnvoyUrl(uri[1]);
                 CronetEngine engine = engineBuilder.build();
 
                 URL url = new URL(uri[0]);
