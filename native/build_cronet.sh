@@ -56,7 +56,7 @@ for arch in arm arm64 x86 x64; do
         gn_args="$gn_args --x86"
     fi
 
-    "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
+    "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn gen $gn_args
     if ! grep "target_cpu = \"$arch\"" "$out_dir/args.gn"; then
         echo "target_cpu = \"$arch\"" >>"$out_dir/args.gn"
     fi
