@@ -27,7 +27,7 @@ class EnvoyState private constructor() {
     // How many coroutines to use to test URLs
     // this effectively limits the number of requests we can make at once
     // while testing
-    var concurrency = 6 // XXX
+    var concurrency = 1 // XXX
 
     // moving this back to state because it's state
     var connected = AtomicBoolean(false)

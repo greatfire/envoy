@@ -38,6 +38,8 @@ class EnvoyConnectWorker(
     private val state = EnvoyState.getInstance()
     private val util = EnvoyTestUtil.getInstance()
 
+    private val debugFlag = true // TEMP
+
     // "Worker"
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
@@ -48,23 +50,28 @@ class EnvoyConnectWorker(
         while (true) {
             val test = envoyTests.removeFirstOrNull()
             if (test == null) {
-                // Log.d(WTAG, "NO TESTS LEFT, BREAK")
+                 Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 // XXX ask for more URLs?
                 break
             }  else if (state.connected.get()) {
-                // Log.d(WTAG, "ALREADY CONNECTED, BREAK")
-                break
+                if (debugFlag) {
+                    Log.d(WTAG, "ALREADY CONNECTED (debugging), CONTINUE")
+                } else {
+                    Log.d(WTAG, "ALREADY CONNECTED (not debugging), BREAK")
+                    break
+                }
             } else if (util.isTimeExpired()) {
-                // Log.d(WTAG, "TIME EXPIRED, BREAK")
+                 Log.d(WTAG, "TIME EXPIRED, BREAK")
                 break
             } else if (util.isUrlBlocked(test)) {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                // Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+                 Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
                 util.stopTestBlocked(test)
                 continue
             } else {
                 // starts the timer and updates the tally
+                Log.d(WTAG, "RUN TEST - " + test)
                 util.startTest(test)
             }
 
@@ -202,7 +209,8 @@ class EnvoyConnectWorker(
         // copy
 
         // shuffle the rest of the URLs
-        envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
+        // envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
+        envoyTests.addAll(EnvoyConnectionTests.envoyTests)
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
                 + envoyTests.size
@@ -212,6 +220,7 @@ class EnvoyConnectWorker(
             startEnvoy()
         } catch (e: Exception) {
             Log.e(TAG, "Starting Envoy failed: $e")
+            e.printStackTrace()
         }
         // if we return failure, the job is re-run, I think?
         return Result.success()
