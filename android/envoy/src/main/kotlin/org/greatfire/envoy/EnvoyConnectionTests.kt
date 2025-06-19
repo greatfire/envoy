@@ -177,7 +177,7 @@ class EnvoyConnectionTests {
                     with(envoyTests) {
                         // should we always test all?
                         add(EnvoyTest(EnvoyServiceType.OKHTTP_ENVOY, tempUrl))
-                        add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
+                        // add(EnvoyTest(EnvoyServiceType.CRONET_ENVOY, tempUrl))
                         add(EnvoyTest(EnvoyServiceType.HTTP_ECH, tempUrl))
                     }
                 }
