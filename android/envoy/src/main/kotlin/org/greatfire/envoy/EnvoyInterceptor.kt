@@ -182,4 +182,15 @@ class EnvoyInterceptor : Interceptor {
         urlRequest.start()
         return callback.blockForResponse()
     }
+
+    // Use cronet to make the reuqest unmodified (presumably it's configured
+    // with a proxy)
+    private fun cronetToProxy(chain: Interceptor.Chain): Response {
+        val callback = CronetUrlRequestCallback(chain.request(), chain.call())
+        val urlRequest = CronetNetworking.buildRequest(
+            req, callback, state.cronetEngine!!
+        )
+        urlRequest.start()
+        return callback.blockForResponse()
+    }
 }
