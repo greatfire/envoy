@@ -57,7 +57,7 @@ class EnvoyState private constructor() {
 
     val shadowsocks: ShadowsocksService? = null
 
-    private fun createCronetEngine() {
+    private fun createCronetEngine(test: EnvoyTest) {
         // I think we can reuse the cache dir between runs?
         // XXX we used to have multiple tests cronet based tests
         // running in parallel...
@@ -69,8 +69,8 @@ class EnvoyState private constructor() {
         cronetEngine = CronetNetworking.buildEngine(
             context = ctx!!,
             cacheFolder = cacheDir.absolutePath,
-            envoyUrl = null,
-            strategy = 0,
+            resolverRules = test.resolverRules,
+            proxyUrl = test.proxyUrl,
             cacheSize = 10, // cache size in MB
         )
     }
@@ -85,7 +85,7 @@ class EnvoyState private constructor() {
             when (test.testType) {
                 EnvoyServiceType.CRONET_ENVOY,
                 EnvoyServiceType.CRONET_PROXY -> {
-                    createCronetEngine()
+                    createCronetEngine(test)
                 }
                 else -> "" // nothing to do
             }
