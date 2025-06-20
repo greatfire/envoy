@@ -105,7 +105,7 @@ class EnvoyDns() {
 
         // wait for a working server to be found
         // this is hacky, and should have a timeout XXX
-        while (serverUrl == "") {
+        while (serverUrl.isNullOrEmpty()) {
             Log.e(TAG, "getECHConfig called when serverUrl is null")
             delay(100)
         }

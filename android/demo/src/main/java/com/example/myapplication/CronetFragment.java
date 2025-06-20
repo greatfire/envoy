@@ -49,7 +49,7 @@ public class CronetFragment extends BaseFragment {
 
             CronetEngine.Builder engineBuilder = new CronetEngine.Builder(view.getContext());
             engineBuilder.setUserAgent("curl/7.66.0");
-            engineBuilder.setEnvoyUrl(envoyUrl);
+            //engineBuilder.setEnvoyUrl(envoyUrl);
 
             CronetEngine engine = engineBuilder.build();
             //Log.d(TAG, "engine version " + engine.getVersionString());

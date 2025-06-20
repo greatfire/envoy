@@ -48,21 +48,29 @@ import okhttp3.OkHttpClient;
 public class MainActivity extends FragmentActivity {
 
     private static final String WIKI_URL = "https://www.wikipedia.org/";
-    private static final String TAG = "EnvoyDemoApp";
+    private static final String TAG = "FOO"; // "EnvoyDemoApp";
 
     class DemoCallback implements EnvoyTestCallback {
         @Override
         public void reportTestSuccess(String testedUrl, String testedService, long time) {
             Log.d(TAG, "URL: " + testedUrl + " SUCCESS! Took: " + time + " ms");
-            displayOutput("VALID: " + testedService);
-            displayResults(testedService, true);
+            MainActivity.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    displayOutput("VALID: " + testedService);
+                    displayResults(testedService, true);
+                }
+            });
         }
 
         @Override
         public void reportTestFailure(String testedUrl, String testedService, long time) {
             Log.d(TAG, "URL: " + testedUrl + " failed. Took: " + time + " ms");
-            displayOutput("INVALID: " + testedService);
-            displayResults(testedService, false);
+            MainActivity.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    displayOutput("INVALID: " + testedService);
+                    displayResults(testedService, false);
+                }
+            });
         }
 
         @Override
@@ -77,14 +85,15 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
-    Secrets mSecrets;
     // NetworkIntentService mService;
     boolean mBound = false;
     TextView mOutputTextView;
     int mUrlCount = 0;
 
-    String httpsUrl = "";
-    String envoyUrl = "";
+    String httpUrl = "";
+    String cronetUrl = "";
+    String echUrl = "";
+    String masqueUrl = "";
     String ssUrl = "";
     String hystUrl = "";
     String v2sUrl = "";
@@ -94,6 +103,9 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        Log.d("FOO", "CREATE");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -109,44 +121,46 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.runButton).setEnabled(false);
 
         mOutputTextView = findViewById(R.id.output);
-        mSecrets = new Secrets();
-        if (mSecrets.getdefProxy(getPackageName()) == null) {
-            Log.w(TAG, "on create, no urls");
-            mOutputTextView.setText("nothing found to test...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
-            return;
-        } else {
-            Log.d(TAG, "on create, submit urls");
-            mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
-            // submit();
-            start();
-        }
+        mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
+        Log.d(TAG, "on create / start");
+        start();
     }
 
     private void start() {
-        String proxyList = mSecrets.getdefProxy(getPackageName());
-        String[] proxyParts = proxyList.split(",");
-        ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
+
+        Log.d("FOO", "START");
+
+        ArrayList<String> testUrls = new ArrayList<String>();
+        // *** add url strings here ***
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
         mUrlCount = 0;
 
         EnvoyNetworking envoy = new EnvoyNetworking();
 
-        // XXX where to get the context?
-        // envoy.setContext()
+        // XXX set the context here
+        envoy.setContext(getApplicationContext());
+
+        // set debug mode to ensure consistent behavior
+        envoy.setDebugMode(true);
 
         for (int i = 0; i < testUrls.size(); i++) {
             mUrlCount = mUrlCount + 1;
+
+            Log.d("FOO", "TEST URL: " + testUrls.get(i));
 
             // This feels a little silly
             if (testUrls.get(i).equals(WIKI_URL)) {
                 // NO-OP
             } else if (testUrls.get(i).startsWith("https")) {
-                httpsUrl = testUrls.get(i);
+                // https urls spawn multiple tests
+                httpUrl = testUrls.get(i);
+                cronetUrl = testUrls.get(i);
+                echUrl = testUrls.get(i);
             } else if (testUrls.get(i).startsWith("masque")) {
-                envoyUrl = testUrls.get(i);
+                masqueUrl = testUrls.get(i);
             } else if (testUrls.get(i).startsWith("ss")) {
                 ssUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("hysteria")) {
+            } else if (testUrls.get(i).startsWith("hysteria2")) {
                 hystUrl = testUrls.get(i);
             } else if (testUrls.get(i).startsWith("v2srtp")) {
                 v2sUrl = testUrls.get(i);
@@ -168,9 +182,14 @@ public class MainActivity extends FragmentActivity {
     }
 
     void resetResults() {
+
+        Log.d("FOO", "RESET");
+
         findViewById(R.id.directResult).setVisibility(View.GONE);
-        findViewById(R.id.httpsResult).setVisibility(View.GONE);
-        findViewById(R.id.envoyResult).setVisibility(View.GONE);
+        findViewById(R.id.httpResult).setVisibility(View.GONE);
+        findViewById(R.id.cronetResult).setVisibility(View.GONE);
+        findViewById(R.id.echResult).setVisibility(View.GONE);
+        findViewById(R.id.masqueResult).setVisibility(View.GONE);
         findViewById(R.id.ssResult).setVisibility(View.GONE);
         findViewById(R.id.hysteriaResult).setVisibility(View.GONE);
         findViewById(R.id.v2sResult).setVisibility(View.GONE);
@@ -180,7 +199,10 @@ public class MainActivity extends FragmentActivity {
     }
 
     void displayResults(String service, boolean success) {
-        if (service.equals(DIRECT)) {
+
+        Log.d("FOO", "DISPLAY: " + service + " / " + success);
+
+        if (service.equals(DIRECT.name())) {
             findViewById(R.id.directResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.directSuccess).setVisibility(View.VISIBLE);
@@ -189,29 +211,43 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.directSuccess).setVisibility(View.GONE);
                 findViewById(R.id.directFailure).setVisibility(View.VISIBLE);
             }
-        // XXX these should probably all be separate?
-        } else if (service.equals(OKHTTP_ENVOY)
-                || service.equals(CRONET_ENVOY)
-                || service.equals(HTTP_ECH)) {
-            findViewById(R.id.httpsResult).setVisibility(View.VISIBLE);
+        } else if (service.equals(OKHTTP_ENVOY.name())) {
+            findViewById(R.id.httpResult).setVisibility(View.VISIBLE);
             if (success) {
-                findViewById(R.id.httpsSuccess).setVisibility(View.VISIBLE);
-                findViewById(R.id.httpsFailure).setVisibility(View.GONE);
+                findViewById(R.id.httpSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.httpFailure).setVisibility(View.GONE);
             } else {
-                findViewById(R.id.httpsSuccess).setVisibility(View.GONE);
-                findViewById(R.id.httpsFailure).setVisibility(View.VISIBLE);
+                findViewById(R.id.httpSuccess).setVisibility(View.GONE);
+                findViewById(R.id.httpFailure).setVisibility(View.VISIBLE);
             }
-        // XXX this is the Envoy result not MASQUE
-        } else if (service.equals(OKHTTP_MASQUE)) {
-            findViewById(R.id.envoyResult).setVisibility(View.VISIBLE);
+        } else if (service.equals(CRONET_ENVOY.name())) {
+            findViewById(R.id.cronetResult).setVisibility(View.VISIBLE);
             if (success) {
-                findViewById(R.id.envoySuccess).setVisibility(View.VISIBLE);
-                findViewById(R.id.envoyFailure).setVisibility(View.GONE);
+                findViewById(R.id.cronetSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.cronetFailure).setVisibility(View.GONE);
             } else {
-                findViewById(R.id.envoySuccess).setVisibility(View.GONE);
-                findViewById(R.id.envoyFailure).setVisibility(View.VISIBLE);
+                findViewById(R.id.cronetSuccess).setVisibility(View.GONE);
+                findViewById(R.id.cronetFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(SHADOWSOCKS)) {
+        } else if (service.equals(HTTP_ECH.name())) {
+            findViewById(R.id.echResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.echSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.echFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.echSuccess).setVisibility(View.GONE);
+                findViewById(R.id.echFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(OKHTTP_MASQUE.name())) {
+            findViewById(R.id.masqueResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.masqueSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.masqueFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.masqueSuccess).setVisibility(View.GONE);
+                findViewById(R.id.masqueFailure).setVisibility(View.VISIBLE);
+            }
+        } else if (service.equals(SHADOWSOCKS.name())) {
             findViewById(R.id.ssResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.ssSuccess).setVisibility(View.VISIBLE);
@@ -220,7 +256,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.ssSuccess).setVisibility(View.GONE);
                 findViewById(R.id.ssFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(HYSTERIA2)) {
+        } else if (service.equals(HYSTERIA2.name())) {
             findViewById(R.id.hysteriaResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.hysteriaSuccess).setVisibility(View.VISIBLE);
@@ -229,7 +265,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.hysteriaSuccess).setVisibility(View.GONE);
                 findViewById(R.id.hysteriaFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(V2SRTP)) {
+        } else if (service.equals(V2SRTP.name())) {
             findViewById(R.id.v2sResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.v2sSuccess).setVisibility(View.VISIBLE);
@@ -238,7 +274,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.v2sSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2sFailure).setVisibility(View.VISIBLE);
             }
-        } else if (service.equals(V2WECHAT)) {
+        } else if (service.equals(V2WECHAT.name())) {
             findViewById(R.id.v2wResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.v2wSuccess).setVisibility(View.VISIBLE);
@@ -278,6 +314,9 @@ public class MainActivity extends FragmentActivity {
     }
 
     void displayOutput(String output) {
+
+        Log.d("FOO", "DISPLAY");
+
         String lines = mOutputTextView.getText().toString();
         String[] lineList = lines.split("\n");
         String newLines = output;
@@ -288,27 +327,32 @@ public class MainActivity extends FragmentActivity {
     }
 
     void logOutput(String service, boolean success) {
+
+        Log.d("FOO", "LOG(1)");
+
         String originalUrl = "???";
-        if (service.equals(DIRECT)) {
+        if (service.equals(DIRECT.name())) {
             originalUrl = WIKI_URL;
-        } else if (service.equals(OKHTTP_ENVOY)
-                || service.equals(CRONET_ENVOY)
-                || service.equals(HTTP_ECH)) {
-            originalUrl = httpsUrl;
-        } else if (service.equals(OKHTTP_MASQUE)) {
-            originalUrl = envoyUrl;
-        } else if (service.equals(SHADOWSOCKS)) {
+        } else if (service.equals(OKHTTP_ENVOY.name())) {
+            originalUrl = httpUrl;
+        } else if (service.equals(CRONET_ENVOY.name())) {
+            originalUrl = cronetUrl;
+        } else if (service.equals(HTTP_ECH.name())) {
+            originalUrl = echUrl;
+        } else if (service.equals(OKHTTP_MASQUE.name())) {
+            originalUrl = masqueUrl;
+        } else if (service.equals(SHADOWSOCKS.name())) {
             originalUrl = ssUrl;
-        } else if (service.equals(HYSTERIA2)) {
+        } else if (service.equals(HYSTERIA2.name())) {
             originalUrl = hystUrl;
-        } else if (service.equals(V2SRTP)) {
+        } else if (service.equals(V2SRTP.name())) {
             originalUrl = v2sUrl;
-        } else if (service.equals(V2WECHAT)) {
+        } else if (service.equals(V2WECHAT.name())) {
             originalUrl = v2wUrl;
-        } else if (service.equals("SNOWFLAKE")) {
-            originalUrl = snowUrl;
-        } else if (service.equals("MEEK")) {
-            originalUrl = meekUrl;
+        // } else if (service.equals("SNOWFLAKE")) {
+        //     originalUrl = snowUrl;
+        // } else if (service.equals("MEEK")) {
+        //     originalUrl = meekUrl;
         } else {
             // unsupported service
             Log.w(TAG, "unsupported service (log): " + service);
@@ -322,6 +366,8 @@ public class MainActivity extends FragmentActivity {
     }
 
     void logOutput(String output) {
+
+        Log.d("FOO", "START(2)");
 
         long logMs = System.currentTimeMillis();
         SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");

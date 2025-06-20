@@ -53,14 +53,12 @@ class EnvoyNetworking {
     // Set the callback for reporting status to the main application
     fun setCallback(callback: EnvoyTestCallback): EnvoyNetworking {
         state.callback = callback
-
         return this
     }
 
     // Provide a context reference from the main application
     fun setContext(context: Context): EnvoyNetworking {
         state.ctx = context
-
         return this
     }
 
@@ -71,6 +69,11 @@ class EnvoyNetworking {
 
     fun setBackoff(backoffEnabled: Boolean): EnvoyNetworking {
         state.backoffEnabled = backoffEnabled
+        return this
+    }
+
+    fun setDebugMode(debugMode: Boolean): EnvoyNetworking {
+        state.debugMode = debugMode
         return this
     }
 

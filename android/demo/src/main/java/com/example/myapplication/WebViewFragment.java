@@ -41,7 +41,7 @@ public class WebViewFragment extends BaseFragment {
             String envoyUrl = envoyUrlEditText.getText().toString();
 
             CronetEngine.Builder engineBuilder = new CronetEngine.Builder(view.getContext());
-            engineBuilder.setEnvoyUrl(envoyUrl);
+            //engineBuilder.setEnvoyUrl(envoyUrl);
 
             CronetEngine engine = engineBuilder.build();
 
