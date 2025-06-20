@@ -12,7 +12,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.chromium.net.CronetEngine;
-import org.greatfire.envoy.CronetInterceptor;
+
+import org.greatfire.envoy.EnvoyInterceptor;
+
 import org.greatfire.envoy.CronetOkHttpCallFactory;
 import org.jetbrains.annotations.NotNull;
 
@@ -69,13 +71,8 @@ public class OkHttpFragment extends BaseFragment {
                 return null;
             }
 
-            CronetEngine.Builder engineBuilder = new CronetEngine.Builder(activityReference.get().getActivity());
-            engineBuilder.setEnvoyUrl(uri[1]);
-
-            CronetEngine engine = engineBuilder.build();
-
             OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(new CronetInterceptor(engine))
+                    .addInterceptor(new EnvoyInterceptor())
                     .build();
             // OkHttpClient client = CronetOkHttpConnectionFactory.getClient()
             okhttp3.Request request = new okhttp3.Request.Builder().url(uri[0]).build();
