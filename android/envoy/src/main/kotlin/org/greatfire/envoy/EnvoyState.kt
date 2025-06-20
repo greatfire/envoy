@@ -27,7 +27,7 @@ class EnvoyState private constructor() {
     // How many coroutines to use to test URLs
     // this effectively limits the number of requests we can make at once
     // while testing
-    var concurrency = 1 // XXX
+    var concurrency = 6 // XXX
 
     // moving this back to state because it's state
     var connected = AtomicBoolean(false)
@@ -59,6 +59,8 @@ class EnvoyState private constructor() {
 
     // for debugging, simulate a connection timeout
     var debugTimeoutDriect = false
+
+    var debugMode = false
 
     private fun createCronetEngine(test: EnvoyTest) {
         // I think we can reuse the cache dir between runs?

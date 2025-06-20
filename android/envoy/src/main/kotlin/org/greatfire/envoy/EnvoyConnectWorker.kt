@@ -38,8 +38,6 @@ class EnvoyConnectWorker(
     private val state = EnvoyState.getInstance()
     private val util = EnvoyTestUtil.getInstance()
 
-    private val debugFlag = true // TEMP
-
     // "Worker"
     // This is run in EnvoyNetworking.concurrency number of coroutines
     // It effectively limits the number of servers we test at a time
@@ -54,7 +52,7 @@ class EnvoyConnectWorker(
                 // XXX ask for more URLs?
                 break
             }  else if (state.connected.get()) {
-                if (debugFlag) {
+                if (state.debugMode) {
                     Log.d(WTAG, "ALREADY CONNECTED (debugging), CONTINUE")
                 } else {
                     Log.d(WTAG, "ALREADY CONNECTED (not debugging), BREAK")
@@ -152,13 +150,17 @@ class EnvoyConnectWorker(
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
+        var numberOfCoroutines = state.concurrency
+        if (state.debugMode) {
+            numberOfCoroutines = 1
+        }
         Log.i(TAG,
-            "Launching ${state.concurrency} coroutines for ${envoyTests.size} tests")
+            "Launching ${numberOfCoroutines} coroutines for ${envoyTests.size} tests")
 
         // start timer
         util.startAllTests()
 
-        for (i in 1..state.concurrency) {
+        for (i in 1..numberOfCoroutines) {
             // Log.d(TAG, "Launching worker: " + i)
             var job = launch {
                 testUrls(i)
@@ -208,9 +210,12 @@ class EnvoyConnectWorker(
         // for use if we need to reconnect. This is just our working
         // copy
 
-        // shuffle the rest of the URLs
-        // envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
-        envoyTests.addAll(EnvoyConnectionTests.envoyTests)
+        // shuffle the rest of the URLs (unless running in debug mode)
+        if (state.debugMode) {
+            envoyTests.addAll(EnvoyConnectionTests.envoyTests)
+        } else {
+            envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
+        }
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
                 + envoyTests.size
