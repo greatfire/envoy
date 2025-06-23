@@ -14,15 +14,6 @@ import static org.greatfire.envoy.EnvoyServiceType.V2SRTP;
 import static org.greatfire.envoy.EnvoyServiceType.V2WECHAT;
 import static org.greatfire.envoy.EnvoyServiceType.SHADOWSOCKS;
 
-import static org.greatfire.envoy.EnvoyTestStatus.PASSED;
-import static org.greatfire.envoy.EnvoyTestStatus.FAILED;
-import static org.greatfire.envoy.EnvoyTestStatus.EMPTY;
-import static org.greatfire.envoy.EnvoyTestStatus.BLOCKED;
-import static org.greatfire.envoy.EnvoyTestStatus.TIMEOUT;
-import static org.greatfire.envoy.EnvoyTestStatus.UNKNOWN;
-
-
-import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -37,18 +28,14 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Objects;
-
-import okhttp3.OkHttpClient;
 
 public class MainActivity extends FragmentActivity {
 
     private static final String WIKI_URL = "https://www.wikipedia.org/";
-    private static final String TAG = "FOO"; // "EnvoyDemoApp";
+    private static final String TAG = "EnvoyDemoApp";
 
     class DemoCallback implements EnvoyTestCallback {
         @Override
@@ -57,7 +44,7 @@ public class MainActivity extends FragmentActivity {
             MainActivity.this.runOnUiThread(new Runnable() {
                 public void run() {
                     displayOutput("VALID: " + testedService);
-                    displayResults(testedService, true);
+                    displayResults(testedUrl, testedService, true);
                 }
             });
         }
@@ -68,7 +55,7 @@ public class MainActivity extends FragmentActivity {
             MainActivity.this.runOnUiThread(new Runnable() {
                 public void run() {
                     displayOutput("INVALID: " + testedService);
-                    displayResults(testedService, false);
+                    displayResults(testedUrl, testedService, false);
                 }
             });
         }
@@ -90,21 +77,8 @@ public class MainActivity extends FragmentActivity {
     TextView mOutputTextView;
     int mUrlCount = 0;
 
-    String httpUrl = "";
-    String cronetUrl = "";
-    String echUrl = "";
-    String masqueUrl = "";
-    String ssUrl = "";
-    String hystUrl = "";
-    String v2sUrl = "";
-    String v2wUrl = "";
-    String snowUrl = "";
-    String meekUrl = "";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-        Log.d("FOO", "CREATE");
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -128,8 +102,6 @@ public class MainActivity extends FragmentActivity {
 
     private void start() {
 
-        Log.d("FOO", "START");
-
         ArrayList<String> testUrls = new ArrayList<String>();
         // *** add url strings here ***
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
@@ -146,32 +118,8 @@ public class MainActivity extends FragmentActivity {
         for (int i = 0; i < testUrls.size(); i++) {
             mUrlCount = mUrlCount + 1;
 
-            Log.d("FOO", "TEST URL: " + testUrls.get(i));
-
-            // This feels a little silly
-            if (testUrls.get(i).equals(WIKI_URL)) {
-                // NO-OP
-            } else if (testUrls.get(i).startsWith("https")) {
-                // https urls spawn multiple tests
-                httpUrl = testUrls.get(i);
-                cronetUrl = testUrls.get(i);
-                echUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("masque")) {
-                masqueUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("ss")) {
-                ssUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("hysteria2")) {
-                hystUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("v2srtp")) {
-                v2sUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("v2wechat")) {
-                v2wUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("snowflake")) {
-                snowUrl = testUrls.get(i);
-            } else if (testUrls.get(i).startsWith("meek")) {
-                meekUrl = testUrls.get(i);
-            }
-
+            // used to exclude wiki url when testing wiki url set
+            // not required for the current version of the test?
             if (!testUrls.get(i).equals(WIKI_URL)) {
                 envoy.addEnvoyUrl(testUrls.get(i));
             }
@@ -182,8 +130,6 @@ public class MainActivity extends FragmentActivity {
     }
 
     void resetResults() {
-
-        Log.d("FOO", "RESET");
 
         findViewById(R.id.directResult).setVisibility(View.GONE);
         findViewById(R.id.httpResult).setVisibility(View.GONE);
@@ -198,9 +144,7 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.meekResult).setVisibility(View.GONE);
     }
 
-    void displayResults(String service, boolean success) {
-
-        Log.d("FOO", "DISPLAY: " + service + " / " + success);
+    void displayResults(String url, String service, boolean success) {
 
         if (service.equals(DIRECT.name())) {
             findViewById(R.id.directResult).setVisibility(View.VISIBLE);
@@ -307,15 +251,13 @@ public class MainActivity extends FragmentActivity {
         }
 
         // log results to file
-        logOutput(service, success);
+        logOutput(url, service, success);
 
         // if results were received, enable rerun test button
         findViewById(R.id.runButton).setEnabled(true);
     }
 
     void displayOutput(String output) {
-
-        Log.d("FOO", "DISPLAY");
 
         String lines = mOutputTextView.getText().toString();
         String[] lineList = lines.split("\n");
@@ -326,48 +268,15 @@ public class MainActivity extends FragmentActivity {
         mOutputTextView.setText(newLines);
     }
 
-    void logOutput(String service, boolean success) {
-
-        Log.d("FOO", "LOG(1)");
-
-        String originalUrl = "???";
-        if (service.equals(DIRECT.name())) {
-            originalUrl = WIKI_URL;
-        } else if (service.equals(OKHTTP_ENVOY.name())) {
-            originalUrl = httpUrl;
-        } else if (service.equals(CRONET_ENVOY.name())) {
-            originalUrl = cronetUrl;
-        } else if (service.equals(HTTP_ECH.name())) {
-            originalUrl = echUrl;
-        } else if (service.equals(OKHTTP_MASQUE.name())) {
-            originalUrl = masqueUrl;
-        } else if (service.equals(SHADOWSOCKS.name())) {
-            originalUrl = ssUrl;
-        } else if (service.equals(HYSTERIA2.name())) {
-            originalUrl = hystUrl;
-        } else if (service.equals(V2SRTP.name())) {
-            originalUrl = v2sUrl;
-        } else if (service.equals(V2WECHAT.name())) {
-            originalUrl = v2wUrl;
-        // } else if (service.equals("SNOWFLAKE")) {
-        //     originalUrl = snowUrl;
-        // } else if (service.equals("MEEK")) {
-        //     originalUrl = meekUrl;
-        } else {
-            // unsupported service
-            Log.w(TAG, "unsupported service (log): " + service);
-        }
-
+    void logOutput(String url, String service, boolean success) {
         if (success) {
-            logOutput("SUCCESS," + service + "," + originalUrl);
+            logOutput("SUCCESS," + service + "," + url);
         } else {
-            logOutput("FAILURE," + service + "," + originalUrl);
+            logOutput("FAILURE," + service + "," + url);
         }
     }
 
     void logOutput(String output) {
-
-        Log.d("FOO", "START(2)");
 
         long logMs = System.currentTimeMillis();
         SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
