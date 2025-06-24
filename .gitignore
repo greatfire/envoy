@@ -18,5 +18,6 @@ local.properties
 .swiftpm/
 
 # Demo Secrets
+android/credentials.properties
 android/demo/src/main/cpp/
 android/demo/src/main/java/com/example/myapplication/Secrets.kt

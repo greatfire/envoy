@@ -150,17 +150,13 @@ class EnvoyConnectWorker(
     // Launch EnvoyNetworking.concurrency number of coroutines
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
-        var numberOfCoroutines = state.concurrency
-        if (state.debugMode) {
-            numberOfCoroutines = 1
-        }
         Log.i(TAG,
-            "Launching ${numberOfCoroutines} coroutines for ${envoyTests.size} tests")
+            "Launching ${state.concurrency} coroutines for ${envoyTests.size} tests")
 
         // start timer
         util.startAllTests()
 
-        for (i in 1..numberOfCoroutines) {
+        for (i in 1..state.concurrency) {
             // Log.d(TAG, "Launching worker: " + i)
             var job = launch {
                 testUrls(i)
@@ -210,12 +206,8 @@ class EnvoyConnectWorker(
         // for use if we need to reconnect. This is just our working
         // copy
 
-        // shuffle the rest of the URLs (unless running in debug mode)
-        if (state.debugMode) {
-            envoyTests.addAll(EnvoyConnectionTests.envoyTests)
-        } else {
-            envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
-        }
+        // shuffle the rest of the URLs
+        envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
                 + envoyTests.size

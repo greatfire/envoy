@@ -60,7 +60,7 @@ class EnvoyState private constructor() {
     // for debugging, simulate a connection timeout
     var debugTimeoutDriect = false
 
-    // when set, all urls will be tested, one at a time, in the order they were submitted
+    // when set, all urls will be tested
     var debugMode = false
 
     private fun createCronetEngine(test: EnvoyTest) {

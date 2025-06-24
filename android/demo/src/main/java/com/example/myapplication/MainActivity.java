@@ -72,6 +72,7 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
+    Secrets mSecrets;
     // NetworkIntentService mService;
     boolean mBound = false;
     TextView mOutputTextView;
@@ -95,15 +96,24 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.runButton).setEnabled(false);
 
         mOutputTextView = findViewById(R.id.output);
-        mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
-        Log.d(TAG, "on create / start");
-        start();
+        mSecrets = new Secrets();
+        if (mSecrets.getdefProxy(getPackageName()) == null) {
+            Log.w(TAG, "on create, no urls");
+            mOutputTextView.setText("nothing found to test...\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
+            return;
+        } else {
+            Log.d(TAG, "on create, submit urls");
+            mOutputTextView.setText("*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*\n*");
+            // submit();
+            start();
+        }
     }
 
     private void start() {
 
-        ArrayList<String> testUrls = new ArrayList<String>();
-        // *** add url strings here ***
+        String proxyList = mSecrets.getdefProxy(getPackageName());
+        String[] proxyParts = proxyList.split(",");
+        ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
         mUrlCount = 0;
 
@@ -112,7 +122,7 @@ public class MainActivity extends FragmentActivity {
         // XXX set the context here
         envoy.setContext(getApplicationContext());
 
-        // set debug mode to ensure consistent behavior
+        // set debug mode to ensure all urls are tested
         envoy.setDebugMode(true);
 
         for (int i = 0; i < testUrls.size(); i++) {
