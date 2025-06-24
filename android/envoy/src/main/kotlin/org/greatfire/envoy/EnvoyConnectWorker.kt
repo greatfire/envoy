@@ -48,28 +48,28 @@ class EnvoyConnectWorker(
         while (true) {
             val test = envoyTests.removeFirstOrNull()
             if (test == null) {
-                 Log.d(WTAG, "NO TESTS LEFT, BREAK")
+                // Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 // XXX ask for more URLs?
                 break
             }  else if (state.connected.get()) {
                 if (state.debugMode) {
-                    Log.d(WTAG, "ALREADY CONNECTED (debugging), CONTINUE")
+                    // Log.d(WTAG, "ALREADY CONNECTED (debugging), CONTINUE")
                 } else {
-                    Log.d(WTAG, "ALREADY CONNECTED (not debugging), BREAK")
+                    // Log.d(WTAG, "ALREADY CONNECTED (not debugging), BREAK")
                     break
                 }
             } else if (util.isTimeExpired()) {
-                 Log.d(WTAG, "TIME EXPIRED, BREAK")
+                // Log.d(WTAG, "TIME EXPIRED, BREAK")
                 break
             } else if (util.isUrlBlocked(test)) {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                 Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+                // Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
                 util.stopTestBlocked(test)
                 continue
             } else {
                 // starts the timer and updates the tally
-                Log.d(WTAG, "RUN TEST - " + test)
+                // Log.d(WTAG, "RUN TEST - " + test)
                 util.startTest(test)
             }
 
