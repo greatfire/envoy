@@ -8,9 +8,6 @@ import android.content.Context
 import android.net.Uri
 
 class EnvoyShadowsocksTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.SHADOWSOCKS, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyShadowsocksTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing Shadowsocks " + this)
@@ -52,7 +49,7 @@ class EnvoyShadowsocksTest(envoyUrl: String, testUrl: String, testResponseCode: 
         // return "socks5://127.0.0.1:${EnvoyShadowsocks.LOCAL_PORT}"
 
         val shadowsocksIntent = Intent(state.ctx!!, ShadowsocksService::class.java)
-        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", envoyUrl)
+        shadowsocksIntent.putExtra("org.greatfire.envoy.START_SS_LOCAL", url)
         // XXX shouldn't this be background?
         ContextCompat.startForegroundService(state.ctx!!, shadowsocksIntent)
 

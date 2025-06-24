@@ -8,9 +8,6 @@ import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
 class EnvoyV2wechatTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.V2WECHAT, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyV2wechatTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()
@@ -43,15 +40,15 @@ class EnvoyV2wechatTest(envoyUrl: String, testUrl: String, testResponseCode: Int
         serviceRunning = true
 
         state.iep?.let {
-            val server = Uri.parse(envoyUrl)
+            val server = Uri.parse(url)
 
             it.v2RayServerAddress = server.host
             it.v2RayServerPort = server.port.toString()
-            it.v2RayId = getV2RayUuid(envoyUrl)
+            it.v2RayId = getV2RayUuid(url)
 
             val host = server.host
             val port = server.port.toString()
-            val uuid = getV2RayUuid(envoyUrl)
+            val uuid = getV2RayUuid(url)
 
             it.start(IEnvoyProxy.V2RayWechat, "")
             val addr = it.localAddress(IEnvoyProxy.V2RayWechat)

@@ -1,7 +1,6 @@
 package org.greatfire.envoy
 
 import android.util.Log
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
@@ -70,10 +69,10 @@ class EnvoyTestUtil() {
         }
 
         val currentTime = System.currentTimeMillis()
-        val failureTime = preferences.getFailureTimeForUrl(test.envoyUrl)
-        val failureCount = preferences.getFailureCountForUrl(test.envoyUrl)
+        val failureTime = preferences.getFailureTimeForUrl(test.url)
+        val failureCount = preferences.getFailureCountForUrl(test.url)
 
-        val sanitizedUrl = UrlUtil.sanitizeUrl(test.envoyUrl)
+        val sanitizedUrl = UrlUtil.sanitizeUrl(test.url)
 
         // backoff retries to avoid repeatedly hitting potentially blocked endpoints
         // first wait 5/10/15 minutes, then an hour, then a day
@@ -106,10 +105,10 @@ class EnvoyTestUtil() {
         if (test.testType != EnvoyServiceType.DIRECT) {
             // passed, remove retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
-            preferences.clearUrlFailure(test.envoyUrl)
+            preferences.clearUrlFailure(test.url)
         }
 
-        state.callback!!.reportTestSuccess(test.envoyUrl, test.testType, test.timeSpent())
+        state.callback!!.reportTestSuccess(test.url, test.testType, test.timeSpent())
         // return test with updated state (including selected flag)
         return test
     }
@@ -126,10 +125,10 @@ class EnvoyTestUtil() {
             // failed, update retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
             val currentTime = System.currentTimeMillis()
-            preferences.incrementUrlFailure(test.envoyUrl, currentTime)
+            preferences.incrementUrlFailure(test.url, currentTime)
         }
 
-        state.callback!!.reportTestFailure(test.envoyUrl, test.testType, test.timeSpent())
+        state.callback!!.reportTestFailure(test.url, test.testType, test.timeSpent())
     }
 
     fun stopTestBlocked(test: EnvoyTest) {
@@ -137,7 +136,7 @@ class EnvoyTestUtil() {
         val count = blockedCount.incrementAndGet()
         Log.d(TAG, "BLOCKED COUNT UPDATED: " + count)
 
-        state.callback!!.reportTestBlocked(test.envoyUrl, test.testType)
+        state.callback!!.reportTestBlocked(test.url, test.testType)
     }
 
     fun testsComplete() {

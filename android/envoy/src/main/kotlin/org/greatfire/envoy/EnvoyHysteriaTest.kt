@@ -7,9 +7,6 @@ import android.content.Context
 import android.net.Uri
 
 class EnvoyHysteriaTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.HYSTERIA2, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyHysteriaTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()
@@ -36,7 +33,7 @@ class EnvoyHysteriaTest(envoyUrl: String, testUrl: String, testResponseCode: Int
         serviceRunning = true
 
         state.iep?.let {
-            it.hysteria2Server = envoyUrl
+            it.hysteria2Server = url
             it.start(IEnvoyProxy.Hysteria2, "")
             val addr = it.localAddress(IEnvoyProxy.Hysteria2)
             EnvoyConnectionTests.isItUpYet(addr)

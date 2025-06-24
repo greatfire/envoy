@@ -7,9 +7,6 @@ import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
 class EnvoyCronetMasqueTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.CRONET_MASQUE, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyCronetMasqueTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         if (proxyUrl == null) {
@@ -34,7 +31,7 @@ class EnvoyCronetMasqueTest(envoyUrl: String, testUrl: String, testResponseCode:
 
         Log.d(TAG, "about to start MASQUE 👺")
 
-        val upstreamUri = Uri.parse(envoyUrl)
+        val upstreamUri = Uri.parse(url)
         if (upstreamUri.host == null) {
             Log.e(TAG, "MASQUE host is null!?")
             return ""

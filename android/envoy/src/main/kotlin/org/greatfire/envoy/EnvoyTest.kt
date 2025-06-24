@@ -33,12 +33,12 @@ import java.util.concurrent.TimeUnit
 
 open class EnvoyTest(
     var testType: EnvoyServiceType = EnvoyServiceType.UNKNOWN,
-    var envoyUrl: String,
+    var url: String,
     var testUrl: String = "https://www.google.com/generate_204",
     var testResponseCode: Int = 204
 ) {
     companion object {
-        private const val TAG = "EnvoyTest"
+        const val TAG = "EnvoyTest"
     }
 
     // proxy URL for the service providing transport
@@ -71,14 +71,7 @@ open class EnvoyTest(
     protected val shadowsocksIntent: Intent? = null
 
     override fun toString(): String {
-        return UrlUtil.sanitizeUrl(envoyUrl) + " (" + testType + ")"
-    }
-
-    fun checkTimer(): Timer {
-        if (timer == null) {
-            timer = Timer()
-        }
-        return timer!!
+        return UrlUtil.sanitizeUrl(url) + " (" + testType + ")"
     }
 
     // helper to time things
@@ -250,7 +243,7 @@ open class EnvoyTest(
 
 
     suspend fun testCronetProxy(testResponseCode: Int, context: Context): Boolean {
-        var proxyUrl = envoyUrl
+        var proxyUrl = url
         // proxyIsEnvoy should never be true here?
         if (proxyUrl != null && !proxyIsEnvoy) {
             proxyUrl = proxyUrl!!
@@ -299,14 +292,27 @@ open class EnvoyTest(
     }
 
     fun startTimer() {
-        checkTimer() // this starts the timer as a side effect
+        // creating a new timer sets the start time to the current time
+        if (timer == null) {
+            timer = Timer()
+        } else {
+            Log.w(TAG, "startTimer() called but timer already started")
+        }
     }
 
     fun stopTimer(): Long {
-        return checkTimer().stop()
+        timer?.let {
+            return it.stop()
+        }
+        Log.e(TAG, "stopTimer() called but timer not started")
+        return 0
     }
 
     fun timeSpent(): Long {
-        return checkTimer().timeSpent()
+        timer?.let {
+            return it.timeSpent()
+        }
+        Log.e(TAG, "timeSpent() called but timer not started")
+        return 0
     }
 }

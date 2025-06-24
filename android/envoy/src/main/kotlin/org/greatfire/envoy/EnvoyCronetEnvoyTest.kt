@@ -5,9 +5,6 @@ import android.net.Uri
 import java.util.concurrent.Executors
 
 class EnvoyCronetEnvoyTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.CRONET_ENVOY, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyCronetEnvoyTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         // proxyUrl is assumed to be an Envoy proxy because this is a Cronet Envoy test
@@ -23,7 +20,7 @@ class EnvoyCronetEnvoyTest(envoyUrl: String, testUrl: String, testResponseCode: 
         val callback = TestUrlRequestCallback()
         // aim at the Envoy proxy instead of the real target
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
-            envoyUrl, // Envoy proxy URL
+            url, // Envoy proxy URL
             callback,
             Executors.newCachedThreadPool()
         )

@@ -5,9 +5,6 @@ import android.util.Log
 import okhttp3.Request
 
 class EnvoyDirectTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.DIRECT, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyDirectTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing direct connection")

@@ -6,9 +6,6 @@ import android.util.Log
 import okhttp3.Request
 
 class EnvoyHttpProxyTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.OKHTTP_PROXY, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyHttpProxyTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         val host = Uri.parse(testUrl).host

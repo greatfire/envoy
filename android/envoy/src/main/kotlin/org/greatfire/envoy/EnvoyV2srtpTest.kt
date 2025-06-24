@@ -8,9 +8,6 @@ import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
 class EnvoyV2srtpTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.V2SRTP, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyV2srtpTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         var addr = startService()
@@ -43,11 +40,11 @@ class EnvoyV2srtpTest(envoyUrl: String, testUrl: String, testResponseCode: Int) 
         serviceRunning = true
 
         state.iep?.let {
-            val server = Uri.parse(envoyUrl)
+            val server = Uri.parse(url)
 
             it.v2RayServerAddress = server.host
             it.v2RayServerPort = server.port.toString()
-            it.v2RayId = getV2RayUuid(envoyUrl)
+            it.v2RayId = getV2RayUuid(url)
 
             it.start(IEnvoyProxy.V2RaySrtp, "")
             val addr = it.localAddress(IEnvoyProxy.V2RaySrtp)

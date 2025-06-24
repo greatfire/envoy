@@ -128,7 +128,7 @@ class EnvoyInterceptor : Interceptor {
             with (builder) {
                 addHeader("Host-Orig", url.host)
                 addHeader("Url-Orig", url.toString())
-                url(state.activeService!!.envoyUrl + "?test=" + t)
+                url(state.activeService!!.url + "?test=" + t)
             }
         }
 

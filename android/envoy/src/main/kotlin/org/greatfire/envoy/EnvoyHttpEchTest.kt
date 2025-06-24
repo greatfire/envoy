@@ -6,9 +6,6 @@ import android.util.Log
 import android.content.Context
 
 class EnvoyHttpEchTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.HTTP_ECH, envoyUrl, testUrl, testResponseCode) {
-    companion object {
-        private const val TAG = "EnvoyHttpEchTest"
-    }
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + this)
@@ -39,7 +36,7 @@ class EnvoyHttpEchTest(envoyUrl: String, testUrl: String, testResponseCode: Int)
 
         serviceRunning = true
 
-        val hostname = Uri.parse(envoyUrl).getHost()
+        val hostname = Uri.parse(url).getHost()
 
         // XXX set DOH server for Go code here?
         // or keep it in connect()?
@@ -47,7 +44,7 @@ class EnvoyHttpEchTest(envoyUrl: String, testUrl: String, testResponseCode: Int)
         hostname?.let {
             val echConfigList = state.dns.getECHConfig(hostname)
             state.iep?.let {
-                it.setEnvoyUrl(envoyUrl, echConfigList)
+                it.setEnvoyUrl(url, echConfigList)
             }
         }
 
