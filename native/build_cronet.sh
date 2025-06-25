@@ -25,10 +25,10 @@ git checkout .
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/01-proxy_support.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
 # SCM: this one doesn't compile, TODO fix that :)
-# patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
 
 # api.txt and api_version.txt is updated after all the patches are applied
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-update_api.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-update_api.patch"
 
 # build related hack that probably needs more attention, the generate javadoc step
 # fails with a class not found error... hopefully goes away with newer Chromium sources
