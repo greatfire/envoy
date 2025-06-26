@@ -12,16 +12,29 @@ class EnvoyDns() {
     companion object {
         private const val TAG = "EnvoyDns"
 
-        private val CLOUDFLARE_SERVERS = listOf<String>("1.1.1.1", "1.0.0.1", "[2606:4700:4700::1111]", "[2606:4700:4700::1001]")
-        private val QUAD9_SERVERS = listOf<String>("9.9.9.9", "149.112.112.112", "[2620:fe::fe]", "[2620:fe::fe:9]")
-        private val DNS_SB_SERVERS = listOf<String>("185.222.222.222", "45.11.45.11", "[2a09::]", "[2a11::]")
+        private val CLOUDFLARE_SERVERS = listOf<String>(
+            "1.1.1.1", "1.0.0.1",
+            "[2606:4700:4700::1111]", "[2606:4700:4700::1001]")
+        private val QUAD9_SERVERS = listOf<String>(
+            "9.9.9.9", "149.112.112.112",
+            "[2620:fe::fe]", "[2620:fe::fe:9]")
+        private val DNS_SB_SERVERS = listOf<String>(
+            "185.222.222.222", "45.11.45.11",
+            "[2a09::]", "[2a11::]")
+        private val SWITCH_CH_SERVERS = listOf<String>(
+            "130.59.31.248", "130.59.31.251",
+            "[2001:620:0:ff::2]", "[2001:620:0:ff::3]")
+        private val YANDEX_SERVERS = listOf<String>(
+            "77.88.8.8", "77.88.8.1", "[2a02:6b8::feed:0ff]",
+            "[2a02:6b8:0:1::feed:0ff]")
+        private val ADGUARD_SERVERS = listOf<String>(
+            "94.140.14.141", "94.140.14.140",
+            "[2a10:50c0::2:ff]", "[2a10:50c0::1:ff]")
 
         // Cloudflare is somewhat arbitrary, ipv6 seems less often blocked
         // in my brief testing
         // this is used if something goes wrong
         private const val FALLBACK_DNS_SERVER = "[2606:4700:4700::1111]"
-
-        private val SERVERS = listOf<String>("45.11.45.11", "[2a09::]")
     }
 
     var chosenServer: String? = null
@@ -44,7 +57,6 @@ class EnvoyDns() {
         doh.use {
             try {
                 aRecords = doh.lookUp(resolveHost, "A").data
-                // Log.d(TAG, "aRecords: " + aRecords)
                 // XXX should we test the list isn't empty at least
                 // or seomthing?
                 // We assume a return here is a success
@@ -70,7 +82,10 @@ class EnvoyDns() {
         val serverList = listOf(
             CLOUDFLARE_SERVERS,
             QUAD9_SERVERS,
-            DNS_SB_SERVERS
+            DNS_SB_SERVERS,
+            SWITCH_CH_SERVERS,
+            YANDEX_SERVERS,
+            ADGUARD_SERVERS,
         ).flatten()
 
         try {
