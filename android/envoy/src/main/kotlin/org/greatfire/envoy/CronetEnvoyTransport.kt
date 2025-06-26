@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import java.util.concurrent.Executors
 
-class EnvoyCronetEnvoyTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.CRONET_ENVOY, envoyUrl, testUrl, testResponseCode) {
+class CronetEnvoyTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.CRONET_ENVOY, envoyUrl, testUrl, testResponseCode) {
 
     override suspend fun startTest(context: Context): Boolean {
         // proxyUrl is assumed to be an Envoy proxy because this is a Cronet Envoy test

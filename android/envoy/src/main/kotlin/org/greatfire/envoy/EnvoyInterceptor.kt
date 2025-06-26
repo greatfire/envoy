@@ -106,7 +106,7 @@ class EnvoyInterceptor : Interceptor {
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX direct test instance passed purely to disable any active envoy service
                 //   this test should never be run, so actual values shouldn't matter
-                state.connectIfNeeded(EnvoyDirectTest("direct://", "", 0))
+                state.connectIfNeeded(DirectTransport("direct://", "", 0))
             }
         }
 

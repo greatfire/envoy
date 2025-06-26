@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
 // for a PT, that gets stored in proxyUrl
 // proxyiSEnvoy lets us know if proxyUrl is an Envoy proxy or SOCKS/HTTP
 
-open class EnvoyTest(
+open class Transport(
     var testType: EnvoyServiceType = EnvoyServiceType.UNKNOWN,
     var url: String,
     var testUrl: String = "https://www.google.com/generate_204",

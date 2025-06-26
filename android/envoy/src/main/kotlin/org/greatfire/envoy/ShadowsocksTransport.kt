@@ -7,7 +7,7 @@ import androidx.core.content.ContextCompat
 import android.content.Context
 import android.net.Uri
 
-class EnvoyShadowsocksTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.SHADOWSOCKS, envoyUrl, testUrl, testResponseCode) {
+class ShadowsocksTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.SHADOWSOCKS, envoyUrl, testUrl, testResponseCode) {
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing Shadowsocks " + this)

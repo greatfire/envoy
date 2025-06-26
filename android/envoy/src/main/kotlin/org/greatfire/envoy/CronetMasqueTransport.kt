@@ -6,7 +6,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
-class EnvoyHttpMasqueTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.OKHTTP_MASQUE, envoyUrl, testUrl, testResponseCode) {
+class CronetMasqueTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.CRONET_MASQUE, envoyUrl, testUrl, testResponseCode) {
 
     override suspend fun startTest(context: Context): Boolean {
         if (proxyUrl == null) {
@@ -16,7 +16,7 @@ class EnvoyHttpMasqueTest(envoyUrl: String, testUrl: String, testResponseCode: I
             Log.d(TAG, "Starting MASQUE: $addr")
         }
 
-        return testStandardProxy(Uri.parse(proxyUrl), testResponseCode)
+        return testCronetProxy(testResponseCode, context)
     }
 
     override suspend fun startService(): String {

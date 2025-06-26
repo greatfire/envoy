@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import okhttp3.Request
 
-class EnvoyDirectTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.DIRECT, envoyUrl, testUrl, testResponseCode) {
+class DirectTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.DIRECT, envoyUrl, testUrl, testResponseCode) {
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing direct connection")

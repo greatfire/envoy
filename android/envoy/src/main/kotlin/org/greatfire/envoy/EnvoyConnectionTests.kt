@@ -17,12 +17,12 @@ class EnvoyConnectionTests {
     companion object {
         private const val TAG = "EnvoyConnectionTests"
 
-        var directTest: EnvoyDirectTest? = null;
+        var directTest: DirectTransport? = null;
 
         // This list of tests persists
         // should this move to the global state/settings
         // object?
-        var envoyTests = mutableListOf<EnvoyTest>()
+        var transports = mutableListOf<Transport>()
 
         var cronetThreadPool = Executors.newCachedThreadPool()
 
@@ -57,9 +57,9 @@ class EnvoyConnectionTests {
             // We also can't support all the options (like resolver rules)
             // with OkHttp... should we ignore them and try anyway, or
             // just use Cronet if those features are called for?
-            val okTest = EnvoyHttpEnvoyTest(realUrl, testUrl, testResponseCode)
-            val crTest = EnvoyCronetEnvoyTest(realUrl, testUrl, testResponseCode)
-            val echTest = EnvoyHttpEchTest(realUrl, testUrl, testResponseCode)
+            val okTest = OkHttpEnvoyTransport(realUrl, testUrl, testResponseCode)
+            val crTest = CronetEnvoyTransport(realUrl, testUrl, testResponseCode)
+            val echTest = HttpEchTransport(realUrl, testUrl, testResponseCode)
 
             // `header_` params
             tempUri.getQueryParameterNames().forEach {
@@ -132,7 +132,7 @@ class EnvoyConnectionTests {
                 echTest.proxyUrl = it
             }
 
-            with(envoyTests) {
+            with(transports) {
                 add(okTest)
                 add(crTest)
                 add(echTest)
@@ -142,7 +142,7 @@ class EnvoyConnectionTests {
         @JvmStatic
         fun addDirectUrl(url: String) {
             directUrl = url;
-            directTest = EnvoyDirectTest(url, testUrl, testResponseCode)
+            directTest = DirectTransport(url, testUrl, testResponseCode)
         }
 
         // and an Envoy proxy URL to the list to test
@@ -168,18 +168,18 @@ class EnvoyConnectionTests {
                         tempUrl = url.replaceFirst("""^envoy\+https""".toRegex(), "https")
                     }
 
-                    with(envoyTests) {
+                    with(transports) {
                         // XXX should we always test both?
-                        add(EnvoyHttpEnvoyTest(tempUrl, testUrl, testResponseCode))
-                        add(EnvoyCronetEnvoyTest(tempUrl, testUrl, testResponseCode))
-                        add(EnvoyHttpEchTest(tempUrl, testUrl, testResponseCode))
+                        add(OkHttpEnvoyTransport(tempUrl, testUrl, testResponseCode))
+                        add(CronetEnvoyTransport(tempUrl, testUrl, testResponseCode))
+                        add(HttpEchTransport(tempUrl, testUrl, testResponseCode))
                     }
                 }
 
                 "masque" -> {
-                    with(envoyTests) {
-                        add(EnvoyHttpMasqueTest(url, testUrl, testResponseCode))
-                        add(EnvoyCronetMasqueTest(url, testUrl, testResponseCode))
+                    with(transports) {
+                        add(OkHttpMasqueTransport(url, testUrl, testResponseCode))
+                        add(CronetMasqueTransport(url, testUrl, testResponseCode))
                     }
                 }
                 // These aren't "officially" supported by Envoy, but they're
@@ -195,25 +195,25 @@ class EnvoyConnectionTests {
 
                     Log.d(TAG, "proxy URL: $tempUrl")
 
-                    with (envoyTests) {
-                        add(EnvoyHttpProxyTest(tempUrl, testUrl, testResponseCode))
-                        add(EnvoyCronetProxyTest(tempUrl, testUrl, testResponseCode))
+                    with (transports) {
+                        add(OkHttpProxyTransport(tempUrl, testUrl, testResponseCode))
+                        add(CronetProxyTransport(tempUrl, testUrl, testResponseCode))
                     }
                 }
                 "envoy" -> {
                     addEnvoySechemeUrl(url)
                 }
                 "hysteria2" -> {
-                    envoyTests.add(EnvoyHysteriaTest(url, testUrl, testResponseCode))
+                    transports.add(Hysteria2Transport(url, testUrl, testResponseCode))
                 }
                 "v2srtp" -> {
-                    envoyTests.add(EnvoyV2srtpTest(url, testUrl, testResponseCode))
+                    transports.add(V2SrtpTransport(url, testUrl, testResponseCode))
                 }
                 "v2wechat" -> {
-                    envoyTests.add(EnvoyV2wechatTest(url, testUrl, testResponseCode))
+                    transports.add(V2WechatTransport(url, testUrl, testResponseCode))
                 }
                 "ss" -> {
-                    envoyTests.add(EnvoyShadowsocksTest(url, testUrl, testResponseCode))
+                    transports.add(ShadowsocksTransport(url, testUrl, testResponseCode))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)

@@ -31,7 +31,7 @@ class EnvoyConnectWorker(
     val tests = EnvoyConnectionTests()
 
     // this ArrayDeque is our working copy of the tests
-    private val envoyTests = ArrayDeque<EnvoyTest>()
+    private val transports = ArrayDeque<Transport>()
     private val jobs = mutableListOf<Job>()
 
     private val state = EnvoyState.getInstance()
@@ -45,7 +45,7 @@ class EnvoyConnectWorker(
         val WTAG = TAG + "-" + id
 
         while (true) {
-            val test = envoyTests.removeFirstOrNull()
+            val test = transports.removeFirstOrNull()
             if (test == null) {
                 // Log.d(WTAG, "NO TESTS LEFT, BREAK")
                 // XXX ask for more URLs?
@@ -97,7 +97,7 @@ class EnvoyConnectWorker(
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
         Log.i(TAG,
-            "Launching ${state.concurrency} coroutines for ${envoyTests.size} tests")
+            "Launching ${state.concurrency} coroutines for ${transports.size} tests")
 
         // start timer
         util.startAllTests()
@@ -146,7 +146,7 @@ class EnvoyConnectWorker(
         // test direct connection first
         val directTest = EnvoyConnectionTests.directTest
         if (directTest != null) {
-            envoyTests.add(directTest)
+            transports.add(directTest)
         }
 
         // We preserve the original list of tests in EnvoyNetworking
@@ -154,10 +154,10 @@ class EnvoyConnectWorker(
         // copy
 
         // shuffle the rest of the URLs
-        envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
+        transports.addAll(EnvoyConnectionTests.transports.shuffled())
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
-                + envoyTests.size
+                + transports.size
                 + " URLs to test")
 
         try {

@@ -5,7 +5,7 @@ import android.util.Log
 
 import android.content.Context
 
-class EnvoyHttpEchTest(envoyUrl: String, testUrl: String, testResponseCode: Int) : EnvoyTest(EnvoyServiceType.HTTP_ECH, envoyUrl, testUrl, testResponseCode) {
+class HttpEchTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.HTTP_ECH, envoyUrl, testUrl, testResponseCode) {
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + this)
