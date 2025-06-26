@@ -26,6 +26,12 @@ patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PA
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-dns_over_https_config.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/05-update_api.patch"
+
+# XXX hacky fix of build problem in M128
+if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
+    ln -s "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/linux//chromium-browser-clang" "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang"
+fi
 
 # Build the linux version
 # build cronet only(without java jni)
@@ -57,7 +63,10 @@ for arch in arm arm64 x86 x64; do
         gn_args="$gn_args --x86"
     fi
 
-    "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
+    # XXX how is the default platform broken? 🤦
+    if [[ $arch != "arm64" ]]; then
+        "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
+    fi
 
     # this defaults to true and errors out (thanks Google)
     sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"
