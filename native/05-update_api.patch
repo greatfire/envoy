@@ -1,6 +1,5 @@
  components/cronet/android/api.txt               | 12 ++++++++++-
  components/cronet/android/api_version.txt       |  2 +-
- components/cronet/url_request_context_config.cc | 28 +++++++++++++++++++++++++
  3 files changed, 40 insertions(+), 2 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
@@ -44,49 +43,3 @@ index bb95160cb6e07..a787364590245 100644
 @@ -1 +1 @@
 -33
 +34
-diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 85922aa08e95f..f4066ba74131e 100644
---- a/components/cronet/url_request_context_config.cc
-+++ b/components/cronet/url_request_context_config.cc
-@@ -167,6 +167,10 @@ const char kDisableTlsZeroRtt[] = "disable_tls_zero_rtt";
- // underlying OS.
- const char kSpdyGoAwayOnIpChange[] = "spdy_go_away_on_ip_change";
- 
-+// Use a StandaloneResolver with the provided DNS over HTTPS configs. Other
-+// values are left at the defaults. TODO: Should we offer more of the config?
-+const char kDnsOverHttpsConfig[] = "dns_over_https_config";
-+
- // Whether the connection status of all bidirectional streams (created through
- // the Cronet engine) should be monitored.
- // The value must be an integer (> 0) and will be interpreted as a suggestion
-@@ -730,6 +734,30 @@ void URLRequestContextConfig::SetContextBuilderExperimentalOptions(
-         continue;
-       }
-       session_params->spdy_go_away_on_ip_change = iter->second.GetBool();
-+    } else if (iter->first == kDnsOverHttpsConfig) {
-+      if (!iter->second.is_dict()) {
-+        LOG(ERROR) << "\"" << iter->first << "\" config params \""
-+                   << iter->second << "\" is not a dictionary value";
-+        effective_experimental_options.Remove(iter->first);
-+        continue;
-+      }
-+
-+      net::DnsConfigOverrides overrides = net::DnsConfigOverrides::CreateOverridingEverythingWithDefaults();
-+      // Envoy does this
-+      overrides.secure_dns_mode = net::SecureDnsMode::kSecure;
-+
-+      // This is a little silly, Dict -> JSON -> Dict
-+      std::string temp;
-+      base::JSONWriter::Write(iter->second.GetDict(), &temp);
-+      overrides.dns_over_https_config = net::DnsOverHttpsConfig::FromString(temp);
-+
-+      net::HostResolver::ManagerOptions host_resolver_manager_options;
-+      host_resolver_manager_options.dns_config_overrides = overrides;
-+      std::unique_ptr<net::HostResolver> host_resolver;
-+      host_resolver = net::HostResolver::CreateStandaloneResolver(
-+        net::NetLog::Get(), std::move(host_resolver_manager_options));
-+
-+      context_builder->set_host_resolver(std::move(host_resolver));
-     } else {
-       LOG(WARNING) << "Unrecognized Cronet experimental option \""
-                    << iter->first << "\" with params \"" << iter->second;
