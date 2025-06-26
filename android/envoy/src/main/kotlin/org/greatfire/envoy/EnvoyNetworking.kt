@@ -45,7 +45,7 @@ class EnvoyNetworking {
     // direct to true. It's not a problem to do both, but probably not
     // necessary. Doing neither will disable direct connections
     fun setDirectUrl(newVal: String): EnvoyNetworking {
-        EnvoyConnectionTests.directUrl = newVal
+        EnvoyConnectionTests.addDirectUrl(newVal)
 
         return this
     }
