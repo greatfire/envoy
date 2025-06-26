@@ -1,35 +1,42 @@
- components/cronet/android/api.txt         | 6 +++++-
- components/cronet/android/api_version.txt | 2 +-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ components/cronet/android/api.txt               | 12 ++++++++++-
+ components/cronet/android/api_version.txt       |  2 +-
+ components/cronet/url_request_context_config.cc | 28 +++++++++++++++++++++++++
+ 3 files changed, 40 insertions(+), 2 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index eb3738e136276..c95a104b6c6d5 100644
+index 66c254503684f..51296f6e86e4b 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
-@@ -89,6 +89,8 @@ public class org.chromium.net.CronetEngine$Builder {
-   public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
-   public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
-   public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
+@@ -86,6 +86,11 @@ public class org.chromium.net.CronetEngine$Builder {
+   public static final int HTTP_CACHE_IN_MEMORY;
+   public static final int HTTP_CACHE_DISK_NO_HTTP;
+   public static final int HTTP_CACHE_DISK;
++  public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
++  public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
++  public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
 +  public org.chromium.net.CronetEngine$Builder setResolverRules(java.lang.String);
 +  public org.chromium.net.CronetEngine$Builder setProxyUrl(java.lang.String);
    public org.chromium.net.CronetEngine$Builder(android.content.Context);
    public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
    public java.lang.String getDefaultUserAgent();
-@@ -331,6 +333,8 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+@@ -328,6 +333,11 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
    public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
    public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
    public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
 +  public abstract org.chromium.net.ICronetEngineBuilder setProxyUrl(java.lang.String);
 +  public abstract org.chromium.net.ICronetEngineBuilder setResolverRules(java.lang.String);
-   public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
-   public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
-   public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
-@@ -641,4 +645,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
++  public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
++  public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
+   public abstract java.lang.String getDefaultUserAgent();
+   public abstract org.chromium.net.ExperimentalCronetEngine build();
+   protected java.util.Set<java.lang.Integer> getSupportedConfigOptions();
+@@ -636,4 +646,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
    public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
    public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
  }
--Stamp: c11bf584850391d2d22b0f9c36cea18b
-+Stamp: 972dc3d5842eb8f082a5b7eea2ca2090
+-Stamp: 373f90cf8fd10bf187e827fa2a4701af
++Stamp: 9fb82ef22cefa45a2664d82be9802151
 diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
 index bb95160cb6e07..a787364590245 100644
 --- a/components/cronet/android/api_version.txt
@@ -37,3 +44,49 @@ index bb95160cb6e07..a787364590245 100644
 @@ -1 +1 @@
 -33
 +34
+diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
+index 85922aa08e95f..f4066ba74131e 100644
+--- a/components/cronet/url_request_context_config.cc
++++ b/components/cronet/url_request_context_config.cc
+@@ -167,6 +167,10 @@ const char kDisableTlsZeroRtt[] = "disable_tls_zero_rtt";
+ // underlying OS.
+ const char kSpdyGoAwayOnIpChange[] = "spdy_go_away_on_ip_change";
+ 
++// Use a StandaloneResolver with the provided DNS over HTTPS configs. Other
++// values are left at the defaults. TODO: Should we offer more of the config?
++const char kDnsOverHttpsConfig[] = "dns_over_https_config";
++
+ // Whether the connection status of all bidirectional streams (created through
+ // the Cronet engine) should be monitored.
+ // The value must be an integer (> 0) and will be interpreted as a suggestion
+@@ -730,6 +734,30 @@ void URLRequestContextConfig::SetContextBuilderExperimentalOptions(
+         continue;
+       }
+       session_params->spdy_go_away_on_ip_change = iter->second.GetBool();
++    } else if (iter->first == kDnsOverHttpsConfig) {
++      if (!iter->second.is_dict()) {
++        LOG(ERROR) << "\"" << iter->first << "\" config params \""
++                   << iter->second << "\" is not a dictionary value";
++        effective_experimental_options.Remove(iter->first);
++        continue;
++      }
++
++      net::DnsConfigOverrides overrides = net::DnsConfigOverrides::CreateOverridingEverythingWithDefaults();
++      // Envoy does this
++      overrides.secure_dns_mode = net::SecureDnsMode::kSecure;
++
++      // This is a little silly, Dict -> JSON -> Dict
++      std::string temp;
++      base::JSONWriter::Write(iter->second.GetDict(), &temp);
++      overrides.dns_over_https_config = net::DnsOverHttpsConfig::FromString(temp);
++
++      net::HostResolver::ManagerOptions host_resolver_manager_options;
++      host_resolver_manager_options.dns_config_overrides = overrides;
++      std::unique_ptr<net::HostResolver> host_resolver;
++      host_resolver = net::HostResolver::CreateStandaloneResolver(
++        net::NetLog::Get(), std::move(host_resolver_manager_options));
++
++      context_builder->set_host_resolver(std::move(host_resolver));
+     } else {
+       LOG(WARNING) << "Unrecognized Cronet experimental option \""
+                    << iter->first << "\" with params \"" << iter->second;
