@@ -40,6 +40,9 @@ class EnvoyDns() {
     var chosenServer: String? = null
     var serverUrl: String? = null
 
+    var retries = 0
+    val max_retries = 4
+
     // Make test query to a random host name from this list
     // so the DNS providers and censors see a little variety
     private val HOSTS_TO_RESOLVE = ArrayDeque<String>(
@@ -89,8 +92,8 @@ class EnvoyDns() {
         ).flatten()
 
         try {
-        // Pick a few random servers to try
-            val workList = serverList.shuffled().subList(0, 3)
+            // Pick a few random servers to try
+            val workList = serverList.shuffled().subList(0, 5)
             val jobs = mutableListOf<Job>()
 
             workList.forEach {
@@ -105,13 +108,6 @@ class EnvoyDns() {
             jobs.joinAll()
         } catch (e: Exception) {
             Log.e(TAG, "Unhandled DNS error $e")
-        }
-
-        // XXX try some more here?
-        if (chosenServer == "") {
-            Log.e(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
-            chosenServer = FALLBACK_DNS_SERVER
-
         }
     }
 
@@ -149,6 +145,18 @@ class EnvoyDns() {
     }
 
     suspend fun init() {
-        pickAServer()
+        // Try a few times
+        while (chosenServer.isNullOrEmpty() && retries <= max_retries) {
+            Log.d(TAG, "try number $retries")
+            pickAServer()
+            retries++
+        }
+
+        // fall back to one of the servers, a last ditch effort
+        if (chosenServer == "") {
+            Log.e(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
+            chosenServer = FALLBACK_DNS_SERVER
+        }
+
     }
 }
