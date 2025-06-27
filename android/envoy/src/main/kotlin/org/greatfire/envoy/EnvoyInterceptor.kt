@@ -123,12 +123,13 @@ class EnvoyInterceptor : Interceptor {
 
         // rewrite the request for an Envoy proxy
         if (envoyRewrite) {
+            Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
             val t = System.currentTimeMillis()
             val url = req.url
             with (builder) {
                 addHeader("Host-Orig", url.host)
                 addHeader("Url-Orig", url.toString())
-                url(state.activeService!!.url + "?test=" + t)
+                url(state.activeService!!.proxyUrl + "?test=" + t)
             }
         }
 
@@ -152,7 +153,7 @@ class EnvoyInterceptor : Interceptor {
 
         Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
 
-        return chain.proceed(getEnvoyRequest(origRequest))
+        return chain.proceed(getEnvoyRequest(origRequest, true))
     }
 
     // helper to setup the needed Proxy() instance
