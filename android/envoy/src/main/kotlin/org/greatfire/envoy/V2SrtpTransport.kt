@@ -7,7 +7,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
-class V2SrtpTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.V2SRTP, envoyUrl, testUrl, testResponseCode) {
+class V2SrtpTransport(url: String) : Transport(EnvoyServiceType.V2SRTP, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         var addr = startService()

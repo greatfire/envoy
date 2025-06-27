@@ -577,7 +577,7 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 val cronetEngine: CronetEngine = CronetNetworking.buildEngine(
                     context = applicationContext,
                     cacheFolder = cacheMap.get(originalUrl),
-                    envoyUrl = envoyUrl,
+                    // envoyUrl = envoyUrl,
                     strategy = strategy,
                     cacheSize = 1
                 )

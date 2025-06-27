@@ -1,27 +1,37 @@
 package org.greatfire.envoy
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
+import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
 
-import android.content.Context
 
-class HttpEchTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.HTTP_ECH, envoyUrl, testUrl, testResponseCode) {
+class HttpEchTransport(url: String) : Transport(EnvoyServiceType.HTTP_ECH, url) {
+
+    // was getEnvoyUrl but returns only ech url? (if available)
+    fun getEchUrl(): String {
+        // XXX this needs cleanup? get the Envoy URL from IEP
+        state.iep?.let {
+            return it.echProxyUrl
+        }
+        Log.e(TAG, "No EchProxyUrl in IEP")
+        return ""
+    }
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing Envoy URL with IEnvoyProxy: " + this)
 
         startService()
+
+        val echUrl = getEchUrl()
         // XXX this is a weird case, IEP returns a new
         // URL to use
         // if it comes back, it's tested and working
-        val url = getEchUrl()
-
         if (url.isNullOrEmpty()) {
             return false
         }
 
-        proxyUrl = url
-        proxyIsEnvoy = true
+        this.proxyUrl = echUrl
         Log.d(TAG, "IEP Ech URL: " + proxyUrl)
         return true
     }
@@ -38,13 +48,14 @@ class HttpEchTransport(envoyUrl: String, testUrl: String, testResponseCode: Int)
 
         val hostname = Uri.parse(url).getHost()
 
-        // XXX set DOH server for Go code here?
-        // or keep it in connect()?
-
         hostname?.let {
             val echConfigList = state.dns.getECHConfig(hostname)
             state.iep?.let {
                 it.setEnvoyUrl(url, echConfigList)
+
+                it.start(IEnvoyProxy.EnvoyEch, "")
+                val addr = it.localAddress(IEnvoyProxy.EnvoyEch)
+                return addr
             }
         }
 
@@ -55,6 +66,9 @@ class HttpEchTransport(envoyUrl: String, testUrl: String, testResponseCode: Int)
         // stop the associated service
         // this is called to stop unused services
 
-        Log.d(TAG, "TODO: Need method to stop Http/Ech")
+        // this is a no-op, but it might get implemented :)
+        state.iep?.let {
+            it.stop(IEnvoyProxy.EnvoyEch)
+        }
     }
 }
