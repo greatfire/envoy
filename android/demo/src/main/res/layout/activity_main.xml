@@ -64,22 +64,22 @@
                 android:visibility="gone"/>
         </LinearLayout>
         <LinearLayout
-            android:id="@+id/httpsResult"
+            android:id="@+id/httpResult"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:visibility="gone">
             <Button
-                android:id="@+id/httpsText"
+                android:id="@+id/httpText"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight=".60"
                 android:layout_margin="5dp"
                 android:gravity="left|center_vertical"
-                android:text="@string/https"
+                android:text="@string/http"
                 android:background="@android:color/holo_blue_light"/>
             <Button
-                android:id="@+id/httpsSuccess"
+                android:id="@+id/httpSuccess"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight=".40"
@@ -90,7 +90,7 @@
                 android:background="@android:color/holo_green_light"
                 android:visibility="visible"/>
             <Button
-                android:id="@+id/httpsFailure"
+                android:id="@+id/httpFailure"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight=".40"
@@ -102,22 +102,22 @@
                 android:visibility="gone"/>
         </LinearLayout>
         <LinearLayout
-            android:id="@+id/envoyResult"
+            android:id="@+id/cronetResult"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:visibility="gone">
             <Button
-                android:id="@+id/envoyText"
+                android:id="@+id/cronetText"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight=".60"
                 android:layout_margin="5dp"
                 android:gravity="left|center_vertical"
-                android:text="@string/envoy"
+                android:text="@string/cronet"
                 android:background="@android:color/holo_blue_light"/>
             <Button
-                android:id="@+id/envoySuccess"
+                android:id="@+id/cronetSuccess"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight=".40"
@@ -128,7 +128,83 @@
                 android:background="@android:color/holo_green_light"
                 android:visibility="visible"/>
             <Button
-                android:id="@+id/envoyFailure"
+                android:id="@+id/cronetFailure"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight=".40"
+                android:layout_marginVertical="5dp"
+                android:layout_marginRight="5dp"
+                android:gravity="left|center_vertical"
+                android:text="@string/failure"
+                android:background="@android:color/holo_red_light"
+                android:visibility="gone"/>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/echResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+            <Button
+                android:id="@+id/echText"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight=".60"
+                android:layout_margin="5dp"
+                android:gravity="left|center_vertical"
+                android:text="@string/ech"
+                android:background="@android:color/holo_blue_light"/>
+            <Button
+                android:id="@+id/echSuccess"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight=".40"
+                android:layout_marginVertical="5dp"
+                android:layout_marginRight="5dp"
+                android:gravity="left|center_vertical"
+                android:text="@string/success"
+                android:background="@android:color/holo_green_light"
+                android:visibility="visible"/>
+            <Button
+                android:id="@+id/echFailure"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight=".40"
+                android:layout_marginVertical="5dp"
+                android:layout_marginRight="5dp"
+                android:gravity="left|center_vertical"
+                android:text="@string/failure"
+                android:background="@android:color/holo_red_light"
+                android:visibility="gone"/>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/masqueResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+            <Button
+                android:id="@+id/masqueText"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight=".60"
+                android:layout_margin="5dp"
+                android:gravity="left|center_vertical"
+                android:text="@string/masque"
+                android:background="@android:color/holo_blue_light"/>
+            <Button
+                android:id="@+id/masqueSuccess"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight=".40"
+                android:layout_marginVertical="5dp"
+                android:layout_marginRight="5dp"
+                android:gravity="left|center_vertical"
+                android:text="@string/success"
+                android:background="@android:color/holo_green_light"
+                android:visibility="visible"/>
+            <Button
+                android:id="@+id/masqueFailure"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight=".40"

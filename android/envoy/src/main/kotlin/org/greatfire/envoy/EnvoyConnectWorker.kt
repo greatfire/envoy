@@ -47,19 +47,18 @@ class EnvoyConnectWorker(
         while (true) {
             val test = transports.removeFirstOrNull()
             if (test == null) {
-                // Log.d(WTAG, "NO TESTS LEFT, BREAK")
-                // XXX ask for more URLs?
+                // no tests remaining
                 break
-            }  else if (state.connected.get()) {
-                // Log.d(WTAG, "ALREADY CONNECTED, BREAK")
+            }  else if (state.connected.get() && !state.testAllUrls) {
+                // already connected and not testing all urls
                 break
             } else if (util.isTimeExpired()) {
-                // Log.d(WTAG, "TIME EXPIRED, BREAK")
+                // time has expired
                 break
             } else if (util.isUrlBlocked(test)) {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                // Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+                // url blocked, stop test immediately
                 util.stopTestBlocked(test)
                 continue
             } else {
@@ -164,6 +163,7 @@ class EnvoyConnectWorker(
             startEnvoy()
         } catch (e: Exception) {
             Log.e(TAG, "Starting Envoy failed: $e")
+            e.printStackTrace()
         }
         // if we return failure, the job is re-run, I think?
         return Result.success()

@@ -60,6 +60,9 @@ class EnvoyState private constructor() {
     // for debugging, simulate a connection timeout
     var debugTimeoutDriect = false
 
+    // when set, all urls will be tested
+    var testAllUrls = false
+
     private fun createCronetEngine(transport: Transport) {
         // I think we can reuse the cache dir between runs?
         // XXX we used to have multiple tests cronet based tests
