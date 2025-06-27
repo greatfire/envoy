@@ -106,7 +106,7 @@ class EnvoyInterceptor : Interceptor {
                 Log.i(TAG, "Direct connections appear to be working, disabling Envoy")
                 // XXX direct test instance passed purely to disable any active envoy service
                 //   this test should never be run, so actual values shouldn't matter
-                state.connectIfNeeded(DirectTransport("direct://", "", 0))
+                state.connectIfNeeded(DirectTransport("direct://"))
             }
         }
 
@@ -123,13 +123,17 @@ class EnvoyInterceptor : Interceptor {
 
         // rewrite the request for an Envoy proxy
         if (envoyRewrite) {
-            Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
-            val t = System.currentTimeMillis()
-            val url = req.url
-            with (builder) {
-                addHeader("Host-Orig", url.host)
-                addHeader("Url-Orig", url.toString())
-                url(state.activeService!!.proxyUrl + "?test=" + t)
+            if (!state.activeService!!.proxyUrl.isNullOrEmpty()) {
+                Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
+                val t = System.currentTimeMillis()
+                val url = req.url
+                with (builder) {
+                    addHeader("Host-Orig", url.host)
+                    addHeader("Url-Orig", url.toString())
+                    url(state.activeService!!.proxyUrl + "?test=" + t)
+                }
+            } else {
+                Log.e(TAG, "INTERNAL ERROR, and Envoy proxy is selected but proxyUrl is empty")
             }
         }
 

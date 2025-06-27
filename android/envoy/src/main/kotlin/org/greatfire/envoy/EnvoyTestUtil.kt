@@ -92,7 +92,7 @@ class EnvoyTestUtil() {
         startTime.set(System.currentTimeMillis())
     }
 
-    fun startTest(transport: Transport) {
+    fun start(transport: Transport) {
         transport.startTimer()
         val count = testCount.incrementAndGet()
         // Log.d(TAG, "TEST COUNT UPDATED: " + count)
@@ -116,7 +116,6 @@ class EnvoyTestUtil() {
     // stop the test, it failed
     fun stopTestFailed(transport: Transport) {
         transport.stopTimer()
-        transport.stopService()
 
         val count = failedCount.incrementAndGet()
         Log.d(TAG, "FAILED COUNT UPDATED: " + count)

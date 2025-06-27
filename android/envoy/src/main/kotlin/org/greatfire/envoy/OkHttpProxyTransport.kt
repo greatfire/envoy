@@ -5,7 +5,7 @@ import android.net.Uri
 import android.util.Log
 import okhttp3.Request
 
-class OkHttpProxyTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.OKHTTP_PROXY, envoyUrl, testUrl, testResponseCode) {
+class OkHttpProxyTransport(url: String) : Transport(EnvoyServiceType.OKHTTP_PROXY, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         val host = Uri.parse(testUrl).host

@@ -6,7 +6,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
-class OkHttpMasqueTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.OKHTTP_MASQUE, envoyUrl, testUrl, testResponseCode) {
+class OkHttpMasqueTransport(url: String) : Transport(EnvoyServiceType.OKHTTP_MASQUE, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         if (proxyUrl == null) {
