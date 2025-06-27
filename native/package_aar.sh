@@ -27,12 +27,12 @@ mkdir -p "$build_tmp_dir"
 cd "$build_tmp_dir" || exit 1
 cp "$CRONET_OUTPUT_DIR/cronet_api.jar" classes.jar
 sudo apt install --yes zipmerge
-for file in cronet_impl_common_java.jar cronet_impl_native_java.jar; do
+for file in cronet_impl_common_java.jar cronet_impl_native_java.jar cronet_impl_platform_java.jar cronet_shared_java.jar httpengine_native_provider_java.jar; do
     zipmerge classes.jar "$CRONET_OUTPUT_DIR/$file"
 done
 mkdir -p jni
 rsync -avzp --include=libcronet.$CHROME_VERSION.so "$CRONET_OUTPUT_DIR/libs/" jni/
-cat "$CRONET_OUTPUT_DIR"/{cronet_impl_common_proguard.cfg,cronet_impl_native_proguard.cfg} >proguard.txt
+cat "$CRONET_OUTPUT_DIR"/{cronet_impl_common_proguard.cfg,cronet_impl_native_proguard.cfg,cronet_impl_platform_proguard.cfg,cronet_shared_proguard.cfg,httpengine_native_provider_proguard.cfg} >proguard.txt
 touch R.txt
 touch public.txt
 # no heading empty line:

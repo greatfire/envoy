@@ -232,4 +232,15 @@ class EnvoyInterceptor : Interceptor {
 
         return useCronet(req, chain)
     }
+
+    // Use cronet to make the reuqest unmodified (presumably it's configured
+    // with a proxy)
+    private fun cronetToProxy(chain: Interceptor.Chain): Response {
+        val callback = CronetUrlRequestCallback(chain.request(), chain.call())
+        val urlRequest = CronetNetworking.buildRequest(
+            chain.request(), callback, state.cronetEngine!!
+        )
+        urlRequest.start()
+        return callback.blockForResponse()
+    }
 }
