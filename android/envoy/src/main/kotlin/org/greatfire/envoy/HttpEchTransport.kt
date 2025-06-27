@@ -23,10 +23,11 @@ class HttpEchTransport(url: String) : Transport(EnvoyServiceType.HTTP_ECH, url) 
 
         startService()
 
-        val echUrl = getEchUrl()
         // XXX this is a weird case, IEP returns a new
         // URL to use
         // if it comes back, it's tested and working
+        val echUrl = getEchUrl()
+
         if (url.isNullOrEmpty()) {
             return false
         }
