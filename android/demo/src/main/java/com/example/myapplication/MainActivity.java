@@ -123,7 +123,7 @@ public class MainActivity extends FragmentActivity {
         envoy.setContext(getApplicationContext());
 
         // set debug mode to ensure all urls are tested
-        envoy.setDebugMode(true);
+        envoy.setTestAllUrls(true);
 
         for (int i = 0; i < testUrls.size(); i++) {
             mUrlCount = mUrlCount + 1;

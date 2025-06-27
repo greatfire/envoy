@@ -1,7 +1,6 @@
 package org.greatfire.envoy
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -32,7 +31,7 @@ class EnvoyConnectWorker(
     val tests = EnvoyConnectionTests()
 
     // this ArrayDeque is our working copy of the tests
-    private val envoyTests = ArrayDeque<EnvoyTest>()
+    private val transports = ArrayDeque<Transport>()
     private val jobs = mutableListOf<Job>()
 
     private val state = EnvoyState.getInstance()
@@ -46,83 +45,29 @@ class EnvoyConnectWorker(
         val WTAG = TAG + "-" + id
 
         while (true) {
-            val test = envoyTests.removeFirstOrNull()
+            val test = transports.removeFirstOrNull()
             if (test == null) {
-                // Log.d(WTAG, "NO TESTS LEFT, BREAK")
-                // XXX ask for more URLs?
+                // no tests remaining
                 break
-            }  else if (state.connected.get()) {
-                if (state.debugMode) {
-                    // Log.d(WTAG, "ALREADY CONNECTED (debugging), CONTINUE")
-                } else {
-                    // Log.d(WTAG, "ALREADY CONNECTED (not debugging), BREAK")
-                    break
-                }
+            }  else if (state.connected.get() && !state.testAllUrls) {
+                // already connected and not testing all urls
+                break
             } else if (util.isTimeExpired()) {
-                // Log.d(WTAG, "TIME EXPIRED, BREAK")
+                // time has expired
                 break
             } else if (util.isUrlBlocked(test)) {
                 // starts the timer and updates the tally
                 util.startTest(test)
-                // Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
+                // url blocked, stop test immediately
                 util.stopTestBlocked(test)
                 continue
             } else {
                 // starts the timer and updates the tally
-                // Log.d(WTAG, "RUN TEST - " + test)
                 util.startTest(test)
             }
 
-            // is there some better way to structure this? It's going to
-            // get ungainly
-            val proxyUri = Uri.parse(test.url)
-            val res = when(test.testType) {
-                EnvoyServiceType.DIRECT -> {
-                    tests.testDirectConnection()
-                }
-                EnvoyServiceType.OKHTTP_ENVOY -> {
-                    tests.testEnvoyOkHttp(proxyUri)
-                }
-                EnvoyServiceType.CRONET_ENVOY -> {
-                    tests.testCronetEnvoy(test, context)
-                }
-                EnvoyServiceType.OKHTTP_MASQUE -> {
-                    tests.testMasqueOkHttp(test)
-                }
-                EnvoyServiceType.CRONET_MASQUE -> {
-                    tests.testMasqueCronet(test, context)
-                }
-                EnvoyServiceType.OKHTTP_PROXY -> {
-                    // url is a proxy URL, so set it as the proxyUrl as well
-                    // all the other services set something in proxyUrl
-                    // so this avoids a special case in the interceptor
-                    test.proxyUrl = test.url
-                    tests.testStandardProxy(proxyUri)
-                }
-                EnvoyServiceType.CRONET_PROXY -> {
-                    tests.testCronetProxy(test, context)
-                }
-                EnvoyServiceType.HTTP_ECH -> {
-                    tests.testECHProxy(test)
-                }
-                EnvoyServiceType.SHADOWSOCKS -> {
-                    tests.testShadowsocks(test)
-                }
-                EnvoyServiceType.HYSTERIA2 -> {
-                    Log.d(WTAG, "Testing Hysteria")
-                    tests.testHysteria2(test)
-                }
-                EnvoyServiceType.V2SRTP -> {
-                    tests.testV2RaySrtp(test)
-                }
-                EnvoyServiceType.V2WECHAT -> {
-                    tests.testV2RayWechat(test)
-                }
-                else -> {
-                    Log.e(WTAG, "Unsupported test type: " + test.testType)
-                    false
-                }
-            }
+            // each test type has a corresponding implementation of startTest
+            val res = test.startTest(context)
 
             if (res) {
                 // We found a working connection!
@@ -151,7 +96,7 @@ class EnvoyConnectWorker(
     // to test connection methods
     private suspend fun startWorkers() = coroutineScope {
         Log.i(TAG,
-            "Launching ${state.concurrency} coroutines for ${envoyTests.size} tests")
+            "Launching ${state.concurrency} coroutines for ${transports.size} tests")
 
         // start timer
         util.startAllTests()
@@ -198,19 +143,20 @@ class EnvoyConnectWorker(
     // Main entry point
     override suspend fun doWork(): Result {
         // test direct connection first
-        if (EnvoyConnectionTests.directUrl != "") {
-            val test = EnvoyTest(EnvoyServiceType.DIRECT, EnvoyConnectionTests.directUrl)
-            envoyTests.add(test)
+        val directTest = EnvoyConnectionTests.directTest
+        if (directTest != null) {
+            transports.add(directTest)
         }
+
         // We preserve the original list of tests in EnvoyNetworking
         // for use if we need to reconnect. This is just our working
         // copy
 
         // shuffle the rest of the URLs
-        envoyTests.addAll(EnvoyConnectionTests.envoyTests.shuffled())
+        transports.addAll(EnvoyConnectionTests.transports.shuffled())
 
         Log.i(TAG, "EnvoyConnectWorker starting with "
-                + envoyTests.size
+                + transports.size
                 + " URLs to test")
 
         try {
