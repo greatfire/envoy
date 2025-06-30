@@ -22,9 +22,9 @@ object CronetNetworking {
 
     fun buildEngine(
         context: Context,
-        cacheFolder: String? = "",
-        proxyUrl: String? = "",
-        resolverRules: String? = "",
+        cacheFolder: String = "",
+        proxyUrl: String = "",
+        resolverRules: String = "",
         cacheSize: Long = 0,
         strategy: Int = 0
     ): CronetEngine {

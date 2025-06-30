@@ -46,7 +46,7 @@ open class Transport(
 
     // proxy URL for the service providing transport
     // can be SOCKS5, HTTP(S), or Envoy
-    var proxyUrl: String? = null
+    var proxyUrl: String = ""
 
     // Is this the service we chose to use
     var selectedService: Boolean = false
@@ -59,7 +59,7 @@ open class Transport(
     // address param creates an resolver rule
     // stash it here in case we can support it with OkHttp
     var address: String? = null
-    var resolverRules: String? = null
+    var resolverRules: String = ""
 
     // Envoy Global settings and state
     protected val state = EnvoyState.getInstance()

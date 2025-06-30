@@ -14,7 +14,7 @@ class CronetEnvoyTransport(url: String) : Transport(EnvoyServiceType.CRONET_ENVO
 
         val cronetEngine = CronetNetworking.buildEngine(
             context = context,
-            cacheFolder = null, // no cache XXX?
+            // cacheFolder = "", // no cache XXX? this is the default
             // XXX this needs to support standard proxies WITH the
             // Envoy rewrites.. currently proxyUrl does both jobs
             // proxyUrl = this.proxyUrl,
