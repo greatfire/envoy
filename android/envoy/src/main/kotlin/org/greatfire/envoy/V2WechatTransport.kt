@@ -7,7 +7,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
-class V2WechatTransport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.V2WECHAT, envoyUrl, testUrl, testResponseCode) {
+class V2WechatTransport(url: String) : Transport(EnvoyServiceType.V2WECHAT, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()

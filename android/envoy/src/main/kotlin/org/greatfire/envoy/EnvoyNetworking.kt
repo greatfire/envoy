@@ -33,8 +33,8 @@ class EnvoyNetworking {
     // use a custom test URL and response code
     // default is ("https://www.google.com/generate_204", 204)
     fun setTestUrl(url: String, responseCode: Int): EnvoyNetworking {
-        EnvoyConnectionTests.testUrl = url
-        EnvoyConnectionTests.testResponseCode = responseCode
+        Transport.testUrl = url
+        Transport.testResponseCode = responseCode
 
         return this
     }

@@ -22,10 +22,9 @@ object CronetNetworking {
 
     fun buildEngine(
         context: Context,
-        cacheFolder: String? = null,
-        envoyUrl: String? = null,
-        proxyUrl: String? = null,
-        resolverRules: String? = null,
+        cacheFolder: String = "",
+        proxyUrl: String = "",
+        resolverRules: String = "",
         cacheSize: Long = 0,
         strategy: Int = 0
     ): CronetEngine {
@@ -42,10 +41,6 @@ object CronetNetworking {
             builder = builder
                 .setStoragePath(cacheDir.absolutePath)
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
-        }
-
-        envoyUrl?.let {
-            Log.e(TAG, "envoyUrl is unsupported here now!")
         }
 
         proxyUrl?.let {

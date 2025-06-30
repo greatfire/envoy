@@ -576,8 +576,8 @@ class NetworkIntentService : IntentService("NetworkIntentService") {
                 val executor: Executor = Executors.newSingleThreadExecutor()
                 val cronetEngine: CronetEngine = CronetNetworking.buildEngine(
                     context = applicationContext,
-                    cacheFolder = cacheMap.get(originalUrl),
-                    envoyUrl = envoyUrl,
+                    cacheFolder = cacheMap.get(originalUrl) ?: "",
+                    // envoyUrl = envoyUrl,
                     strategy = strategy,
                     cacheSize = 1
                 )

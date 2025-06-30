@@ -6,7 +6,7 @@ import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 import android.net.Uri
 
-class Hysteria2Transport(envoyUrl: String, testUrl: String, testResponseCode: Int) : Transport(EnvoyServiceType.HYSTERIA2, envoyUrl, testUrl, testResponseCode) {
+class Hysteria2Transport(url: String) : Transport(EnvoyServiceType.HYSTERIA2, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()

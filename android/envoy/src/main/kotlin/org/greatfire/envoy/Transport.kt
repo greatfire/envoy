@@ -1,12 +1,10 @@
 package org.greatfire.envoy
 
 import android.content.Context
-import android.util.Log
-
-// old shadowsocks
 import android.content.Intent
 import android.net.Uri
 import android.os.ConditionVariable
+import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.chromium.net.CronetException
@@ -29,25 +27,26 @@ import java.util.concurrent.TimeUnit
 // testType lets us know how to treat that URL
 // some transports have an additional URL, e.g. a SOCKS5 URL
 // for a PT, that gets stored in proxyUrl
-// proxyiSEnvoy lets us know if proxyUrl is an Envoy proxy or SOCKS/HTTP
 
 open class Transport(
     var testType: EnvoyServiceType = EnvoyServiceType.UNKNOWN,
-    var url: String,
-    var testUrl: String = "https://www.google.com/generate_204",
-    var testResponseCode: Int = 204
+    var url: String
 ) {
     companion object {
-        const val TAG = "EnvoyTest"
+        const val TAG = "Envoy - Transport"
+
+        // these are set by helpers in EnvoyNetworking's companion object
+        // Target URL/response code for testing
+        var testUrl = "https://www.google.com/generate_204"
+        // using a 200 code makes it really easy to get false positives
+        var testResponseCode = 204
+        // direct URL to the site for testing
+        var directUrl = ""
     }
 
     // proxy URL for the service providing transport
-    // can be SOCKS5, HTTP(S), Envoy, see proxyIsEnvoy
-    var proxyUrl: String? = null
-    // - true means the proxyUrl refers to a nonstandard Envoy proxy
-    // as documented at http://github.com/greatfire/envoy/
-    // - false means it's SOCKS or HTTP
-    var proxyIsEnvoy: Boolean = false
+    // can be SOCKS5, HTTP(S), or Envoy
+    var proxyUrl: String = ""
 
     // Is this the service we chose to use
     var selectedService: Boolean = false
@@ -60,7 +59,7 @@ open class Transport(
     // address param creates an resolver rule
     // stash it here in case we can support it with OkHttp
     var address: String? = null
-    var resolverRules: String? = null
+    var resolverRules: String = ""
 
     // Envoy Global settings and state
     protected val state = EnvoyState.getInstance()
@@ -100,10 +99,12 @@ open class Transport(
 
     open fun stopService() {
         Log.e(TAG, "Tried to stop an unknown service")
+        Log.e(TAG, Log.getStackTraceString(Throwable()))
     }
 
     open suspend fun startTest(context: Context): Boolean {
         Log.e(TAG, "Tried to test an unknown service")
+        Log.e(TAG, Log.getStackTraceString(Throwable()))
         return false
     }
 
@@ -171,7 +172,7 @@ open class Transport(
                 Log.d(TAG, "Cronet worked!")
                 succeeded = true
             } else {
-                Log.d(TAG, "Cronet failed")
+                Log.e(TAG, "Cronet failed")
             }
             requestDone.open()
         }
@@ -181,7 +182,7 @@ open class Transport(
             info: UrlResponseInfo?,
             error: CronetException?,
         ) {
-            Log.d(TAG, "Cronet failed: " + error)
+            Log.e(TAG, "Cronet failed: " + error)
             requestDone.open()
         }
 
@@ -200,6 +201,7 @@ open class Transport(
         }
     }
 
+    // Helper to test a request to a standard SOCKS or HTTP proxy using OkHttp
     suspend fun testStandardProxy(proxyUri: Uri, testResponseCode: Int): Boolean {
         Log.d(TAG, "Testing standard proxy $proxyUri")
 
@@ -241,36 +243,32 @@ open class Transport(
         return false
     }
 
+    // this is currently unused
+    // suspend fun testCronetProxy(testResponseCode: Int, context: Context): Boolean {
+    //     var proxyUrl = url
 
-    suspend fun testCronetProxy(testResponseCode: Int, context: Context): Boolean {
-        var proxyUrl = url
-        // proxyIsEnvoy should never be true here?
-        if (proxyUrl != null && !proxyIsEnvoy) {
-            proxyUrl = proxyUrl!!
-        }
+    //     val cronetEngine = CronetNetworking.buildEngine(
+    //         context = context,
+    //         cacheFolder = null, // no cache XXX?
+    //         proxyUrl = proxyUrl,
+    //         resolverRules = resolverRules,
+    //         cacheSize = 0, // what are the units here?
+    //     )
+    //     val callback = TestUrlRequestCallback()
+    //     // We're just making a standard request via Cronet to a standard proxy
+    //     val requestBuilder = cronetEngine.newUrlRequestBuilder(
+    //         testUrl,
+    //         callback,
+    //         Executors.newCachedThreadPool()
+    //     )
 
-        val cronetEngine = CronetNetworking.buildEngine(
-            context = context,
-            cacheFolder = null, // no cache XXX?
-            proxyUrl = proxyUrl,
-            resolverRules = resolverRules,
-            cacheSize = 0, // what are the units here?
-        )
-        val callback = TestUrlRequestCallback()
-        // We're just making a standard request via Cronet to a standard proxy
-        val requestBuilder = cronetEngine.newUrlRequestBuilder(
-            testUrl,
-            callback,
-            Executors.newCachedThreadPool()
-        )
+    //     val request = requestBuilder.build()
+    //     request.start()
+    //     callback.blockForResponse()
 
-        val request = requestBuilder.build()
-        request.start()
-        callback.blockForResponse()
-
-        // test is now complete
-        return callback.succeeded
-    }
+    //     // test is now complete
+    //     return callback.succeeded
+    // }
 
     fun getProxy(
         proxyType: Proxy.Type,
@@ -279,16 +277,6 @@ open class Transport(
     ): Proxy {
         val addr = InetSocketAddress(host, port)
         return Proxy(proxyType, addr)
-    }
-
-    // was getEnvoyUrl but returns only ech url? (if available)
-    fun getEchUrl(): String {
-        // XXX this needs cleanup? get the Envoy URL from IEP
-        state.iep?.let {
-            return it.echProxyUrl
-        }
-        Log.e(TAG, "No EchProxyUrl in IEP")
-        return ""
     }
 
     fun startTimer() {
