@@ -28,7 +28,7 @@ class EnvoyInterceptor : Interceptor {
         val req = chain.request()
 
         if (state.connected.get()) {
-            if (state.activeServiceType.get() == EnvoyServiceType.DIRECT.ordinal) {
+            if (state.activeServiceType.get() == EnvoyTransportType.DIRECT.ordinal) {
                 Log.d(TAG, "Direct: " + req.url)
                 // pass the request through
                 return chain.proceed(chain.request())
@@ -37,33 +37,33 @@ class EnvoyInterceptor : Interceptor {
                     // proxy via Envoy
                     Log.d(TAG, "Proxy Via Envoy: " + it.testType)
                     val res = when (it.testType) {
-                        EnvoyServiceType.CRONET_ENVOY -> {
+                        EnvoyTransportType.CRONET_ENVOY -> {
                             Log.d(TAG, "Cronet request to Envoy server")
                             cronetToEnvoy(chain)
                         }
-                        EnvoyServiceType.OKHTTP_ENVOY,
+                        EnvoyTransportType.OKHTTP_ENVOY,
                         // this could also use cronet?
                         // Instead of using the Envoy proxy driectly,
                         // we use Go code as an Envoy proxy here
-                        EnvoyServiceType.HTTP_ECH -> {
+                        EnvoyTransportType.HTTP_ECH -> {
                             Log.d(TAG, "OkHttp request to Envoy server")
                             okHttpToEnvoy(chain)
                         }
-                        EnvoyServiceType.OKHTTP_PROXY,
+                        EnvoyTransportType.OKHTTP_PROXY,
                         // all of these services provive a standard SOCKS5
                         // interface. We used to pass these through Cronet,
                         // should we test both? Just use OkHttp for now
-                        EnvoyServiceType.OKHTTP_MASQUE,
-                        EnvoyServiceType.HYSTERIA2,
-                        EnvoyServiceType.V2WS,
-                        EnvoyServiceType.V2SRTP,
-                        EnvoyServiceType.V2WECHAT,
-                        EnvoyServiceType.SHADOWSOCKS, -> {
+                        EnvoyTransportType.OKHTTP_MASQUE,
+                        EnvoyTransportType.HYSTERIA2,
+                        EnvoyTransportType.V2WS,
+                        EnvoyTransportType.V2SRTP,
+                        EnvoyTransportType.V2WECHAT,
+                        EnvoyTransportType.SHADOWSOCKS, -> {
                             Log.d(TAG, "Passing request to standard proxy")
                             useStandardProxy(chain)
                         }
-                        EnvoyServiceType.CRONET_PROXY,
-                        EnvoyServiceType.CRONET_MASQUE, -> {
+                        EnvoyTransportType.CRONET_PROXY,
+                        EnvoyTransportType.CRONET_MASQUE, -> {
                             Log.d(TAG, "Passing request to cronet w/proxy")
                             useCronet(chain.request(), chain)
                         }

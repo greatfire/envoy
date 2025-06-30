@@ -1,6 +1,6 @@
 package org.greatfire.envoy.transport
 
-import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.content.Context
 import android.net.Uri
@@ -8,7 +8,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
 
 
-class HttpEchTransport(url: String) : Transport(EnvoyServiceType.HTTP_ECH, url) {
+class HttpEchTransport(url: String) : Transport(EnvoyTransportType.HTTP_ECH, url) {
 
     // was getEnvoyUrl but returns only ech url? (if available)
     fun getEchUrl(): String {

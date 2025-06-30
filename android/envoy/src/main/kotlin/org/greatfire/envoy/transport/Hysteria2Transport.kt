@@ -1,7 +1,7 @@
 package org.greatfire.envoy.transport
 
 import org.greatfire.envoy.EnvoyConnectionTests
-import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.util.Log
 
@@ -9,7 +9,7 @@ import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 import android.net.Uri
 
-class Hysteria2Transport(url: String) : Transport(EnvoyServiceType.HYSTERIA2, url) {
+class Hysteria2Transport(url: String) : Transport(EnvoyTransportType.HYSTERIA2, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()

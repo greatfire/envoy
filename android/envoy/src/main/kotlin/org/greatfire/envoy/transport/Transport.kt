@@ -1,6 +1,6 @@
 package org.greatfire.envoy.transport
 
-import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.EnvoyTransportType
 import org.greatfire.envoy.EnvoyState
 import org.greatfire.envoy.UrlUtil
 
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
 // for a PT, that gets stored in proxyUrl
 
 open class Transport(
-    var testType: EnvoyServiceType = EnvoyServiceType.UNKNOWN,
+    var testType: EnvoyTransportType = EnvoyTransportType.UNKNOWN,
     var url: String
 ) {
     companion object {

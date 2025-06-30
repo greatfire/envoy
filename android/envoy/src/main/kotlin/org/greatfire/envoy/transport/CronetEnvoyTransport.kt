@@ -1,14 +1,14 @@
 package org.greatfire.envoy.transport
 
 import org.greatfire.envoy.CronetNetworking
-import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import java.util.concurrent.Executors
 
-class CronetEnvoyTransport(url: String) : Transport(EnvoyServiceType.CRONET_ENVOY, url) {
+class CronetEnvoyTransport(url: String) : Transport(EnvoyTransportType.CRONET_ENVOY, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         // proxyUrl is assumed to be an Envoy proxy because this is a Cronet Envoy test

@@ -1,7 +1,7 @@
 package org.greatfire.envoy.transport
 
 import org.greatfire.envoy.EnvoyConnectionTests
-import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.net.Uri
 import android.net.UrlQuerySanitizer
@@ -10,7 +10,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
-class V2WechatTransport(url: String) : Transport(EnvoyServiceType.V2WECHAT, url) {
+class V2WechatTransport(url: String) : Transport(EnvoyTransportType.V2WECHAT, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()
