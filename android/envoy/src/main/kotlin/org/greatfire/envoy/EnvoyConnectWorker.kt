@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.*
+
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
@@ -151,9 +153,8 @@ class EnvoyConnectWorker(
     // Main entry point
     override suspend fun doWork(): Result {
         // test direct connection first
-        val directTest = EnvoyConnectionTests.directTest
-        if (directTest != null) {
-            transports.add(directTest)
+        EnvoyConnectionTests.directTest?.let {
+            transports.add(it)
         }
 
         // We preserve the original list of tests in EnvoyNetworking

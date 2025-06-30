@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.util.Log
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong

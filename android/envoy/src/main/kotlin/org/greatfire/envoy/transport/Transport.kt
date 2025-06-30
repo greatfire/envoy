@@ -1,4 +1,8 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.EnvoyState
+import org.greatfire.envoy.UrlUtil
 
 import android.content.Context
 import android.content.Intent

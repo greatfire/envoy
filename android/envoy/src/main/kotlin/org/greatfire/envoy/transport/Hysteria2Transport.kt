@@ -1,4 +1,7 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyConnectionTests
+import org.greatfire.envoy.EnvoyServiceType
 
 import android.util.Log
 

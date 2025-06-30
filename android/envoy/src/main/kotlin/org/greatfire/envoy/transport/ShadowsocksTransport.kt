@@ -1,4 +1,8 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyConnectionTests
+import org.greatfire.envoy.EnvoyServiceType
+import org.greatfire.envoy.ShadowsocksService
 
 import android.content.Intent
 import android.util.Log

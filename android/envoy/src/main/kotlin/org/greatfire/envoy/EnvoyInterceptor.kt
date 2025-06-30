@@ -1,5 +1,8 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.DirectTransport
+import org.greatfire.envoy.transport.Transport
+
 import android.net.Uri
 import android.util.Log
 import okhttp3.*
