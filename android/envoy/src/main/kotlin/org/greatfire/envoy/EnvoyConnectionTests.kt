@@ -101,12 +101,12 @@ class EnvoyConnectionTests {
 
                 // Our OkHttp code doesn't support these, but maybe in the
                 // future...
-                if (okTest.resolverRules != null) {
+                if (okTest.resolverRules != "") {
                     okTest.resolverRules += (',' + rule)
                 } else {
                     okTest.resolverRules = rule
                 }
-                if (echTest.resolverRules != null) {
+                if (echTest.resolverRules != "") {
                     echTest.resolverRules += (',' + rule)
                 } else {
                     echTest.resolverRules = rule
