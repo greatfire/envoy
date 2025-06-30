@@ -1,2 +1,5 @@
-include ':envoy', ':cronet'
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+include ':envoy', ':cronet', ':demo'
 rootProject.name = 'Envoy'

@@ -65,7 +65,7 @@ class EnvoyConnectionTests {
                     Log.d(TAG, "adding global header: $name: $value")
                     value?.let {
                         okTest.headers.add(Pair(name, it))
-                        crTest.headers.add(Pair(name, it))
+                        // crTest.headers.add(Pair(name, it))
                         echTest.headers.add(Pair(name, it))
                     }
                 }
@@ -75,7 +75,7 @@ class EnvoyConnectionTests {
             tempUri.getQueryParameter("resolver")?.let {
                 // OkHttp is never going to support this?
                 okTest.resolverRules = it
-                crTest.resolverRules = it
+                // crTest.resolverRules = it
                 echTest.resolverRules = it
             }
 
@@ -91,20 +91,22 @@ class EnvoyConnectionTests {
                 // support both `resolver` and `address`
                 // the were mutually exclusive in the C++ patches,
                 // but they don't need to be
+                /*
                 if (crTest.resolverRules != null) {
                     crTest.resolverRules += (',' + rule)
                 } else {
                     crTest.resolverRules = rule
                 }
+                */
 
                 // Our OkHttp code doesn't support these, but maybe in the
                 // future...
-                if (okTest.resolverRules != null) {
+                if (okTest.resolverRules != "") {
                     okTest.resolverRules += (',' + rule)
                 } else {
                     okTest.resolverRules = rule
                 }
-                if (echTest.resolverRules != null) {
+                if (echTest.resolverRules != "") {
                     echTest.resolverRules += (',' + rule)
                 } else {
                     echTest.resolverRules = rule
@@ -112,7 +114,7 @@ class EnvoyConnectionTests {
 
                 // currently unused, but stash away the value
                 okTest.address = it
-                crTest.address = it
+                // crTest.address = it
                 echTest.address = it
             }
 
@@ -120,13 +122,13 @@ class EnvoyConnectionTests {
             // it's poorly named, http(s):// proxies are ok too
             tempUri.getQueryParameter("socks5")?.let {
                 okTest.proxyUrl = it
-                crTest.proxyUrl = it
+                // crTest.proxyUrl = it
                 echTest.proxyUrl = it
             }
 
             with(transports) {
                 add(okTest)
-                add(crTest)
+                // add(crTest)
                 add(echTest)
             }
         }
