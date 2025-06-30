@@ -47,26 +47,30 @@ class EnvoyConnectWorker(
         while (true) {
             val test = transports.removeFirstOrNull()
             if (test == null) {
-                // no tests remaining
+                // No tests left
+                // XXX ask for more URLs?
                 break
-            }  else if (state.connected.get() && !state.testAllUrls) {
-                // already connected and not testing all urls
+            }  else if (state.connected.get()) {
+                // we're already connected
                 break
             } else if (util.isTimeExpired()) {
-                // time has expired
+                // Time Expired
                 break
             } else if (util.isUrlBlocked(test)) {
+                // URL is blocked
+
                 // starts the timer and updates the tally
-                util.startTest(test)
-                // url blocked, stop test immediately
+                util.start(test)
+                // Log.d(WTAG, "URL BLOCKED, SKIP - " + test)
                 util.stopTestBlocked(test)
                 continue
             } else {
                 // starts the timer and updates the tally
-                util.startTest(test)
+                util.start(test)
             }
 
             // each test type has a corresponding implementation of startTest
+            Log.d(TAG, "Starting test ${test.testType}")
             val res = test.startTest(context)
 
             if (res) {
@@ -77,6 +81,12 @@ class EnvoyConnectWorker(
                 // Use this connection if we haven't found a working on already
                 state.connectIfNeeded(test)
             } else {
+                // stop the service
+                Log.d(TAG, "STOP ${test.testType}")
+                // please stop moving this call out of the worker, I want this
+                // to be explictly done in the worker, not in a side effect
+                test.stopService()
+
                 // report test failure. failed tests will not be retried until time passes
                 util.stopTestFailed(test)
             }
@@ -112,10 +122,8 @@ class EnvoyConnectWorker(
         // wait for jobs to complete
         jobs.joinAll()
 
-        // MNB jobs have all completed, report overall status
+        // jobs have all completed, report overall status
         util.testsComplete()
-
-        // Log.d(TAG, "EnvoyConnectWorker workers are done?")
     }
 
     private suspend fun startEnvoy() = coroutineScope {
@@ -163,7 +171,7 @@ class EnvoyConnectWorker(
             startEnvoy()
         } catch (e: Exception) {
             Log.e(TAG, "Starting Envoy failed: $e")
-            e.printStackTrace()
+            Log.e(TAG, Log.getStackTraceString(e))
         }
         // if we return failure, the job is re-run, I think?
         return Result.success()

@@ -26,14 +26,6 @@ class EnvoyConnectionTests {
 
         var cronetThreadPool = Executors.newCachedThreadPool()
 
-        // these are set by helpers in EnvoyNetworking's companion object
-        // Target URL/response code for testing
-        var testUrl = "https://www.google.com/generate_204"
-        // using a 200 code makes it really easy to get false positives
-        var testResponseCode = 204
-        // direct URL to the site for testing
-        var directUrl = ""
-
         // this case is a little complicated, so it has it's own
         // function
         //
@@ -57,9 +49,9 @@ class EnvoyConnectionTests {
             // We also can't support all the options (like resolver rules)
             // with OkHttp... should we ignore them and try anyway, or
             // just use Cronet if those features are called for?
-            val okTest = OkHttpEnvoyTransport(realUrl, testUrl, testResponseCode)
-            // val crTest = CronetEnvoyTransport(realUrl, testUrl, testResponseCode)
-            val echTest = HttpEchTransport(realUrl, testUrl, testResponseCode)
+            val okTest = OkHttpEnvoyTransport(realUrl)
+            val crTest = CronetEnvoyTransport(realUrl)
+            val echTest = HttpEchTransport(realUrl)
 
             // `header_` params
             tempUri.getQueryParameterNames().forEach {
@@ -143,8 +135,8 @@ class EnvoyConnectionTests {
 
         @JvmStatic
         fun addDirectUrl(url: String) {
-            directUrl = url;
-            directTest = DirectTransport(url, testUrl, testResponseCode)
+            Transport.directUrl = url;
+            directTest = DirectTransport(url)
         }
 
         // and an Envoy proxy URL to the list to test
@@ -172,16 +164,16 @@ class EnvoyConnectionTests {
 
                     with(transports) {
                         // XXX should we always test both?
-                        add(OkHttpEnvoyTransport(tempUrl, testUrl, testResponseCode))
-                        // add(CronetEnvoyTransport(tempUrl, testUrl, testResponseCode))
-                        add(HttpEchTransport(tempUrl, testUrl, testResponseCode))
+                        add(OkHttpEnvoyTransport(tempUrl))
+                        add(CronetEnvoyTransport(tempUrl))
+                        add(HttpEchTransport(tempUrl))
                     }
                 }
 
                 "masque" -> {
                     with(transports) {
-                        add(OkHttpMasqueTransport(url, testUrl, testResponseCode))
-                        add(CronetMasqueTransport(url, testUrl, testResponseCode))
+                        add(OkHttpMasqueTransport(url))
+                        add(CronetMasqueTransport(url))
                     }
                 }
                 // These aren't "officially" supported by Envoy, but they're
@@ -198,24 +190,24 @@ class EnvoyConnectionTests {
                     Log.d(TAG, "proxy URL: $tempUrl")
 
                     with (transports) {
-                        add(OkHttpProxyTransport(tempUrl, testUrl, testResponseCode))
-                        // add(CronetProxyTransport(tempUrl, testUrl, testResponseCode))
+                        add(OkHttpProxyTransport(tempUrl))
+                        add(CronetProxyTransport(tempUrl))
                     }
                 }
                 "envoy" -> {
                     addEnvoySechemeUrl(url)
                 }
                 "hysteria2" -> {
-                    transports.add(Hysteria2Transport(url, testUrl, testResponseCode))
+                    transports.add(Hysteria2Transport(url))
                 }
                 "v2srtp" -> {
-                    transports.add(V2SrtpTransport(url, testUrl, testResponseCode))
+                    transports.add(V2SrtpTransport(url))
                 }
                 "v2wechat" -> {
-                    transports.add(V2WechatTransport(url, testUrl, testResponseCode))
+                    transports.add(V2WechatTransport(url))
                 }
                 "ss" -> {
-                    transports.add(ShadowsocksTransport(url, testUrl, testResponseCode))
+                    transports.add(ShadowsocksTransport(url))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)

@@ -1,7 +1,5 @@
- components/cronet/android/api.txt                  |  8 ++++-
  .../api/src/org/chromium/net/CronetEngine.java     | 18 ++++++++++
  .../src/org/chromium/net/ICronetEngineBuilder.java |  6 ++++
- components/cronet/android/api_version.txt          |  2 +-
  .../cronet/android/cronet_context_adapter.cc       |  3 ++
  .../net/impl/AndroidHttpEngineBuilderWrapper.java  | 24 +++++++++++++
  .../chromium/net/impl/CronetEngineBuilderImpl.java | 33 +++++++++++++++++
@@ -19,38 +17,8 @@
  components/cronet/url_request_context_config.h     | 23 ++++++++++++
  net/ssl/ssl_config_service_defaults.cc             |  5 +++
  net/ssl/ssl_config_service_defaults.h              |  2 ++
- 21 files changed, 269 insertions(+), 2 deletions(-)
+ 19 files changed, 261 insertions(+)
 
-diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index 4e19af0db3542..eb3738e136276 100644
---- a/components/cronet/android/api.txt
-+++ b/components/cronet/android/api.txt
-@@ -86,6 +86,9 @@ public class org.chromium.net.CronetEngine$Builder {
-   public static final int HTTP_CACHE_IN_MEMORY;
-   public static final int HTTP_CACHE_DISK_NO_HTTP;
-   public static final int HTTP_CACHE_DISK;
-+  public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
-+  public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
-+  public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
-   public org.chromium.net.CronetEngine$Builder(android.content.Context);
-   public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
-   public java.lang.String getDefaultUserAgent();
-@@ -328,6 +331,9 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
-   public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
-   public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
-   public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
-+  public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
-+  public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
-+  public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
-   public abstract java.lang.String getDefaultUserAgent();
-   public abstract org.chromium.net.ExperimentalCronetEngine build();
-   protected java.util.Set<java.lang.Integer> getSupportedConfigOptions();
-@@ -635,4 +641,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
-   public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
-   public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
- }
--Stamp: 31ef5e660d31d43015f23b6d5d5d2ce0
-+Stamp: c11bf584850391d2d22b0f9c36cea18b
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 index d97ae131dc6f1..c4d58e576ced7 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
@@ -97,13 +65,6 @@ index 0dd5753e64404..d76e3194efe98 100644
      public abstract String getDefaultUserAgent();
  
      public abstract ExperimentalCronetEngine build();
-diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
-index f5c89552bd3e6..bb95160cb6e07 100644
---- a/components/cronet/android/api_version.txt
-+++ b/components/cronet/android/api_version.txt
-@@ -1 +1 @@
--32
-+33
 diff --git a/components/cronet/android/cronet_context_adapter.cc b/components/cronet/android/cronet_context_adapter.cc
 index ce696deaa53c4..baa63e9ceda4d 100644
 --- a/components/cronet/android/cronet_context_adapter.cc
@@ -442,10 +403,10 @@ index a484ac5ab9482..5bf6d5f853c81 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 7bfebe190b4bb..d41a9be135d44 100644
+index 3c0c0aee2eb96..85922aa08e95f 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
-@@ -34,6 +34,9 @@
+@@ -33,6 +33,9 @@
  #include "net/nqe/network_quality_estimator_params.h"
  #include "net/quic/set_quic_flag.h"
  #include "net/socket/ssl_client_socket.h"
@@ -455,7 +416,7 @@ index 7bfebe190b4bb..d41a9be135d44 100644
  #include "net/ssl/ssl_key_logger_impl.h"
  #include "net/third_party/quiche/src/quiche/quic/core/quic_packets.h"
  #include "net/third_party/quiche/src/quiche/quic/core/quic_tag.h"
-@@ -267,6 +270,9 @@ URLRequestContextConfig::URLRequestContextConfig(
+@@ -266,6 +269,9 @@ URLRequestContextConfig::URLRequestContextConfig(
      const std::string& user_agent,
      const std::string& proxy_url,
      const std::string& resolver_rules,
@@ -465,7 +426,7 @@ index 7bfebe190b4bb..d41a9be135d44 100644
      base::Value::Dict experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -283,6 +289,9 @@ URLRequestContextConfig::URLRequestContextConfig(
+@@ -282,6 +288,9 @@ URLRequestContextConfig::URLRequestContextConfig(
        user_agent(user_agent),
        proxy_url(proxy_url),
        resolver_rules(resolver_rules),
@@ -475,7 +436,7 @@ index 7bfebe190b4bb..d41a9be135d44 100644
        mock_cert_verifier(std::move(mock_cert_verifier)),
        enable_network_quality_estimator(enable_network_quality_estimator),
        bypass_public_key_pinning_for_local_trust_anchors(
-@@ -311,6 +320,9 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -310,6 +319,9 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
      const std::string& user_agent,
      const std::string& proxy_url,
      const std::string& resolver_rules,
@@ -485,7 +446,7 @@ index 7bfebe190b4bb..d41a9be135d44 100644
      const std::string& unparsed_experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -329,6 +341,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -328,6 +340,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
    return base::WrapUnique(new URLRequestContextConfig(
        enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
        load_disable_cache, storage_path, accept_language, user_agent, proxy_url, resolver_rules,
@@ -493,7 +454,7 @@ index 7bfebe190b4bb..d41a9be135d44 100644
        std::move(experimental_options).value(), std::move(mock_cert_verifier),
        enable_network_quality_estimator,
        bypass_public_key_pinning_for_local_trust_anchors,
-@@ -808,6 +821,33 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -807,6 +820,33 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    context_builder->set_user_agent(user_agent);
    context_builder->set_proxy_url(proxy_url);
    context_builder->set_resolver_rules(resolver_rules);
@@ -527,7 +488,7 @@ index 7bfebe190b4bb..d41a9be135d44 100644
    net::HttpNetworkSessionParams session_params;
    session_params.enable_http2 = enable_spdy;
    session_params.enable_quic = enable_quic;
-@@ -838,6 +878,7 @@ URLRequestContextConfigBuilder::Build() {
+@@ -837,6 +877,7 @@ URLRequestContextConfigBuilder::Build() {
    return URLRequestContextConfig::CreateURLRequestContextConfig(
        enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
        load_disable_cache, storage_path, accept_language, user_agent, proxy_url, resolver_rules,

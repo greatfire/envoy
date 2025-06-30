@@ -496,10 +496,10 @@ index 0cbbdce569e14..2e8aa0e81863f 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 5ef2058149f28..8aa16118fefc3 100644
+index 5fe1caf483d68..ba2df8a3d2ec6 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
-@@ -265,6 +265,7 @@ URLRequestContextConfig::URLRequestContextConfig(
+@@ -264,6 +264,7 @@ URLRequestContextConfig::URLRequestContextConfig(
      const std::string& storage_path,
      const std::string& accept_language,
      const std::string& user_agent,
@@ -507,7 +507,7 @@ index 5ef2058149f28..8aa16118fefc3 100644
      base::Value::Dict experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -279,6 +280,7 @@ URLRequestContextConfig::URLRequestContextConfig(
+@@ -278,6 +279,7 @@ URLRequestContextConfig::URLRequestContextConfig(
        storage_path(storage_path),
        accept_language(accept_language),
        user_agent(user_agent),
@@ -515,7 +515,7 @@ index 5ef2058149f28..8aa16118fefc3 100644
        mock_cert_verifier(std::move(mock_cert_verifier)),
        enable_network_quality_estimator(enable_network_quality_estimator),
        bypass_public_key_pinning_for_local_trust_anchors(
-@@ -305,6 +307,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -304,6 +306,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
      const std::string& storage_path,
      const std::string& accept_language,
      const std::string& user_agent,
@@ -523,7 +523,7 @@ index 5ef2058149f28..8aa16118fefc3 100644
      const std::string& unparsed_experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -322,7 +325,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -321,7 +324,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
    }
    return base::WrapUnique(new URLRequestContextConfig(
        enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
@@ -532,7 +532,7 @@ index 5ef2058149f28..8aa16118fefc3 100644
        std::move(experimental_options).value(), std::move(mock_cert_verifier),
        enable_network_quality_estimator,
        bypass_public_key_pinning_for_local_trust_anchors,
-@@ -800,6 +803,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -799,6 +802,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    }
    context_builder->set_accept_language(accept_language);
    context_builder->set_user_agent(user_agent);
@@ -540,7 +540,7 @@ index 5ef2058149f28..8aa16118fefc3 100644
    net::HttpNetworkSessionParams session_params;
    session_params.enable_http2 = enable_spdy;
    session_params.enable_quic = enable_quic;
-@@ -829,7 +833,7 @@ std::unique_ptr<URLRequestContextConfig>
+@@ -828,7 +832,7 @@ std::unique_ptr<URLRequestContextConfig>
  URLRequestContextConfigBuilder::Build() {
    return URLRequestContextConfig::CreateURLRequestContextConfig(
        enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
@@ -649,10 +649,10 @@ index 7d22c4e2d255a..a355c7d5a54aa 100644
  
  }  // namespace net
 diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
-index 957d2ee53d911..aff26d40b29c9 100644
+index f89ccd4b8a9b4..1b5fe91826c5f 100644
 --- a/net/url_request/url_request_context.h
 +++ b/net/url_request/url_request_context.h
-@@ -233,6 +233,9 @@ class NET_EXPORT URLRequestContext final {
+@@ -235,6 +235,9 @@ class NET_EXPORT URLRequestContext final {
    // context has been bound to.
    handles::NetworkHandle bound_network() const { return bound_network_; }
  
@@ -662,7 +662,7 @@ index 957d2ee53d911..aff26d40b29c9 100644
    void AssertCalledOnValidThread() {
      DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
    }
-@@ -379,6 +382,8 @@ class NET_EXPORT URLRequestContext final {
+@@ -383,6 +386,8 @@ class NET_EXPORT URLRequestContext final {
    // provided to a request when true.
    bool require_network_anonymization_key_ = false;
  
@@ -672,10 +672,10 @@ index 957d2ee53d911..aff26d40b29c9 100644
  
    handles::NetworkHandle bound_network_;
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 1649b10001b32..b5a2f658c4335 100644
+index 752dbaddec1ee..1abe519008ba3 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
-@@ -127,6 +127,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
+@@ -128,6 +128,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
    user_agent_ = user_agent;
  }
  
@@ -687,10 +687,10 @@ index 1649b10001b32..b5a2f658c4335 100644
      std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings) {
    http_user_agent_settings_ = std::move(http_user_agent_settings);
 diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
-index a15febef3b07a..6c82465a646fe 100644
+index 3b53b772d7205..dfd0395f2fa4b 100644
 --- a/net/url_request/url_request_context_builder.h
 +++ b/net/url_request/url_request_context_builder.h
-@@ -196,6 +196,11 @@ class NET_EXPORT URLRequestContextBuilder {
+@@ -209,6 +209,11 @@ class NET_EXPORT URLRequestContextBuilder {
    void set_accept_language(const std::string& accept_language);
    void set_user_agent(const std::string& user_agent);
  
@@ -702,7 +702,7 @@ index a15febef3b07a..6c82465a646fe 100644
    // Makes the created URLRequestContext use a particular HttpUserAgentSettings
    // object. Not compatible with set_accept_language() / set_user_agent().
    //
-@@ -417,6 +422,8 @@ class NET_EXPORT URLRequestContextBuilder {
+@@ -433,6 +438,8 @@ class NET_EXPORT URLRequestContextBuilder {
  
    std::string accept_language_;
    std::string user_agent_;

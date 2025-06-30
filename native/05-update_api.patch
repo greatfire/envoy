@@ -1,35 +1,41 @@
- components/cronet/android/api.txt         | 6 +++++-
- components/cronet/android/api_version.txt | 2 +-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ components/cronet/android/api.txt               | 12 ++++++++++-
+ components/cronet/android/api_version.txt       |  2 +-
+ 3 files changed, 40 insertions(+), 2 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index eb3738e136276..c95a104b6c6d5 100644
+index 66c254503684f..51296f6e86e4b 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
-@@ -89,6 +89,8 @@ public class org.chromium.net.CronetEngine$Builder {
-   public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
-   public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
-   public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
+@@ -86,6 +86,11 @@ public class org.chromium.net.CronetEngine$Builder {
+   public static final int HTTP_CACHE_IN_MEMORY;
+   public static final int HTTP_CACHE_DISK_NO_HTTP;
+   public static final int HTTP_CACHE_DISK;
++  public org.chromium.net.CronetEngine$Builder setDisabledCipherSuites(java.lang.String);
++  public org.chromium.net.CronetEngine$Builder setMinSslVersion(java.lang.Short);
++  public org.chromium.net.CronetEngine$Builder setMaxSslVersion(java.lang.Short);
 +  public org.chromium.net.CronetEngine$Builder setResolverRules(java.lang.String);
 +  public org.chromium.net.CronetEngine$Builder setProxyUrl(java.lang.String);
    public org.chromium.net.CronetEngine$Builder(android.content.Context);
    public org.chromium.net.CronetEngine$Builder(org.chromium.net.ICronetEngineBuilder);
    public java.lang.String getDefaultUserAgent();
-@@ -331,6 +333,8 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+@@ -328,6 +333,11 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
    public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
    public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
    public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
 +  public abstract org.chromium.net.ICronetEngineBuilder setProxyUrl(java.lang.String);
 +  public abstract org.chromium.net.ICronetEngineBuilder setResolverRules(java.lang.String);
-   public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
-   public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
-   public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
-@@ -641,4 +645,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
++  public abstract org.chromium.net.ICronetEngineBuilder setDisabledCipherSuites(java.lang.String);
++  public abstract org.chromium.net.ICronetEngineBuilder setMinSslVersion(java.lang.Short);
++  public abstract org.chromium.net.ICronetEngineBuilder setMaxSslVersion(java.lang.Short);
+   public abstract java.lang.String getDefaultUserAgent();
+   public abstract org.chromium.net.ExperimentalCronetEngine build();
+   protected java.util.Set<java.lang.Integer> getSupportedConfigOptions();
+@@ -636,4 +646,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
    public static org.chromium.net.apihelpers.JsonCronetCallback forJsonBody(org.chromium.net.apihelpers.RedirectHandler, org.chromium.net.apihelpers.CronetRequestCompletionListener<org.json.JSONObject>);
    public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
  }
--Stamp: c11bf584850391d2d22b0f9c36cea18b
-+Stamp: 972dc3d5842eb8f082a5b7eea2ca2090
+-Stamp: 373f90cf8fd10bf187e827fa2a4701af
++Stamp: 9fb82ef22cefa45a2664d82be9802151
 diff --git a/components/cronet/android/api_version.txt b/components/cronet/android/api_version.txt
 index bb95160cb6e07..a787364590245 100644
 --- a/components/cronet/android/api_version.txt

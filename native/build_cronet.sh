@@ -24,15 +24,9 @@ git checkout .
 
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/01-proxy_support.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
-# SCM: this one doesn't compile, TODO fix that :)
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
-
-# api.txt and api_version.txt is updated after all the patches are applied
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-update_api.patch"
-
-# build related hack that probably needs more attention, the generate javadoc step
-# fails with a class not found error... hopefully goes away with newer Chromium sources
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/99-fixes.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-dns_over_https_config.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/05-update_api.patch"
 
 # XXX hacky fix of build problem in M128
 if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
@@ -41,8 +35,9 @@ fi
 
 # Build the linux version
 # build cronet only(without java jni)
-gn gen out/Cronet-Desktop
-autoninja -C out/Cronet-Desktop cronet # cronet_sample
+# this is failing in M138
+#gn gen out/Cronet-Desktop
+#autoninja -C out/Cronet-Desktop cronet # cronet_sample
 
 # Build the various Android versions
 for arch in arm arm64 x86 x64; do
@@ -51,6 +46,8 @@ for arch in arm arm64 x86 x64; do
     if [[ -d "${out_dir}/cronet" ]]; then
         rm -r "${out_dir}/cronet"
     fi
+    # do we still need this workaround?
+    # mkdir -p "${out_dir}/cronet/javadoc"
 
     gn_args="--out_dir=$out_dir"
     if [[ $BUILD_VARIANT == release ]]; then
@@ -66,7 +63,10 @@ for arch in arm arm64 x86 x64; do
         gn_args="$gn_args --x86"
     fi
 
-    "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
+    # XXX how is the default platform broken? 🤦
+    if [[ $arch != "arm64" ]]; then
+        "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
+    fi
 
     # this defaults to true and errors out (thanks Google)
     sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"

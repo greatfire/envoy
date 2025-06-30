@@ -281,10 +281,10 @@ index 2e8aa0e81863f..a484ac5ab9482 100644
  
    Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 8aa16118fefc3..7bfebe190b4bb 100644
+index ba2df8a3d2ec6..3c0c0aee2eb96 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
-@@ -266,6 +266,7 @@ URLRequestContextConfig::URLRequestContextConfig(
+@@ -265,6 +265,7 @@ URLRequestContextConfig::URLRequestContextConfig(
      const std::string& accept_language,
      const std::string& user_agent,
      const std::string& proxy_url,
@@ -292,7 +292,7 @@ index 8aa16118fefc3..7bfebe190b4bb 100644
      base::Value::Dict experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -281,6 +282,7 @@ URLRequestContextConfig::URLRequestContextConfig(
+@@ -280,6 +281,7 @@ URLRequestContextConfig::URLRequestContextConfig(
        accept_language(accept_language),
        user_agent(user_agent),
        proxy_url(proxy_url),
@@ -300,7 +300,7 @@ index 8aa16118fefc3..7bfebe190b4bb 100644
        mock_cert_verifier(std::move(mock_cert_verifier)),
        enable_network_quality_estimator(enable_network_quality_estimator),
        bypass_public_key_pinning_for_local_trust_anchors(
-@@ -308,6 +310,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -307,6 +309,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
      const std::string& accept_language,
      const std::string& user_agent,
      const std::string& proxy_url,
@@ -308,7 +308,7 @@ index 8aa16118fefc3..7bfebe190b4bb 100644
      const std::string& unparsed_experimental_options,
      std::unique_ptr<net::CertVerifier> mock_cert_verifier,
      bool enable_network_quality_estimator,
-@@ -325,7 +328,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
+@@ -324,7 +327,7 @@ URLRequestContextConfig::CreateURLRequestContextConfig(
    }
    return base::WrapUnique(new URLRequestContextConfig(
        enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
@@ -317,7 +317,7 @@ index 8aa16118fefc3..7bfebe190b4bb 100644
        std::move(experimental_options).value(), std::move(mock_cert_verifier),
        enable_network_quality_estimator,
        bypass_public_key_pinning_for_local_trust_anchors,
-@@ -804,6 +807,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
+@@ -803,6 +806,7 @@ void URLRequestContextConfig::ConfigureURLRequestContextBuilder(
    context_builder->set_accept_language(accept_language);
    context_builder->set_user_agent(user_agent);
    context_builder->set_proxy_url(proxy_url);
@@ -325,7 +325,7 @@ index 8aa16118fefc3..7bfebe190b4bb 100644
    net::HttpNetworkSessionParams session_params;
    session_params.enable_http2 = enable_spdy;
    session_params.enable_quic = enable_quic;
-@@ -833,7 +837,7 @@ std::unique_ptr<URLRequestContextConfig>
+@@ -832,7 +836,7 @@ std::unique_ptr<URLRequestContextConfig>
  URLRequestContextConfigBuilder::Build() {
    return URLRequestContextConfig::CreateURLRequestContextConfig(
        enable_quic, enable_spdy, enable_brotli, http_cache, http_cache_max_size,
@@ -376,10 +376,10 @@ index 4cab2d0935c82..11f8fe4c8f4c9 100644
    // experiments and their corresponding configuration options. The format
    // is a JSON object with the name of the experiment as the key, and the
 diff --git a/net/url_request/url_request_context.h b/net/url_request/url_request_context.h
-index aff26d40b29c9..74a80db5aa4ee 100644
+index 1b5fe91826c5f..aaeb51d510fd4 100644
 --- a/net/url_request/url_request_context.h
 +++ b/net/url_request/url_request_context.h
-@@ -236,6 +236,9 @@ class NET_EXPORT URLRequestContext final {
+@@ -238,6 +238,9 @@ class NET_EXPORT URLRequestContext final {
    void set_proxy_url(const std::string& proxy_url) { proxy_url_ = proxy_url; }
    const std::string& proxy_url() const { return proxy_url_; }
  
@@ -389,7 +389,7 @@ index aff26d40b29c9..74a80db5aa4ee 100644
    void AssertCalledOnValidThread() {
      DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
    }
-@@ -384,6 +387,8 @@ class NET_EXPORT URLRequestContext final {
+@@ -388,6 +391,8 @@ class NET_EXPORT URLRequestContext final {
  
    std::string proxy_url_;
  
@@ -399,7 +399,7 @@ index aff26d40b29c9..74a80db5aa4ee 100644
  
    handles::NetworkHandle bound_network_;
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index b5a2f658c4335..c924649ee6911 100644
+index 1abe519008ba3..7762dce872344 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -31,6 +31,7 @@
@@ -410,7 +410,7 @@ index b5a2f658c4335..c924649ee6911 100644
  #include "net/http/http_auth_handler_factory.h"
  #include "net/http/http_cache.h"
  #include "net/http/http_network_layer.h"
-@@ -131,6 +132,10 @@ void URLRequestContextBuilder::set_proxy_url(const std::string& proxy_url) {
+@@ -132,6 +133,10 @@ void URLRequestContextBuilder::set_proxy_url(const std::string& proxy_url) {
    proxy_url_ = proxy_url;
  }
  
@@ -421,7 +421,7 @@ index b5a2f658c4335..c924649ee6911 100644
  void URLRequestContextBuilder::set_http_user_agent_settings(
      std::unique_ptr<HttpUserAgentSettings> http_user_agent_settings) {
    http_user_agent_settings_ = std::move(http_user_agent_settings);
-@@ -375,7 +380,17 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -377,7 +382,17 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
      }
    }
    host_resolver_->SetRequestContext(context.get());
@@ -441,10 +441,10 @@ index b5a2f658c4335..c924649ee6911 100644
    if (ssl_config_service_) {
      context->set_ssl_config_service(std::move(ssl_config_service_));
 diff --git a/net/url_request/url_request_context_builder.h b/net/url_request/url_request_context_builder.h
-index 6c82465a646fe..3ce8846da36c5 100644
+index dfd0395f2fa4b..222bcc58037db 100644
 --- a/net/url_request/url_request_context_builder.h
 +++ b/net/url_request/url_request_context_builder.h
-@@ -201,6 +201,11 @@ class NET_EXPORT URLRequestContextBuilder {
+@@ -214,6 +214,11 @@ class NET_EXPORT URLRequestContextBuilder {
    //
    void set_proxy_url(const std::string& proxy_url);
  
@@ -456,7 +456,7 @@ index 6c82465a646fe..3ce8846da36c5 100644
    // Makes the created URLRequestContext use a particular HttpUserAgentSettings
    // object. Not compatible with set_accept_language() / set_user_agent().
    //
-@@ -423,6 +428,7 @@ class NET_EXPORT URLRequestContextBuilder {
+@@ -439,6 +444,7 @@ class NET_EXPORT URLRequestContextBuilder {
    std::string accept_language_;
    std::string user_agent_;
    std::string proxy_url_;
