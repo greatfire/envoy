@@ -41,7 +41,7 @@ touch public.txt
 echo '<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.chromium.net">
-    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="24" />
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 </manifest>' >AndroidManifest.xml
