@@ -52,8 +52,8 @@ class EnvoyConnectWorker(
                 // No tests left
                 // XXX ask for more URLs?
                 break
-            }  else if (state.connected.get()) {
-                // we're already connected
+            }  else if (state.connected.get() && !state.testAllUrls) {
+                // we're already connected and we're not testing everything
                 break
             } else if (util.isTimeExpired()) {
                 // Time Expired
