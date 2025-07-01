@@ -1,18 +1,18 @@
 package com.example.myapplication;
 
-import static org.greatfire.envoy.EnvoyServiceType.DIRECT;
-import static org.greatfire.envoy.EnvoyServiceType.OKHTTP_ENVOY;
-import static org.greatfire.envoy.EnvoyServiceType.CRONET_ENVOY;
-import static org.greatfire.envoy.EnvoyServiceType.OKHTTP_MASQUE;
-import static org.greatfire.envoy.EnvoyServiceType.CRONET_MASQUE;
-import static org.greatfire.envoy.EnvoyServiceType.OKHTTP_PROXY;
-import static org.greatfire.envoy.EnvoyServiceType.CRONET_PROXY;
-import static org.greatfire.envoy.EnvoyServiceType.HTTP_ECH;
-import static org.greatfire.envoy.EnvoyServiceType.HYSTERIA2;
-import static org.greatfire.envoy.EnvoyServiceType.V2WS;
-import static org.greatfire.envoy.EnvoyServiceType.V2SRTP;
-import static org.greatfire.envoy.EnvoyServiceType.V2WECHAT;
-import static org.greatfire.envoy.EnvoyServiceType.SHADOWSOCKS;
+import static org.greatfire.envoy.EnvoyTransportType.DIRECT;
+import static org.greatfire.envoy.EnvoyTransportType.OKHTTP_ENVOY;
+import static org.greatfire.envoy.EnvoyTransportType.CRONET_ENVOY;
+import static org.greatfire.envoy.EnvoyTransportType.OKHTTP_MASQUE;
+import static org.greatfire.envoy.EnvoyTransportType.CRONET_MASQUE;
+import static org.greatfire.envoy.EnvoyTransportType.OKHTTP_PROXY;
+import static org.greatfire.envoy.EnvoyTransportType.CRONET_PROXY;
+import static org.greatfire.envoy.EnvoyTransportType.HTTP_ECH;
+import static org.greatfire.envoy.EnvoyTransportType.HYSTERIA2;
+import static org.greatfire.envoy.EnvoyTransportType.V2WS;
+import static org.greatfire.envoy.EnvoyTransportType.V2SRTP;
+import static org.greatfire.envoy.EnvoyTransportType.V2WECHAT;
+import static org.greatfire.envoy.EnvoyTransportType.SHADOWSOCKS;
 
 import android.os.Bundle;
 import android.util.Log;
