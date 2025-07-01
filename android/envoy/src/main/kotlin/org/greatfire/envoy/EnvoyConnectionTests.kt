@@ -75,7 +75,7 @@ class EnvoyConnectionTests {
             tempUri.getQueryParameter("resolver")?.let {
                 // OkHttp is never going to support this?
                 okTest.resolverRules = it
-                // crTest.resolverRules = it
+                crTest.resolverRules = it
                 echTest.resolverRules = it
             }
 
@@ -122,13 +122,13 @@ class EnvoyConnectionTests {
             // it's poorly named, http(s):// proxies are ok too
             tempUri.getQueryParameter("socks5")?.let {
                 okTest.proxyUrl = it
-                // crTest.proxyUrl = it
+                crTest.proxyUrl = it
                 echTest.proxyUrl = it
             }
 
             with(transports) {
                 add(okTest)
-                // add(crTest)
+                add(crTest)
                 add(echTest)
             }
         }
@@ -173,7 +173,7 @@ class EnvoyConnectionTests {
                 "masque" -> {
                     with(transports) {
                         add(OkHttpMasqueTransport(url))
-                        add(CronetMasqueTransport(url))
+                        // add(CronetMasqueTransport(url))
                     }
                 }
                 // These aren't "officially" supported by Envoy, but they're
@@ -191,7 +191,7 @@ class EnvoyConnectionTests {
 
                     with (transports) {
                         add(OkHttpProxyTransport(tempUrl))
-                        add(CronetProxyTransport(tempUrl))
+                        // add(CronetProxyTransport(tempUrl))
                     }
                 }
                 "envoy" -> {
