@@ -1,10 +1,12 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.content.Context
 import android.util.Log
 import okhttp3.Request
 
-class DirectTransport(url: String) : Transport(EnvoyServiceType.DIRECT, url) {
+class DirectTransport(url: String) : Transport(EnvoyTransportType.DIRECT, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing direct connection")

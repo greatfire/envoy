@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.content.Context
 import android.util.Log
 import IEnvoyProxy.IEnvoyProxy // Go library
@@ -31,7 +33,7 @@ class EnvoyState private constructor() {
 
     // moving this back to state because it's state
     var connected = AtomicBoolean(false)
-    var activeServiceType = AtomicInteger(EnvoyServiceType.UNKNOWN.ordinal)
+    var activeServiceType = AtomicInteger(EnvoyTransportType.UNKNOWN.ordinal)
     var activeService: Transport? = null
     val additionalWorkingConnections = mutableListOf<Transport>()
 
@@ -108,9 +110,9 @@ class EnvoyState private constructor() {
 
             // start the cronet engine if we're using a cronet service
             when (transport.testType) {
-                EnvoyServiceType.CRONET_ENVOY,
-                EnvoyServiceType.CRONET_PROXY,
-                EnvoyServiceType.CRONET_MASQUE, -> {
+                EnvoyTransportType.CRONET_ENVOY,
+                EnvoyTransportType.CRONET_PROXY,
+                EnvoyTransportType.CRONET_MASQUE, -> {
                     createCronetEngine(transport)
                 }
                 else -> "" // nothing to do
@@ -122,7 +124,7 @@ class EnvoyState private constructor() {
 
             Log.d(TAG, "🍍 activeService is $activeService")
 
-        } else if(transport.testType == EnvoyServiceType.DIRECT) {
+        } else if(transport.testType == EnvoyTransportType.DIRECT) {
             Log.i(TAG, "👉 DIRECT overriding previous connection")
 
             val previousService = activeService

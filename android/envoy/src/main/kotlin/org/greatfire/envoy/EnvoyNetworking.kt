@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.content.Context
 import android.util.Log
 import androidx.work.*

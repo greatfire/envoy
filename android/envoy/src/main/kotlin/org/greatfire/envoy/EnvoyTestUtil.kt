@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.util.Log
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -102,7 +104,7 @@ class EnvoyTestUtil() {
     fun stopTestPassed(transport: Transport): Transport {
         transport.stopTimer()
 
-        if (transport.testType != EnvoyServiceType.DIRECT) {
+        if (transport.testType != EnvoyTransportType.DIRECT) {
             // passed, remove retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
             preferences.clearUrlFailure(transport.url)
@@ -120,7 +122,7 @@ class EnvoyTestUtil() {
         val count = failedCount.incrementAndGet()
         Log.d(TAG, "FAILED COUNT UPDATED: " + count)
 
-        if (transport.testType != EnvoyServiceType.DIRECT) {
+        if (transport.testType != EnvoyTransportType.DIRECT) {
             // failed, update retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
             val currentTime = System.currentTimeMillis()

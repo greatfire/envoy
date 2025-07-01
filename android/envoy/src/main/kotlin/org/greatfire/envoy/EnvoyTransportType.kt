@@ -1,6 +1,6 @@
 package org.greatfire.envoy
 
-enum class EnvoyServiceType {
+enum class EnvoyTransportType {
     DIRECT,         // direct connection, no proxy
     OKHTTP_ENVOY,   // Use OkHttp via an Envoy proxy
     CRONET_ENVOY,   // Use Cronet via an Envoy proxy

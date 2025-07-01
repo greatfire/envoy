@@ -1,8 +1,10 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.content.Context
 
-class CronetProxyTransport(url: String) : Transport(EnvoyServiceType.CRONET_PROXY, url) {
+class CronetProxyTransport(url: String) : Transport(EnvoyTransportType.CRONET_PROXY, url) {
     // TODO - support for this is partly implmeneted
 
     override suspend fun startService(): String {

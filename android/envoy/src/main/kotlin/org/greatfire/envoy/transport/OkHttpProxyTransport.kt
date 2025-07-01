@@ -1,11 +1,13 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import okhttp3.Request
 
-class OkHttpProxyTransport(url: String) : Transport(EnvoyServiceType.OKHTTP_PROXY, url) {
+class OkHttpProxyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_PROXY, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         val host = Uri.parse(testUrl).host

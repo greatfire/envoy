@@ -1,4 +1,6 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyTransportType
 
 import android.net.Uri
 import android.util.Log
@@ -6,7 +8,7 @@ import android.util.Log
 import IEnvoyProxy.IEnvoyProxy
 import android.content.Context
 
-class OkHttpMasqueTransport(url: String) : Transport(EnvoyServiceType.OKHTTP_MASQUE, url) {
+class OkHttpMasqueTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_MASQUE, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         if (proxyUrl == null) {

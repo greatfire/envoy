@@ -1,4 +1,8 @@
-package org.greatfire.envoy
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyConnectionTests
+import org.greatfire.envoy.EnvoyTransportType
+import org.greatfire.envoy.ShadowsocksService
 
 import android.content.Intent
 import android.util.Log
@@ -7,7 +11,7 @@ import androidx.core.content.ContextCompat
 import android.content.Context
 import android.net.Uri
 
-class ShadowsocksTransport(url: String) : Transport(EnvoyServiceType.SHADOWSOCKS, url) {
+class ShadowsocksTransport(url: String) : Transport(EnvoyTransportType.SHADOWSOCKS, url) {
 
     override suspend fun startTest(context: Context): Boolean {
         Log.d(TAG, "Testing Shadowsocks " + this)
