@@ -3,6 +3,10 @@ package org.greatfire.envoy
 import android.net.Uri
 import android.util.Log
 
+// This is a helper class to try to sanitize URLs, Hostnames, and Excptions
+//
+// Envoy hosts and URLs may be sensative, so we don't want to log them
+
 class UrlUtil {
 
     companion object {
