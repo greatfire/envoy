@@ -153,7 +153,7 @@ class EnvoyDns() {
         }
 
         // fall back to one of the servers, a last ditch effort
-        if (chosenServer.isEmpty()) {
+        if (chosenServer.isNullOrEmpty()) {
             Log.e(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
             chosenServer = FALLBACK_DNS_SERVER
         }
