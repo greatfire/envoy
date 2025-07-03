@@ -8,7 +8,7 @@ export DEPOT_TOOLS_UPDATE=0
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
 DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 export PATH="$DEPOT_TOOLS_ROOT:$PATH"
-TAG=${1:-128.0.6537.2}
+TAG=${1:-128.0.6613.148}
 
 cd "$CHROMIUM_SRC_ROOT" || exit 1
 
@@ -23,7 +23,7 @@ cd "$DEPOT_TOOLS_ROOT" || exit 2
 git checkout main && git pull && git checkout "$(git rev-list -n 1 --before="$COMMIT_DATE" main)"
 
 cd "$CHROMIUM_SRC_ROOT" || exit 3
-git clean -ffd # --dry-run
+#git clean -ffd # --dry-run
 
 gclient sync --nohooks
 # Will prompt for package installation

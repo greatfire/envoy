@@ -24,9 +24,11 @@ git checkout .
 
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/01-proxy_support.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-dns_over_https_config.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/05-update_api.patch"
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02.5-update_api_01_02.patch"
+# the tls_options patch needs some fixes? cronet requests fail with it applied
+#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
+#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-dns_over_https_config.patch"
+#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/05-update_api.patch"
 
 # XXX hacky fix of build problem in M128
 if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
