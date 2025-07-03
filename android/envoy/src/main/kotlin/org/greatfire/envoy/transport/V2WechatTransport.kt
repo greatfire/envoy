@@ -15,7 +15,7 @@ class V2WechatTransport(url: String) : Transport(EnvoyTransportType.V2WECHAT, ur
     override suspend fun startTest(context: Context): Boolean {
         val addr = startService()
 
-        if (addr == "") {
+        if (addr.isEmpty()) {
             // The go code doesn't handle failures well, but an empty
             // string here indicates failure
             stopService()
