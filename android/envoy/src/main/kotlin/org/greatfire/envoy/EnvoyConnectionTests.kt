@@ -103,12 +103,12 @@ class EnvoyConnectionTests {
 
                 // Our OkHttp code doesn't support these, but maybe in the
                 // future...
-                if (okTest.resolverRules != "") {
+                if (okTest.resolverRules.isNotEmpty()) {
                     okTest.resolverRules += (',' + rule)
                 } else {
                     okTest.resolverRules = rule
                 }
-                if (echTest.resolverRules != "") {
+                if (echTest.resolverRules.isNotEmpty()) {
                     echTest.resolverRules += (',' + rule)
                 } else {
                     echTest.resolverRules = rule
@@ -116,7 +116,7 @@ class EnvoyConnectionTests {
 
                 // currently unused, but stash away the value
                 okTest.address = it
-                // crTest.address = it
+                crTest.address = it
                 echTest.address = it
             }
 
