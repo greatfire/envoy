@@ -25,8 +25,7 @@ object CronetNetworking {
         cacheFolder: String = "",
         proxyUrl: String = "",
         resolverRules: String = "",
-        cacheSize: Long = 0,
-        strategy: Int = 0
+        cacheSize: Long = 0 // cache size in MB
     ): CronetEngine {
         var builder = CronetEngine.Builder(context)
             .enableBrotli(true)
@@ -43,11 +42,11 @@ object CronetNetworking {
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
         }
 
-        proxyUrl?.let {
-            builder = builder.setProxyUrl(it)
+        if (proxyUrl != "") {
+            builder = builder.setProxyUrl(proxyUrl)
         }
-        resolverRules?.let {
-            builder = builder.setResolverRules(it)
+        if (resolverRules != "") {
+            builder = builder.setResolverRules(resolverRules)
         }
         // XXX TLS options here, if we support them
 
