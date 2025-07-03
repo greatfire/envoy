@@ -68,4 +68,11 @@ class UrlUtilTest {
         val expected = "hysteria2://???.example.???/…"
         assertTrue(expected.equals(result))
     }
+
+    @Test
+    fun sanitizeUrl_v2ray() {
+        val result = UrlUtil.sanitizeUrl("v2wechat://127.0.0.1:54321?id=fake-fake-fake-fake-fake")
+        val expected = "v2wechat://???.0.0.???/…"
+        assertTrue(expected.equals(result))
+    }
 }
