@@ -48,9 +48,7 @@ dependencies {
 
     implementation('androidx.work:work-runtime-ktx:2.10.0')
 
-    //testImplementation 'junit:junit:4.12'
-    //androidTestImplementation 'androidx.test:runner:1.1.1'
-    //androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+    testImplementation 'junit:junit:4.12'
 
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
@@ -60,14 +58,12 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
-    // implementation 'org.greatfire.envoy:cronet:128.0.6537.2'
-    // XXX release updated IEP :)
     // implementation 'org.greatfire:IEnvoyProxy:3.5.0'
 
     implementation 'tech.relaycorp:doh:1.0.70'
 
     debugApi(name: 'cronet-debug', ext: 'aar')
-    // releaseApi(name: 'cronet-release', ext: 'aar')
+    releaseApi(name: 'cronet-release', ext: 'aar')
     debugApi(name: 'IEnvoyProxy', ext: 'aar')
     releaseApi(name: 'IEnvoyProxy', ext: 'aar')
 }
