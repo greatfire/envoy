@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.content.Context
 import android.util.Log
 import androidx.work.*
@@ -33,8 +35,8 @@ class EnvoyNetworking {
     // use a custom test URL and response code
     // default is ("https://www.google.com/generate_204", 204)
     fun setTestUrl(url: String, responseCode: Int): EnvoyNetworking {
-        EnvoyConnectionTests.testUrl = url
-        EnvoyConnectionTests.testResponseCode = responseCode
+        Transport.testUrl = url
+        Transport.testResponseCode = responseCode
 
         return this
     }
@@ -45,7 +47,7 @@ class EnvoyNetworking {
     // direct to true. It's not a problem to do both, but probably not
     // necessary. Doing neither will disable direct connections
     fun setDirectUrl(newVal: String): EnvoyNetworking {
-        EnvoyConnectionTests.directUrl = newVal
+        EnvoyConnectionTests.addDirectUrl(newVal)
 
         return this
     }
@@ -53,14 +55,12 @@ class EnvoyNetworking {
     // Set the callback for reporting status to the main application
     fun setCallback(callback: EnvoyTestCallback): EnvoyNetworking {
         state.callback = callback
-
         return this
     }
 
     // Provide a context reference from the main application
     fun setContext(context: Context): EnvoyNetworking {
         state.ctx = context
-
         return this
     }
 
@@ -71,6 +71,11 @@ class EnvoyNetworking {
 
     fun setBackoff(backoffEnabled: Boolean): EnvoyNetworking {
         state.backoffEnabled = backoffEnabled
+        return this
+    }
+
+    fun setTestAllUrls(testAllUrls: Boolean): EnvoyNetworking {
+        state.testAllUrls = testAllUrls
         return this
     }
 

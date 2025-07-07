@@ -1,7 +1,5 @@
- components/cronet/android/api.txt                  |  8 ++++-
  .../api/src/org/chromium/net/CronetEngine.java     | 18 ++++++++++
  .../src/org/chromium/net/ICronetEngineBuilder.java |  6 ++++
- components/cronet/android/api_version.txt          |  2 +-
  .../cronet/android/cronet_context_adapter.cc       |  3 ++
  .../net/impl/AndroidHttpEngineBuilderWrapper.java  | 24 +++++++++++++
  .../chromium/net/impl/CronetEngineBuilderImpl.java | 33 +++++++++++++++++
@@ -19,7 +17,7 @@
  components/cronet/url_request_context_config.h     | 23 ++++++++++++
  net/ssl/ssl_config_service_defaults.cc             |  5 +++
  net/ssl/ssl_config_service_defaults.h              |  2 ++
- 21 files changed, 269 insertions(+), 2 deletions(-)
+ 19 files changed, 261 insertions(+)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
 index 8b3c7cff08c3a..b780c7c1fd72b 100644

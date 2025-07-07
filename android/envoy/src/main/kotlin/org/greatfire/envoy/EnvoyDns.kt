@@ -12,20 +12,36 @@ class EnvoyDns() {
     companion object {
         private const val TAG = "EnvoyDns"
 
-        private val CLOUDFLARE_SERVERS = listOf<String>("1.1.1.1", "1.0.0.1", "[2606:4700:4700::1111]", "[2606:4700:4700::1001]")
-        private val QUAD9_SERVERS = listOf<String>("9.9.9.9", "149.112.112.112", "[2620:fe::fe]", "[2620:fe::fe:9]")
-        private val DNS_SB_SERVERS = listOf<String>("185.222.222.222", "45.11.45.11", "[2a09::]", "[2a11::]")
+        private val CLOUDFLARE_SERVERS = listOf<String>(
+            "1.1.1.1", "1.0.0.1",
+            "[2606:4700:4700::1111]", "[2606:4700:4700::1001]")
+        private val QUAD9_SERVERS = listOf<String>(
+            "9.9.9.9", "149.112.112.112",
+            "[2620:fe::fe]", "[2620:fe::fe:9]")
+        private val DNS_SB_SERVERS = listOf<String>(
+            "185.222.222.222", "45.11.45.11",
+            "[2a09::]", "[2a11::]")
+        private val SWITCH_CH_SERVERS = listOf<String>(
+            "130.59.31.248", "130.59.31.251",
+            "[2001:620:0:ff::2]", "[2001:620:0:ff::3]")
+        private val YANDEX_SERVERS = listOf<String>(
+            "77.88.8.8", "77.88.8.1", "[2a02:6b8::feed:0ff]",
+            "[2a02:6b8:0:1::feed:0ff]")
+        private val ADGUARD_SERVERS = listOf<String>(
+            "94.140.14.141", "94.140.14.140",
+            "[2a10:50c0::2:ff]", "[2a10:50c0::1:ff]")
 
         // Cloudflare is somewhat arbitrary, ipv6 seems less often blocked
         // in my brief testing
         // this is used if something goes wrong
         private const val FALLBACK_DNS_SERVER = "[2606:4700:4700::1111]"
-
-        private val SERVERS = listOf<String>("45.11.45.11", "[2a09::]")
     }
 
     var chosenServer: String? = null
     var serverUrl: String? = null
+
+    var retries = 0
+    val max_retries = 4
 
     // Make test query to a random host name from this list
     // so the DNS providers and censors see a little variety
@@ -44,7 +60,6 @@ class EnvoyDns() {
         doh.use {
             try {
                 aRecords = doh.lookUp(resolveHost, "A").data
-                // Log.d(TAG, "aRecords: " + aRecords)
                 // XXX should we test the list isn't empty at least
                 // or seomthing?
                 // We assume a return here is a success
@@ -70,12 +85,15 @@ class EnvoyDns() {
         val serverList = listOf(
             CLOUDFLARE_SERVERS,
             QUAD9_SERVERS,
-            DNS_SB_SERVERS
+            DNS_SB_SERVERS,
+            SWITCH_CH_SERVERS,
+            YANDEX_SERVERS,
+            ADGUARD_SERVERS,
         ).flatten()
 
         try {
-        // Pick a few random servers to try
-            val workList = serverList.shuffled().subList(0, 3)
+            // Pick a few random servers to try
+            val workList = serverList.shuffled().subList(0, 5)
             val jobs = mutableListOf<Job>()
 
             workList.forEach {
@@ -91,13 +109,6 @@ class EnvoyDns() {
         } catch (e: Exception) {
             Log.e(TAG, "Unhandled DNS error $e")
         }
-
-        // XXX try some more here?
-        if (chosenServer == "") {
-            Log.e(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
-            chosenServer = FALLBACK_DNS_SERVER
-
-        }
     }
 
     suspend fun getECHConfig(host: String): String {
@@ -105,7 +116,7 @@ class EnvoyDns() {
 
         // wait for a working server to be found
         // this is hacky, and should have a timeout XXX
-        while (serverUrl == "") {
+        while (serverUrl.isNullOrEmpty()) {
             Log.e(TAG, "getECHConfig called when serverUrl is null")
             delay(100)
         }
@@ -134,6 +145,18 @@ class EnvoyDns() {
     }
 
     suspend fun init() {
-        pickAServer()
+        // Try a few times
+        while (chosenServer.isNullOrEmpty() && retries <= max_retries) {
+            Log.d(TAG, "try number $retries")
+            pickAServer()
+            retries++
+        }
+
+        // fall back to one of the servers, a last ditch effort
+        if (chosenServer.isNullOrEmpty()) {
+            Log.e(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
+            chosenServer = FALLBACK_DNS_SERVER
+        }
+
     }
 }

@@ -1,5 +1,7 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.content.Context
 import android.util.Log
 import IEnvoyProxy.IEnvoyProxy // Go library
@@ -31,9 +33,9 @@ class EnvoyState private constructor() {
 
     // moving this back to state because it's state
     var connected = AtomicBoolean(false)
-    var activeServiceType = AtomicInteger(EnvoyServiceType.UNKNOWN.ordinal)
-    var activeService: EnvoyTest? = null
-    val additionalWorkingConnections = mutableListOf<EnvoyTest>()
+    var activeServiceType = AtomicInteger(EnvoyTransportType.UNKNOWN.ordinal)
+    var activeService: Transport? = null
+    val additionalWorkingConnections = mutableListOf<Transport>()
 
 
     // if set, wait an increasing amount of time before retrying blocked urls
@@ -60,7 +62,10 @@ class EnvoyState private constructor() {
     // for debugging, simulate a connection timeout
     var debugTimeoutDriect = false
 
-    private fun createCronetEngine(test: EnvoyTest) {
+    // when set, all urls will be tested
+    var testAllUrls = false
+
+    private fun createCronetEngine(transport: Transport) {
         // I think we can reuse the cache dir between runs?
         // XXX we used to have multiple tests cronet based tests
         // running in parallel...
@@ -74,8 +79,8 @@ class EnvoyState private constructor() {
         cronetEngine = CronetNetworking.buildEngine(
             context = ctx!!,
             cacheFolder = cacheDir.absolutePath,
-            proxyUrl = test.proxyUrl,
-            resolverRules = test.resolverRules,
+            proxyUrl = transport.proxyUrl,
+            resolverRules = transport.resolverRules,
             cacheSize = 10, // cache size in MB
         )
     }
@@ -97,37 +102,37 @@ class EnvoyState private constructor() {
     }
 
     // called when the connection worker found a successful connection
-    fun connectIfNeeded(test: EnvoyTest) {
+    fun connectIfNeeded(transport: Transport) {
         // Check if we already have a working connection before continuing
         // set that we do otherwise
         if (connected.compareAndSet(false, true)) {
             Log.i(TAG, "🚀🚀🚀 Envoy connected")
 
             // start the cronet engine if we're using a cronet service
-            when (test.testType) {
-                EnvoyServiceType.CRONET_ENVOY,
-                EnvoyServiceType.CRONET_PROXY,
-                EnvoyServiceType.CRONET_MASQUE, -> {
-                    createCronetEngine(test)
+            when (transport.testType) {
+                EnvoyTransportType.CRONET_ENVOY,
+                EnvoyTransportType.CRONET_PROXY,
+                EnvoyTransportType.CRONET_MASQUE, -> {
+                    createCronetEngine(transport)
                 }
                 else -> "" // nothing to do
             }
 
-            activeServiceType.set(test.testType.ordinal)
-            activeService = test
-            test.selectedService = true
+            activeServiceType.set(transport.testType.ordinal)
+            activeService = transport
+            transport.selectedService = true
 
             Log.d(TAG, "🍍 activeService is $activeService")
 
-        } else if(test.testType == EnvoyServiceType.DIRECT) {
+        } else if(transport.testType == EnvoyTransportType.DIRECT) {
             Log.i(TAG, "👉 DIRECT overriding previous connection")
 
             val previousService = activeService
 
             // activate the direct connection
-            activeServiceType.set(test.testType.ordinal)
-            activeService = test
-            test.selectedService = true
+            activeServiceType.set(transport.testType.ordinal)
+            activeService = transport
+            transport.selectedService = true
 
             previousService?.let {
                 it.selectedService = false
@@ -136,8 +141,8 @@ class EnvoyState private constructor() {
         } else {
             // this one worked, but we already selected a service
             // TODO use these later?
-            Log.d(TAG, "💤 additional working service $test")
-            additionalWorkingConnections.add(test)
+            Log.d(TAG, "💤 additional working service $transport")
+            additionalWorkingConnections.add(transport)
         }
     }
 }

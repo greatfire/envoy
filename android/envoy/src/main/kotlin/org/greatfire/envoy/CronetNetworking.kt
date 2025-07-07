@@ -9,7 +9,6 @@ import org.chromium.net.UploadDataProviders
 import org.chromium.net.UrlRequest
 import java.io.File
 import java.io.IOException
-import java.lang.reflect.Field
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -18,18 +17,15 @@ import java.util.concurrent.Executors
 object CronetNetworking {
     private var mCronetEngine: CronetEngine? = null
     private val mExecutorService = Executors.newSingleThreadExecutor()
-    // private var mCustomCronetBuilder: CustomCronetBuilder? = null
 
     private const val TAG = "Envoy"
 
     fun buildEngine(
         context: Context,
-        cacheFolder: String? = null,
-        envoyUrl: String? = null,
-        proxyUrl: String? = null,
-        resolverRules: String? = null,
-        cacheSize: Long = 0,
-        strategy: Int = 0
+        cacheFolder: String = "",
+        proxyUrl: String = "",
+        resolverRules: String = "",
+        cacheSize: Long = 0 // cache size in MB
     ): CronetEngine {
         var builder = CronetEngine.Builder(context)
             .enableBrotli(true)
@@ -46,16 +42,11 @@ object CronetNetworking {
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
         }
 
-        envoyUrl?.let {
-            Log.e(TAG, "envoyUrl is unsupported here now!")
-            // builder = builder.setEnvoyUrl(it)
+        if (proxyUrl.isNotEmpty()) {
+            builder = builder.setProxyUrl(proxyUrl)
         }
-
-        proxyUrl?.let {
-            builder = builder.setProxyUrl(it)
-        }
-        resolverRules?.let {
-            builder = builder.setResolverRules(it)
+        if (resolverRules.isNotEmpty()) {
+            builder = builder.setResolverRules(resolverRules)
         }
         // XXX TLS options here, if we support them
 

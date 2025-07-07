@@ -23,7 +23,7 @@ cd "$DEPOT_TOOLS_ROOT" || exit 2
 git checkout main && git pull && git checkout "$(git rev-list -n 1 --before="$COMMIT_DATE" main)"
 
 cd "$CHROMIUM_SRC_ROOT" || exit 3
-git clean -ffd # --dry-run
+#git clean -ffd # --dry-run
 
 gclient sync --nohooks
 # Will prompt for package installation

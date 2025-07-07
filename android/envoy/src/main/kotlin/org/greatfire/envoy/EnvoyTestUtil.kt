@@ -1,7 +1,8 @@
 package org.greatfire.envoy
 
+import org.greatfire.envoy.transport.Transport
+
 import android.util.Log
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
@@ -59,7 +60,7 @@ class EnvoyTestUtil() {
         }
     }
 
-    fun isUrlBlocked(test: EnvoyTest): Boolean {
+    fun isUrlBlocked(transport: Transport): Boolean {
 
         // disable this feature for debugging
         if (!state.backoffEnabled) {
@@ -70,10 +71,10 @@ class EnvoyTestUtil() {
         }
 
         val currentTime = System.currentTimeMillis()
-        val failureTime = preferences.getFailureTimeForUrl(test.url)
-        val failureCount = preferences.getFailureCountForUrl(test.url)
+        val failureTime = preferences.getFailureTimeForUrl(transport.url)
+        val failureCount = preferences.getFailureCountForUrl(transport.url)
 
-        val sanitizedUrl = UrlUtil.sanitizeUrl(test.url)
+        val sanitizedUrl = UrlUtil.sanitizeUrl(transport.url)
 
         // backoff retries to avoid repeatedly hitting potentially blocked endpoints
         // first wait 5/10/15 minutes, then an hour, then a day
@@ -93,51 +94,50 @@ class EnvoyTestUtil() {
         startTime.set(System.currentTimeMillis())
     }
 
-    fun startTest(test: EnvoyTest) {
-        test.startTimer()
+    fun start(transport: Transport) {
+        transport.startTimer()
         val count = testCount.incrementAndGet()
         // Log.d(TAG, "TEST COUNT UPDATED: " + count)
     }
 
     // Stop the test, it passed
-    fun stopTestPassed(test: EnvoyTest): EnvoyTest {
-        test.stopTimer()
+    fun stopTestPassed(transport: Transport): Transport {
+        transport.stopTimer()
 
-        if (test.testType != EnvoyServiceType.DIRECT) {
+        if (transport.testType != EnvoyTransportType.DIRECT) {
             // passed, remove retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
-            preferences.clearUrlFailure(test.url)
+            preferences.clearUrlFailure(transport.url)
         }
 
-        state.callback!!.reportTestSuccess(test.url, test.testType, test.timeSpent())
+        state.callback!!.reportTestSuccess(transport.url, transport.testType.name, transport.timeSpent())
         // return test with updated state (including selected flag)
-        return test
+        return transport
     }
 
     // stop the test, it failed
-    fun stopTestFailed(test: EnvoyTest) {
-        test.stopTimer()
-        test.stopService()
+    fun stopTestFailed(transport: Transport) {
+        transport.stopTimer()
 
         val count = failedCount.incrementAndGet()
         Log.d(TAG, "FAILED COUNT UPDATED: " + count)
 
-        if (test.testType != EnvoyServiceType.DIRECT) {
+        if (transport.testType != EnvoyTransportType.DIRECT) {
             // failed, update retry interval
             // this may not be thread safe, but it shouldn't be called concurrently for the same url
             val currentTime = System.currentTimeMillis()
-            preferences.incrementUrlFailure(test.url, currentTime)
+            preferences.incrementUrlFailure(transport.url, currentTime)
         }
 
-        state.callback!!.reportTestFailure(test.url, test.testType, test.timeSpent())
+        state.callback!!.reportTestFailure(transport.url, transport.testType.name, transport.timeSpent())
     }
 
-    fun stopTestBlocked(test: EnvoyTest) {
-        test.stopTimer()
+    fun stopTestBlocked(transport: Transport) {
+        transport.stopTimer()
         val count = blockedCount.incrementAndGet()
         Log.d(TAG, "BLOCKED COUNT UPDATED: " + count)
 
-        state.callback!!.reportTestBlocked(test.url, test.testType)
+        state.callback!!.reportTestBlocked(transport.url, transport.testType.name)
     }
 
     fun testsComplete() {
@@ -163,6 +163,6 @@ class EnvoyTestUtil() {
             }
         }
 
-        state.callback!!.reportOverallStatus(result, time)
+        state.callback!!.reportOverallStatus(result.name, time)
     }
 }

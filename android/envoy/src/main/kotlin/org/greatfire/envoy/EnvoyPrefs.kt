@@ -61,7 +61,7 @@ class EnvoyPrefs {
             editor.remove(url + TIME_SUFFIX)
             editor.remove(url + COUNT_SUFFIX)
             editor.apply()
-            Log.d(TAG, "REMOVED PREFS: " + url + TIME_SUFFIX + " / " + url + COUNT_SUFFIX)
+            // Log.d(TAG, "REMOVED PREFS: " + url + TIME_SUFFIX + " / " + url + COUNT_SUFFIX)
             return
         }
 
@@ -78,11 +78,11 @@ class EnvoyPrefs {
             editor.putInt(url + COUNT_SUFFIX, failureCount + 1)
             editor.apply()
 
-            Log.d(
-                TAG,
-                "SAVED PREFS: " + url + TIME_SUFFIX + " - " + time
-                        + " / " + url + COUNT_SUFFIX + " - " + (failureCount + 1)
-            )
+            // Log.d(
+            //     TAG,
+            //     "SAVED PREFS: " + url + TIME_SUFFIX + " - " + time
+            //             + " / " + url + COUNT_SUFFIX + " - " + (failureCount + 1)
+            // )
             return
         }
 
