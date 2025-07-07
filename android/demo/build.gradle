@@ -50,30 +50,19 @@ android {
         jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
     namespace 'com.example.myapplication'
-    lint {
-        disable 'Instantiatable'
-    }
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
         }
     }
 
-    /*
-    viewBinding {
-        enabled = true
-    }
-    */
     compileSdk 35
 }
 
 dependencies {
-    // resolves duplicate class error
     implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
 
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
-    // implementation 'com.squareup.retrofit2:retrofit:2.7.1'
-    // implementation 'com.android.volley:volley:1.2.1'
 
     implementation 'com.google.protobuf:protobuf-javalite:4.31.1'
 
