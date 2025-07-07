@@ -42,10 +42,10 @@ object CronetNetworking {
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, cacheSize * 1024 * 1024)
         }
 
-        if (proxyUrl != "") {
+        if (proxyUrl.isNotEmpty()) {
             builder = builder.setProxyUrl(proxyUrl)
         }
-        if (resolverRules != "") {
+        if (resolverRules.isNotEmpty()) {
             builder = builder.setResolverRules(resolverRules)
         }
         // XXX TLS options here, if we support them
