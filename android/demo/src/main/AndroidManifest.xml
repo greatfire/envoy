@@ -29,26 +29,6 @@
             android:name="org.greatfire.envoy.ShadowsocksService"
             android:foregroundServiceType="dataSync"
             android:exported="false"
-            android:isolatedProcess="false" /> <!-- android:permission="set exported to true when this is defined" -->
-        <service
-            android:name="org.greatfire.envoy.NetworkIntentService"
-            android:exported="false" />
-
-        <receiver
-            android:name=".ShadowsocksServiceReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.greatfire.envoy.SS_LOCAL_STARTED" />
-            </intent-filter>
-        </receiver>
-        <!-- https://stackoverflow.com/questions/23364668/register-a-local-broadcastreceiver-in-androidmanifest-xml
-        <receiver
-            android:name=".NetworkIntentServiceReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="org.greatfire.envoy.VALID_URL_FOUND" />
-            </intent-filter>
-        </receiver>
-        -->
+            android:isolatedProcess="false" />
     </application>
 </manifest>
