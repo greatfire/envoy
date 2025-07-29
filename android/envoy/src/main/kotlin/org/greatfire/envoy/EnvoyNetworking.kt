@@ -52,6 +52,13 @@ class EnvoyNetworking {
         return this
     }
 
+    // Set the flag to determine whether a direct connection is passively tested
+    // Apps may wish to disable passive testing for privacy or for debugging
+    fun setPassiveTest(passiveTest: Boolean): EnvoyNetworking {
+        passivelyTestDirect = passiveTest
+        return this
+    }
+
     // Set the callback for reporting status to the main application
     fun setCallback(callback: EnvoyTestCallback): EnvoyNetworking {
         state.callback = callback
