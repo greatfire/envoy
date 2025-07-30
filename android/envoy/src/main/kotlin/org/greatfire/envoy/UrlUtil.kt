@@ -1,8 +1,11 @@
 package org.greatfire.envoy
 
+import android.net.Uri
 import android.util.Log
-import java.net.URI
-import java.util.regex.Pattern
+
+// This is a helper class to try to sanitize URLs, Hostnames, and Excptions
+//
+// Envoy hosts and URLs may be sensative, so we don't want to log them
 
 class UrlUtil {
 
@@ -10,27 +13,76 @@ class UrlUtil {
 
         private val TAG = "UrlUtil"
 
-        // added for convenience
+        // Try to make a logging safe hostname. Envoy hostnames may be
+        // considered private, so we don't want to log them
+        @JvmStatic
+        fun sanitizeHostname(host: String): String {
+            if (host.isNullOrEmpty()) {
+                return "???Empty?"
+            }
+
+            val parts = host.split(".").toMutableList()
+
+            when {
+                parts.size == 1 -> return "???"
+                parts.size == 2 -> return "${parts[0]}.???"
+                parts.size >= 3 -> {
+                    // there's some problem with removeFrist/removeLast
+                    // I lost the link with my first try at this code :)
+                    parts.removeAt(0)
+                    parts.removeAt(parts.lastIndex)
+                    val temp = parts.joinToString(".")
+                    return "???.$temp.???"
+                }
+                else -> return "???Error"
+            }
+        }
+
+        // Try to make a URL safe for logging
+        //
+        // Hysteria2 and Shadowsocks have their auth info in the auth field
+        // of the URL, V2Ray has it is GET params
+        // Envoy proxy URLs may have a private path
+        // remove all of the above
+        //
         @JvmStatic
         fun sanitizeUrl(url: String): String {
-            return sanitizeUrl(url, ENVOY_SERVICE_UNKNOWN)
+            if (url.isNullOrEmpty()) {
+                return "Empty???"
+            }
+
+            // scheme should be the first part
+            if (url.contains("://")) {
+                val parts = url.split("://", limit=2)
+                val scheme = parts[0]
+                // if we have another part, it's a hostname
+                var host = "?Empty?"
+                if (parts.size > 1) {
+                    host = parts[1].split("/", limit=2)[0]
+                    host = sanitizeHostname(host)
+                }
+
+                return "$scheme://$host/…"
+            }
+
+            return "?Invalid??"
         }
 
         @JvmStatic
-        fun sanitizeException(e: Exception, urlService: String): String {
+        fun sanitizeException(e: Exception): String {
 
             val eString = "" + e
-            return sanitizeEString(eString, urlService)
+            return sanitizeEString(eString)
         }
 
         @JvmStatic
-        fun sanitizeError(e: Error, urlService: String): String {
+        fun sanitizeError(e: Error): String {
 
             val eString = "" + e
-            return sanitizeEString(eString, urlService)
+            return sanitizeEString(eString)
         }
 
-        fun sanitizeEString(eString: String, urlService: String): String {
+        fun sanitizeEString(eString: String): String {
 
             val eParts = eString.split(" ")
             var newString = ""
@@ -40,220 +92,13 @@ class UrlUtil {
                     newString = newString + " "
                 }
                 if (part.contains("://")) {
-                    newString = newString + sanitizeUrl(part, urlService)
+                    newString = newString + sanitizeUrl(part)
                 } else {
                     newString = newString + part
                 }
             }
 
             return newString
-        }
-
-        // This tries to anonymize the URL we log so we're not logging
-        // all the secrets (I think)
-        @JvmStatic
-        fun sanitizeUrl(url: String, urlService: String): String {
-
-            var sanitizedString = ""
-            var service = urlService
-
-            // special handling for local socks urls
-            if (url.startsWith("socks5:")) {
-                service = ENVOY_SERVICE_SOCKS
-            }
-
-            // attempt to guess service for some unknowns
-            if (urlService.equals(ENVOY_SERVICE_UNKNOWN) && url.startsWith("https://")) {
-                service = ENVOY_SERVICE_HTTPS
-            } else if (urlService.equals(ENVOY_SERVICE_UNKNOWN) && url.startsWith("envoy://")) {
-                service = ENVOY_SERVICE_ENVOY
-            }
-
-            try {
-                if (service.equals(ENVOY_SERVICE_UPDATE)) {
-                    // extract prefix and number from url
-                    val parts = url.split("/")
-                    if (parts.size > 1) {
-                        val domain = Pattern.compile("\\.").split(parts[2])
-                        sanitizedString = domain[0] + "/" + parts[parts.size - 2]
-                    }
-                } else if (service.equals(ENVOY_SERVICE_DIRECT)
-                    || service.equals(ENVOY_SERVICE_HTTPS)
-                ) {
-                    // extract domain from url
-                    sanitizedString = sanitizedString.plus(
-                        url.substring(
-                            url.indexOf('.') + 1,
-                            url.indexOf("/", url.indexOf('.'))
-                        )
-                    )
-                } else if (service.equals(ENVOY_SERVICE_ENVOY)) {
-                    // extract domain and ip from queries
-                    val uri = URI(url)
-                    val rawQuery = uri.rawQuery
-                    val queries = rawQuery.split("&")
-                    for (i in 0 until queries.size) {
-                        val queryParts = queries[i].split("=")
-                        if (queryParts[0].equals("url")) {
-                            if (!sanitizedString.isNullOrEmpty()) {
-                                sanitizedString = sanitizedString.plus(":")
-                            }
-                            sanitizedString = sanitizedString.plus(
-                                queryParts[1].substring(
-                                    queryParts[1].indexOf('.') + 1,
-                                    queryParts[1].indexOf("%2F", queryParts[1].indexOf('.'))
-                                )
-                            )
-                        } else if (queryParts[0].equals("address")) {
-                            if (!sanitizedString.isNullOrEmpty()) {
-                                sanitizedString = sanitizedString.plus(":")
-                            }
-                            sanitizedString = sanitizedString.plus(queryParts[1])
-                        }
-                    }
-                } else if (service.equals(ENVOY_SERVICE_MEEK)) {
-                    // extract url and tunnel from queries
-                    val uri = URI(url)
-                    val rawQuery = uri.rawQuery
-                    val queries = rawQuery.split("&")
-                    for (i in 0 until queries.size) {
-                        val queryParts = queries[i].split("=")
-                        if (queryParts[0].equals("tunnel") || queryParts[0].equals("url")) {
-                            if (!sanitizedString.isNullOrEmpty()) {
-                                sanitizedString = sanitizedString.plus(":")
-                            }
-                            sanitizedString = sanitizedString.plus(
-                                queryParts[1].substring(
-                                    queryParts[1].indexOf('.') + 1,
-                                    queryParts[1].indexOf("%2F", queryParts[1].indexOf('.'))
-                                )
-                            )
-                        }
-                    }
-                } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
-                    // handles both submitted and local urls for snowflake service
-                    // extract domain from queries
-                    val uri = URI(url)
-                    val rawQuery = uri.rawQuery
-                    val queries = rawQuery.split("&")
-                    for (i in 0 until queries.size) {
-                        val queryParts = queries[i].split("=")
-                        if (queryParts[0].equals("tunnel") || queryParts[0].equals("url")) {
-                            sanitizedString = sanitizedString.plus(
-                                queryParts[1].substring(
-                                    queryParts[1].indexOf('.') + 1,
-                                    queryParts[1].indexOf("/", queryParts[1].indexOf('.'))
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    // handles v2ray/hysteria/ss and unknown services
-                    // if possible, extract prefix and port from url
-                    if (url.contains(":")) {
-                        val urlParts = url.split(":")
-                        sanitizedString = urlParts[0]
-                        if (urlParts.size == 3) {
-                            // if found, remove queries
-                            if (urlParts[2].contains("?")) {
-                                sanitizedString = sanitizedString.plus(":" + urlParts[2].split("?")[0])
-                            } else {
-                                sanitizedString = sanitizedString.plus(":" + urlParts[2])
-                            }
-                        }
-                    } else {
-                        sanitizedString = "***"
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "got exception while sanitizing url for service " + service + ": " + e.message)
-            }
-
-            return sanitizedString
-        }
-
-        @JvmStatic
-        fun sanitizeUrlList(urls: List<String>, urlServices: List<String>): String {
-
-            var sanitizedString = ""
-
-            // method assumes the elements in each list match up
-            if (urls.size != urlServices.size) {
-                Log.e(TAG, "url/service list mismatch while sanitizing urls")
-                return "***"
-            }
-
-            for (i in 0..(urls.size - 1)) {
-                Log.d(TAG, "sanitize url " + i + " from batch")
-                if (!sanitizedString.isNullOrEmpty()) {
-                    sanitizedString = sanitizedString.plus(",")
-                }
-                sanitizedString = sanitizedString.plus(sanitizeUrl(urls[i], urlServices[i]))
-            }
-
-            return sanitizedString
-        }
-
-        // added for convenience
-        @JvmStatic
-        fun sanitizeServiceList(urlServices: List<String>): String {
-
-            var sanitizedString = ""
-
-            for (i in 0..(urlServices.size - 1)) {
-                Log.d(TAG, "sanitize service " + i + " from batch")
-                if (!sanitizedString.isNullOrEmpty()) {
-                    sanitizedString = sanitizedString.plus(",")
-                }
-                sanitizedString = sanitizedString.plus(urlServices[i])
-            }
-
-            return sanitizedString
-        }
-
-        @JvmStatic
-        fun getServiceFromUrl(url: String): String? {
-            if (url.isNotEmpty()) {
-                val split = url.split("://")[0]
-                return split
-            }
-            return null
-        }
-
-        @JvmStatic
-        fun sanitizeUrlList(urls: List<String>): ArrayList<String> {
-            val sanitizedUrls = ArrayList<String>()
-            urls.map { sanitizedUrls += sanitizeUrl(it) }
-            return sanitizedUrls
-        }
-
-        @JvmStatic
-        // FIXME should n always be 30? 100 char limit, always 3 items?
-        fun truncate(s: String, n: Int): String {
-            return s.take(n)
-        }
-
-        @JvmStatic
-        fun truncateUrlList(urls: ArrayList<String>, n: Int): ArrayList<String> {
-            val truncatedUrls = ArrayList<String>()
-            urls.map { truncatedUrls += it.take(n) }
-            return truncatedUrls
-        }
-
-        /*
-         *  joins an ArrayList<String>, truncating and sanitizing as it goes
-         */
-        @JvmStatic
-        fun joinToSanitizedAndTruncatedString(urls: List<String>, service: String, length: Int): String {
-            return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it, service), length) })
-        }
-
-        /*
-         *  joins an ArrayList<String>, truncating and sanitizing as it goes
-         */
-        @JvmStatic
-        fun joinToSanitizedAndTruncatedString(urls: List<String>, length: Int): String {
-            return urls.joinToString(separator = ",", transform = { truncate(sanitizeUrl(it), length) })
         }
     }
 }
