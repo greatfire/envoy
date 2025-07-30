@@ -6,15 +6,14 @@ import android.util.Log
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
-
-// MNB: Can you document this? What is it's job?
-
 /*
-This seems to be:
-* keeping track of statistics
-* reporting back to the caller
-* holding some test related logic
-*/
+ * the primary purpose of this class is to handle various tasks associated with starting and
+ * stopping tests to streamline other classes.  ie: stopTestFailed stops the timer, records the
+ * failed url in preferences, and uses the callback to report the failure and the test duration.
+ * because this class is already managing timers and recording success/failure, it provides
+ * methods to check whether the time limit for testing has expired or whether to block a url
+ * because it failed recently.
+ */
 
 class EnvoyTestUtil() {
 
