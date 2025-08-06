@@ -14,5 +14,6 @@ enum class EnvoyTransportType {
     V2SRTP,         // V2Ray via fake RSTP
     V2WECHAT,       // V2Ray via fake WeChat
     SHADOWSOCKS,    // Shadowsocks
+    OHTTP,          // OHTTP
     UNKNOWN         // unknown/undefined, used as an initial value
 }

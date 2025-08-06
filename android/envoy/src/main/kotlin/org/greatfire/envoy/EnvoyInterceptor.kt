@@ -5,7 +5,12 @@ import org.greatfire.envoy.transport.Transport
 
 import android.net.Uri
 import android.util.Log
+import health.flo.network.ohttp.client.IsOhttpEnabledProvider
+import health.flo.network.ohttp.client.OhttpConfig
+import health.flo.network.ohttp.client.setupOhttp
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -21,6 +26,8 @@ class EnvoyInterceptor : Interceptor {
 
     private var proxy: Proxy? = null
     private val state = EnvoyState.getInstance()
+
+    private var OhttpClient: OkHttpClient? = null
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -66,6 +73,10 @@ class EnvoyInterceptor : Interceptor {
                         EnvoyTransportType.CRONET_MASQUE, -> {
                             Log.d(TAG, "Passing request to cronet w/proxy")
                             useCronet(chain.request(), chain)
+                        }
+                        EnvoyTransportType.OHTTP -> {
+                            Log.d(TAG, "Passing request to OHTTP")
+                            useOhttp(chain.request(), chain)
                         }
                         else -> {
                             Log.e(TAG, "unsupported activeType: " + it.testType)
@@ -249,5 +260,80 @@ class EnvoyInterceptor : Interceptor {
         )
         urlRequest.start()
         return callback.blockForResponse()
+    }
+
+    private fun setupOhttp() {
+        state.ctx?.let {
+
+            // does this benefit from a separate cache?
+            // size?
+            val configRequestsCache: Cache = Cache(
+                directory = File(it.cacheDir, "ohttp"),
+                maxSize = 50L * 1024L * 1024L // 50 MiB
+            )
+
+            // we always use OHTTP for this client
+            val isOhttpEnabled: IsOhttpEnabledProvider = IsOhttpEnabledProvider { true }
+
+            val url = state.activeService!!.url
+            val tempUri = Uri.parse(url)
+
+            // remove query params and convert to HttpUrl
+            // yikes :)
+            val relayUrl = tempUri.buildUpon().clearQuery().build().toString().toHttpUrl()
+            Log.d(TAG, "OHTTP URL: $url")
+
+            tempUri.getQueryParameter("key_url")?.let {
+                val keyUrl = Uri.decode(it).toHttpUrl()
+
+                Log.d(TAG, "OHTTP key URL: $keyUrl")
+
+                val ohttpConfig = OhttpConfig(
+                    relayUrl = relayUrl, // relay server
+                    userAgent = "GreatFire Envoy/Guardian Project OHTTP", // user agent for OHTTP requests to the relay server
+                    configServerConfig = OhttpConfig.ConfigServerConfig(
+                        configUrl = keyUrl, // crypto config
+                        configCache = configRequestsCache,
+                    ),
+                )
+
+                OhttpClient = OkHttpClient.Builder()
+                    .setupOhttp( // setup OHTTP as the final step
+                       config=ohttpConfig,
+                       isOhttpEnabled = isOhttpEnabled,
+                    )
+            }
+
+            return
+        }
+
+        Log.e(TAG, "no context for OHTTP")
+    }
+
+    // Use OHTTP to service the request
+    private fun useOhttp(req: Request, chain: Interceptor.Chain): Response {
+        // the OHTTP code has it's own interceptors, one of each, and special
+        // helper to apply them. Creating another client here for OHTTP is a
+        // a little gross, but it makes it cleaner to integrate Envoy in to
+        // the app (e.g. they only need to apply this Interceptor and not
+        // the OHTTP ones)
+        if (OhttpClient == null) {
+            setupOhttp()
+        }
+
+        if (OhttpClient != null) {
+
+            Log.d(TAG, "🗿Using OHTTP")
+
+            val req = chain.request().newBuilder()
+                // our OHTTP gateway doesn't support gzip encoding, this works
+                // around that. TODO: remove this when it's not needed
+                .removeHeader("Accept-Encoding").addHeader("Accept-Encoding", "identity")
+                .build()
+            return OhttpClient!!.newCall(req).execute()
+        } else {
+            Log.e(TAG, "OhttpClient is undefined!")
+            return chain.proceed(req)
+        }
     }
 }
