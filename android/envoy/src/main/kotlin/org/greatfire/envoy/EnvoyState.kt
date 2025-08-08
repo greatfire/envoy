@@ -124,7 +124,12 @@ class EnvoyState private constructor() {
 
             Log.d(TAG, "🍍 activeService is $activeService")
 
-        } else if(transport.testType == EnvoyTransportType.DIRECT) {
+        // this can trigger twice if 2 threads trigger the "direct detection"
+        // in the interceptor at about the same time, so don't try to replace
+        // the direct connection with a direct connection
+        // XXX this is the only use of activeServiceType
+        } else if(activeServiceType.get() != EnvoyTransportType.DIRECT.ordinal
+                  && transport.testType == EnvoyTransportType.DIRECT) {
             Log.i(TAG, "👉 DIRECT overriding previous connection")
 
             val previousService = activeService
