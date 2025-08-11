@@ -11,6 +11,8 @@ import IEnvoyProxy.IEnvoyProxy // Go library, we use constants from it here
 class HttpEchTransport(url: String) : Transport(EnvoyTransportType.HTTP_ECH, url) {
 
     // was getEnvoyUrl but returns only ech url? (if available)
+    // the "ech url" *is* an envoy URL, the ECH proxy acts as an
+    // Envoy proxy
     fun getEchUrl(): String {
         // XXX this needs cleanup? get the Envoy URL from IEP
         state.iep?.let {

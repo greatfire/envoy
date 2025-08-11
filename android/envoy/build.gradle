@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         compileSdk 34
-        minSdkVersion 21
+        minSdkVersion 26
         targetSdkVersion 34
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -61,6 +61,12 @@ dependencies {
     // implementation 'org.greatfire:IEnvoyProxy:3.5.0'
 
     implementation 'tech.relaycorp:doh:1.0.70'
+
+    // OHTTP
+    // https://github.com/flohealth/ok-ohttp-plugin
+    // these aren't in Maven?
+    debugApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
+    releaseApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
 
     debugApi(name: 'cronet-debug', ext: 'aar')
     releaseApi(name: 'cronet-release', ext: 'aar')

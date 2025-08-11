@@ -211,6 +211,12 @@ class EnvoyConnectionTests {
                 "ss" -> {
                     transports.add(ShadowsocksTransport(url))
                 }
+                "ohttp" -> {
+                    // XXX how to handle this protocol?
+                    // key_url and fallback_key params
+                    val realUrl = url.replaceFirst("ohttp", "https")
+                    transports.add(OhttpTransport(realUrl))
+                }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
                 }
