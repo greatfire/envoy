@@ -63,10 +63,12 @@ dependencies {
     implementation 'tech.relaycorp:doh:1.0.70'
 
     // OHTTP
-    // https://github.com/flohealth/ok-ohttp-plugin
-    // these aren't in Maven?
     debugApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
     releaseApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
+    debugApi(name: 'ok-ohttp-encapsulator-release', ext: 'aar')
+    releaseApi(name: 'ok-ohttp-encapsulator-release', ext: 'aar')
+    debugApi(name: 'lib-bhttp', ext: 'jar')
+    releaseApi(name: 'lib-bhttp', ext: 'jar')
 
     debugApi(name: 'cronet-debug', ext: 'aar')
     releaseApi(name: 'cronet-release', ext: 'aar')

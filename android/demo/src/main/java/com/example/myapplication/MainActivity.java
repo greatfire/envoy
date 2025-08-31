@@ -13,6 +13,7 @@ import static org.greatfire.envoy.EnvoyTransportType.V2WS;
 import static org.greatfire.envoy.EnvoyTransportType.V2SRTP;
 import static org.greatfire.envoy.EnvoyTransportType.V2WECHAT;
 import static org.greatfire.envoy.EnvoyTransportType.SHADOWSOCKS;
+import static org.greatfire.envoy.EnvoyTransportType.OHTTP;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -152,6 +153,7 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.v2wResult).setVisibility(View.GONE);
         findViewById(R.id.snowflakeResult).setVisibility(View.GONE);
         findViewById(R.id.meekResult).setVisibility(View.GONE);
+        findViewById(R.id.ohttpResult).setVisibility(View.GONE);
     }
 
     void displayResults(String url, String service, boolean success) {
@@ -236,6 +238,15 @@ public class MainActivity extends FragmentActivity {
             } else {
                 findViewById(R.id.v2wSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2wFailure).setVisibility(View.VISIBLE);
+            }
+        }else if (service.equals(OHTTP.name())) {
+            findViewById(R.id.ohttpResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.ohttpSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.ohttpFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.ohttpSuccess).setVisibility(View.GONE);
+                findViewById(R.id.ohttpFailure).setVisibility(View.VISIBLE);
             }
         // } else if (service.equals(ENVOY_SERVICE_SNOWFLAKE)) {
         //     findViewById(R.id.snowflakeResult).setVisibility(View.VISIBLE);

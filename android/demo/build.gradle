@@ -66,6 +66,18 @@ dependencies {
 
     implementation 'com.google.protobuf:protobuf-javalite:4.31.1'
 
+    // transitive dependencies can be specified in a pom file when an
+    // aar is published to maven but otherwise must be included here
+    implementation 'tech.relaycorp:doh:1.0.70'
+
+    // OHTTP
+    debugApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
+    releaseApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
+    debugApi(name: 'ok-ohttp-encapsulator-release', ext: 'aar')
+    releaseApi(name: 'ok-ohttp-encapsulator-release', ext: 'aar')
+    debugApi(name: 'lib-bhttp', ext: 'jar')
+    releaseApi(name: 'lib-bhttp', ext: 'jar')
+
     implementation project(path: ':envoy')
 //    implementation 'org.greatfire.envoy:cronet:108.0.5359.195'
     //implementation 'org.greatfire.envoy:cronet:107.0.5304.150-1'
