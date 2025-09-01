@@ -39,6 +39,17 @@ public class MainActivity extends FragmentActivity {
     private static final String TAG = "EnvoyDemoApp";
 
     class DemoCallback implements EnvoyTestCallback {
+
+        @Override
+        public void reportTestStarted(String testedUrl, String testedService) {
+            Log.d(TAG, "URL: " + testedUrl + " STARTED");
+            MainActivity.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    displayOutput("START: " + testedService);
+                    displayStart(testedUrl, testedService);
+                }
+            });
+        }
         @Override
         public void reportTestSuccess(String testedUrl, String testedService, long time) {
             Log.d(TAG, "URL: " + testedUrl + " SUCCESS! Took: " + time + " ms");
@@ -70,6 +81,11 @@ public class MainActivity extends FragmentActivity {
         public void reportOverallStatus(String status, long time) {
             Log.d(TAG, "All done, took: " + time + " ms");
             Log.d(TAG, "Final status: " + status);
+            MainActivity.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    displayOutput("TEST COMPLETE - LOG FILE PATH: " + mLogPath);
+                }
+            });
         }
     }
 
@@ -78,6 +94,7 @@ public class MainActivity extends FragmentActivity {
     boolean mBound = false;
     TextView mOutputTextView;
     int mUrlCount = 0;
+    String mLogPath = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +106,6 @@ public class MainActivity extends FragmentActivity {
             @Override
             public void onClick(View view) {
                 Log.d(TAG, "button pushed, submit urls");
-                resetResults();
                 start();
                 findViewById(R.id.runButton).setEnabled(false);
             }
@@ -112,11 +128,12 @@ public class MainActivity extends FragmentActivity {
 
     private void start() {
 
+        resetResults();
+
         String proxyList = mSecrets.getdefProxy(getPackageName());
         String[] proxyParts = proxyList.split(",");
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
-        mUrlCount = 0;
 
         EnvoyNetworking envoy = new EnvoyNetworking();
 
@@ -154,6 +171,57 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.snowflakeResult).setVisibility(View.GONE);
         findViewById(R.id.meekResult).setVisibility(View.GONE);
         findViewById(R.id.ohttpResult).setVisibility(View.GONE);
+
+        mUrlCount = 0;
+        mLogPath = "";
+    }
+
+    void displayStart(String url, String service) {
+
+        if (service.equals(DIRECT.name())) {
+            findViewById(R.id.directResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.directFailure).setVisibility(View.GONE);
+            findViewById(R.id.directFailure).setVisibility(View.VISIBLE);
+        } else if (service.equals(OKHTTP_ENVOY.name())) {
+            findViewById(R.id.httpResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.httpFailure).setVisibility(View.GONE);
+            findViewById(R.id.httpSuccess).setVisibility(View.GONE);
+        } else if (service.equals(CRONET_ENVOY.name())) {
+            findViewById(R.id.cronetResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.cronetFailure).setVisibility(View.GONE);
+            findViewById(R.id.cronetSuccess).setVisibility(View.GONE);
+        } else if (service.equals(HTTP_ECH.name())) {
+            findViewById(R.id.echResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.echFailure).setVisibility(View.GONE);
+            findViewById(R.id.echSuccess).setVisibility(View.GONE);
+        } else if (service.equals(OKHTTP_MASQUE.name())) {
+            findViewById(R.id.masqueResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.masqueFailure).setVisibility(View.GONE);
+            findViewById(R.id.masqueSuccess).setVisibility(View.GONE);
+        } else if (service.equals(SHADOWSOCKS.name())) {
+            findViewById(R.id.ssResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.ssFailure).setVisibility(View.GONE);
+            findViewById(R.id.ssSuccess).setVisibility(View.GONE);
+        } else if (service.equals(HYSTERIA2.name())) {
+            findViewById(R.id.hysteriaResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.hysteriaFailure).setVisibility(View.GONE);
+            findViewById(R.id.hysteriaSuccess).setVisibility(View.GONE);
+        } else if (service.equals(V2SRTP.name())) {
+            findViewById(R.id.v2sResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.v2sFailure).setVisibility(View.GONE);
+            findViewById(R.id.v2sSuccess).setVisibility(View.GONE);
+        } else if (service.equals(V2WECHAT.name())) {
+            findViewById(R.id.v2wResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.v2wFailure).setVisibility(View.GONE);
+            findViewById(R.id.v2wSuccess).setVisibility(View.GONE);
+        } else if (service.equals(OHTTP.name())) {
+            findViewById(R.id.ohttpResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.ohttpFailure).setVisibility(View.GONE);
+            findViewById(R.id.ohttpSuccess).setVisibility(View.GONE);
+        } else {
+            // unsupported service
+            Log.w(TAG, "unsupported service (start): " + service);
+        }
     }
 
     void displayResults(String url, String service, boolean success) {
@@ -306,6 +374,7 @@ public class MainActivity extends FragmentActivity {
         try {
             File logPath = getApplicationContext().getExternalFilesDir(null);
             File logFile = new File(logPath, "demo_log");
+            mLogPath = logFile.getAbsolutePath();
             FileOutputStream logStream = new FileOutputStream(logFile, true);
             String logString = logDate + "," + output + "\n";
             try {
@@ -315,8 +384,9 @@ public class MainActivity extends FragmentActivity {
             }
 
             mUrlCount = mUrlCount - 1;
-            if (mUrlCount == 0) {
-                displayOutput("LOG FILE PATH: " + logFile.getAbsolutePath());
+            if (mUrlCount < 0) {
+                // some urls spawn multiple tests. added this to avoid confusion in logging
+                displayOutput("URLS REMAINING: 0");
             } else {
                 displayOutput("URLS REMAINING: " + mUrlCount);
             }
