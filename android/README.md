@@ -77,7 +77,80 @@ If we have a server on 192.168.64.19 with V2Ray on port 16285, the URLs would be
 
 * Wechat: `v2wechat://192.168.64.19:16285?id=9e16552c-5de9-4369-95da-db712d7281ee`
 * SRTP: `v2srtp://192.168.64.19:16285?id=9e16552c-5de9-4369-95da-db712d7281ee`
-    
+
+### OHTTP: Oblivous HTTP
+
+OHTTP required a key URL and a relay URL. For Envoy, set the protocol to `ohttp` (https is assumed in the connection), with the key url as a GET parameter. If your key URL is `https://keys.example.org/ohttp-keys` and your relay is `https//relay.example.org`, you would use the envoy URL: `ohttp://relay.example.org/?key_url=https%3A%2F%2Fkeys.example.org%2Fohttp-keys`
+
+### [MASQUE](https://davidschinazi.github.io/masque-drafts/draft-schinazi-masque-proxy.html)
+
+The family of MASQUE specs isn't fully standardized, but Envoy implements some current draft standards. We use the [Inviv-Proxy MASQUE library](https://github.com/Invisv-Privacy/masque/tree/main), updated to support Concealed Auth
+
+Server side, we're using Guardian Project's [implementation](https://github.com/guardianproject/http-concealed-auth) and [h2o](https://h2o.examp1e.net/)
+
+### Other protocols
+
+Some support exists for other protocols, such as obfs4, Meek, WebTunnel, though source code changes are likely needed. Contact us if you need support or want to contribute a patch.
+
+## Android App Integration
+
+Integrating Envoy in to an existing Android application that uses OkHttp is inteneded to be fairly easy. You need to add Envoy as a depenedncy, add the `EnvoyInterceptor` to your OkHttp Interceptor chain, and configure Envoy with at least one supported proxy URL.
+
+See the [Demo app](https://github.com/greatfire/envoy/tree/master/android/demo) or [Wiki Unblocked](https://github.com/greatfire/apps-android-wikipedia-envoy) for a more complete example.
+
+### Gradle Dependencies
+
+XXX: current version
+
+(this is groovy? or what?)
+```groovy
+// main Envoy lib
+implementation 'org.greatfire:envoy:128.0.6613.148'
+// Envoy's updated Cronet
+implementation 'org.greatfire.envoy:cronet:128.0.6613.148'
+// Required by Cronet 🤷
+implementation 'com.google.protobuf:protobuf-javalite:4.31.1'
+// Envoy's Go library
+implementation 'org.greatfire:IEnvoyProxy:3.5.0'
+```
+
+### Add the Interceptor
+
+```kotlin
+
+import org.greatfire.envoy.EnvoyInterceptor
+
+// ...
+
+val builder = OkHttpClient.Builder()
+    .cookieJar(SharedPreferenceCookieManager.instance)
+    // ... add all your other Interceptors
+    .addInterceptor(EnvoyInterceptor())
+```
+
+### Configure and enable Envoy
+
+```kotlin
+
+import org.greatfire.envoy.*
+
+// ...
+
+val envoy: EnvoyNetworking = EnvoyNetworking()
+// Envoy needs a Context
+envoy.setContext(mainActivityAppContext())
+// Pass in a callback that implements the [EnvoyTestCallback Interface](https://github.com/greatfire/envoy/blob/master/android/envoy/src/main/kotlin/org/greatfire/envoy/EnvoyTestCallback.kt)
+envoy.setCallback(mCallback)
+// Add one or more Envoy URLs
+envoy.addEnvoyUrl("https://envoy.example.com/greatfire/")
+envoy.connect()
+```
+
+A few other options are available. XXX are they documented?
+
+# OLD
+
+
 ## Submit envoy urls
     
 There are two options for submitting envoy urls:

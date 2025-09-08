@@ -37,8 +37,11 @@ APIs in the Android framework and other libraries.
 
 - HTTPS: proxy all traffic through regular web servers and Content Delivery Networks with support for hardcoding DNS and adding additional headers
 - [Shadowsocks](https://github.com/gfw-report/shadowsocks-rust): use the socks5 proxy provided by shadowsocks client/server.
-- Hysteria: QUIC based protocol that masquerades as other protocols
+- Hysteria: QUIC based protocol that masquerades as other protocols [homepage](https://hysteria.network/)
 - V2Ray: QUIC based protocols that masquesade as other protocols
+- OHTTP: Oblivious HTTP RFC-9458
+- MASQUE with Concealed Auth: [Info](https://davidschinazi.github.io/masque-drafts/draft-schinazi-masque-proxy.html)
+- Other protocols supported by [Lyrebird](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/lyrebird): Obfs4, Meek, etc
 
 Visit [native/README.md](./native/README.md) and [android/README.md](./android/README.md) for more technical details.
 
