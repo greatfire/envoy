@@ -20,45 +20,36 @@ android {
         }
     }
 
-    sourceSets {
-        main {
-            java.srcDirs = ['src/main/kotlin',]
-            jniLibs.srcDirs = ['../cronet']
-        }
-    }
     compileOptions {
         sourceCompatibility = 1.8
         targetCompatibility = 1.8
     }
+
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
+
     namespace 'org.greatfire.envoy'
     buildFeatures {
         buildConfig true
     }
+
     compileSdk 35
 }
 
 dependencies {
-    // resolves duplicate class error
+    // resolves duplicate class error from earlier kotlin bom version
     implementation(platform('org.jetbrains.kotlin:kotlin-bom:2.1.20'))
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.20'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
-
     implementation('androidx.work:work-runtime-ktx:2.10.0')
-
-    testImplementation 'junit:junit:4.12'
 
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
-//    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0'
 
     implementation 'androidx.core:core-ktx:1.16.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
-
-    // implementation 'org.greatfire:IEnvoyProxy:3.5.0'
 
     implementation 'tech.relaycorp:doh:1.0.70'
 
@@ -68,10 +59,14 @@ dependencies {
     debugApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
     releaseApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
 
+    // comment/uncomment depending on whether maven or local files are used
+    // implementation 'org.greatfire.envoy:cronet:108.0.5359.195'
     debugApi(name: 'cronet-debug', ext: 'aar')
     releaseApi(name: 'cronet-release', ext: 'aar')
     debugApi(name: 'IEnvoyProxy', ext: 'aar')
     releaseApi(name: 'IEnvoyProxy', ext: 'aar')
+
+    testImplementation 'junit:junit:4.12'
 }
 
 def stdout = new ByteArrayOutputStream()
