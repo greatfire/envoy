@@ -21,9 +21,16 @@ class OkHttpProxyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_PR
             return false
         }
 
+        var salt = Random.Default.nextBytes(16).decodeToString()
+        // check for existing salt param
+        val tempUri = Uri.parse(url)
+        tempUri.getQueryParameter("salt")?.let {
+            salt = it
+        }
+
         // add param to create unique url and avoid cached response
         // method based on patched cronet code in url_request_http_job.cc
-        val uniqueString = url + Random.Default.nextBytes(16).decodeToString()
+        val uniqueString = url + salt
         val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
         val encodedString = URLEncoder.encode(sha256String, "UTF-8")
         val url = proxyUrl.toString() + "?digest=" + encodedString

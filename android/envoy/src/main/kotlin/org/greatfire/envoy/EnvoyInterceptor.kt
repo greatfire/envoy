@@ -146,7 +146,14 @@ class EnvoyInterceptor : Interceptor {
                 // add param to create unique url and avoid cached response
                 // method based on patched cronet code in url_request_http_job.cc
                 val url = req.url
-                val uniqueString = url.toString() + Random.Default.nextBytes(16).decodeToString()
+
+                var salt = Random.Default.nextBytes(16).decodeToString()
+                // check for existing salt param
+                url.queryParameter("salt")?.let {
+                   salt = it
+                }
+
+                val uniqueString = url.toString() + salt
                 val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
                 val encodedString = URLEncoder.encode(sha256String, "UTF-8")
                 with (builder) {
