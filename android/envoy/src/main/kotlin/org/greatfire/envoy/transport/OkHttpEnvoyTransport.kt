@@ -1,11 +1,15 @@
 package org.greatfire.envoy.transport
 
 import org.greatfire.envoy.EnvoyTransportType
+import org.greatfire.envoy.EnvoyState
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import okhttp3.Request
+import javax.net.ssl.SSLSocket
+import okhttp3.*
+import org.conscrypt.Conscrypt
+
 
 class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_ENVOY, url) {
 
@@ -21,14 +25,15 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
         // that the C++ patches used to use
         val t = System.currentTimeMillis()
         val tempUrl = url + "?test=" + t
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url(tempUrl)
             // .head()  // a HEAD request is enough to test it works
             .addHeader("Url-Orig", testUrl)
             .addHeader("Host-Orig", host)
-            .build()
 
-        val temp = runTest(request, null)
+        val request = requestBuilder.build()
+
+        val temp = runTest(request)
         if (temp == true && this.proxyUrl.isNullOrEmpty()) {
             // the Envoy proxy URL needs to be copied to proxyUrl
             this.proxyUrl = url

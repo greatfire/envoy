@@ -6,6 +6,7 @@ import android.content.Context
 import android.util.Log
 import IEnvoyProxy.IEnvoyProxy // Go library
 import java.io.File
+import java.security.PrivateKey
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import org.chromium.net.CronetEngine
@@ -64,6 +65,11 @@ class EnvoyState private constructor() {
 
     // when set, all urls will be tested
     var testAllUrls = false
+
+    // HTTP Concealed Auth config
+    var concealedAuthPrivateKey: PrivateKey? = null
+    var concealedAuthPublicKey: ByteArray? = null
+    var concealedAuthUser: String? = ""
 
     private fun createCronetEngine(transport: Transport) {
         // I think we can reuse the cache dir between runs?
