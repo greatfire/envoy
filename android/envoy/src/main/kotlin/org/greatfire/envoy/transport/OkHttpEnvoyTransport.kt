@@ -6,9 +6,7 @@ import org.greatfire.envoy.EnvoyState
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import javax.net.ssl.SSLSocket
-import okhttp3.*
-import org.conscrypt.Conscrypt
+import okhttp3.Request
 
 
 class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_ENVOY, url) {
