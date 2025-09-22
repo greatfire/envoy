@@ -131,7 +131,6 @@ public class MainActivity extends FragmentActivity {
             "ALSOFAKE=\n" +
             "-----END PUBLIC KEY-----";
         envoy.configureConcealedaAuth("envoy", pubKey, privKey);
-        // envoy.foo();
 
         // XXX set the context here
         envoy.setContext(getApplicationContext());
