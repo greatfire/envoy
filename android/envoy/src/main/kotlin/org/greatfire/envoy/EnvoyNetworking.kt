@@ -108,8 +108,6 @@ class EnvoyNetworking {
     // userID: this is the identifier for the key passed to the server
     // Keys should be PKCS#1 or PKCS#8 encoded PEM
     fun configureConcealedaAuth(userID: String, publicKey: String, privateKey: String): EnvoyNetworking {
-        // Security.addProvider(BouncyCastleProvider())
-
         state.concealedAuthUser = userID
 
         state.concealedAuthPublicKey = CryptoWrapper.toSpecBytes(
