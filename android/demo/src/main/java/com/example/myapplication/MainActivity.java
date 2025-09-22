@@ -37,6 +37,10 @@ public class MainActivity extends FragmentActivity {
     private static final String WIKI_URL = "https://www.wikipedia.org/";
     private static final String TAG = "EnvoyDemoApp";
 
+    static {
+        EnvoyNetworking.init();
+    }
+
     class DemoCallback implements EnvoyTestCallback {
         @Override
         public void reportTestSuccess(String testedUrl, String testedService, long time) {
@@ -118,6 +122,16 @@ public class MainActivity extends FragmentActivity {
         mUrlCount = 0;
 
         EnvoyNetworking envoy = new EnvoyNetworking();
+
+        String privKey = "-----BEGIN PRIVATE KEY-----\n" +
+            "FAKEFAKE\n" +
+            "FAKEFAKE=\n" +
+            "-----END PRIVATE KEY-----";
+        String pubKey = "-----BEGIN PUBLIC KEY-----\n" +
+            "ALSOFAKE=\n" +
+            "-----END PUBLIC KEY-----";
+        envoy.configureConcealedaAuth("envoy", pubKey, privKey);
+        // envoy.foo();
 
         // XXX set the context here
         envoy.setContext(getApplicationContext());
