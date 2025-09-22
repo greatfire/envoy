@@ -11,10 +11,6 @@ import org.conscrypt.Conscrypt
 import org.greatfire.envoy.transport.Transport
 import java.security.Security
 
-
-// import org.bouncycastle.jce.provider.BouncyCastleProvider
-// import java.security.Security
-
 /*
     This object provides an external interface for setting up network connections with Envoy.
     It can also be accessed from the EnvoyConnectWorker and the EnvoyInterceptor.
