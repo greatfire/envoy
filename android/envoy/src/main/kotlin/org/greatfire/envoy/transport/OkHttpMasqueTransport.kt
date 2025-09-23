@@ -11,7 +11,7 @@ import android.content.Context
 class OkHttpMasqueTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_MASQUE, url) {
 
     override suspend fun startTest(context: Context): Boolean {
-        if (proxyUrl == null) {
+        if (proxyUrl.isNotEmpty()) {
             // the other test hasn't started it yet
             val addr = startService()
             proxyUrl = "http://$addr"
