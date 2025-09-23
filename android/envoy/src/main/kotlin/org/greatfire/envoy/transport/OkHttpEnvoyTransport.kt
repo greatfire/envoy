@@ -6,6 +6,9 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import okhttp3.Request
+import java.net.URLEncoder
+import java.security.MessageDigest
+import kotlin.random.Random
 
 class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_ENVOY, url) {
 
@@ -16,11 +19,19 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
             return false
         }
 
-        // XXX cache param, this is hacky :)
-        // this should be updated to use the same checksum param
-        // that the C++ patches used to use
-        val t = System.currentTimeMillis()
-        val tempUrl = url + "?test=" + t
+        var salt = Random.Default.nextBytes(16).decodeToString()
+        // check for existing salt param
+        val tempUri = Uri.parse(url)
+        tempUri.getQueryParameter("salt")?.let {
+            salt = it
+        }
+
+        // add param to create unique url and avoid cached response
+        // method based on patched cronet code in url_request_http_job.cc
+        val uniqueString = url + salt
+        val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
+        val encodedString = URLEncoder.encode(sha256String, "UTF-8")
+        val tempUrl = url + "?digest=" + encodedString
         val request = Request.Builder()
             .url(tempUrl)
             // .head()  // a HEAD request is enough to test it works
