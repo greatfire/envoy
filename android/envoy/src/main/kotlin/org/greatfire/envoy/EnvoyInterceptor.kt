@@ -24,8 +24,11 @@ class EnvoyInterceptor : Interceptor {
     private var proxy: Proxy? = null
     private val state = EnvoyState.getInstance()
 
-    private var standardClient: OkHttpClient? = null
+    // for HTTP Concealed Auth
+    private var concealedClient: OkHttpClient? = null
+    // for HTTP and SOCKS proxies
     private var proxyClient: OkHttpClient? = null
+    // for OHTTP
     private var OhttpClient: OkHttpClient? = null
 
     @Throws(IOException::class)
@@ -76,6 +79,10 @@ class EnvoyInterceptor : Interceptor {
                         EnvoyTransportType.OHTTP -> {
                             Log.d(TAG, "Passing request to OHTTP")
                             useOhttp(chain.request(), chain)
+                        }
+                        EnvoyTransportType.HTTPCA_ENVOY -> {
+                            Log.d(TAG, "Using Concealed Auth")
+                            concealedAuthToEnvoy(chain)
                         }
                         else -> {
                             Log.e(TAG, "unsupported activeType: " + it.testType)
@@ -167,14 +174,22 @@ class EnvoyInterceptor : Interceptor {
 
         Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
 
+        return chain.proceed(getEnvoyRequest(origRequest))
+    }
+
+    private fun concealedAuthToEnvoy(chain: Interceptor.Chain): Response {
+        val origRequest = chain.request()
+
+        Log.d(TAG, "concealedAuthToEnvoy: " + origRequest.url)
+
         var newRequest = getEnvoyRequest(origRequest)
 
         // Make a new client to apply Concealed Auth settings
-        if (standardClient == null) {
-            standardClient = EnvoyOkClient.getClient(state)
+        if (concealedClient == null) {
+            concealedClient = EnvoyOkClient.getClient(state)
         }
 
-        return standardClient!!.newCall(newRequest).execute()
+        return concealedClient!!.newCall(newRequest).execute()
     }
 
     // helper to setup the needed Proxy() instance
