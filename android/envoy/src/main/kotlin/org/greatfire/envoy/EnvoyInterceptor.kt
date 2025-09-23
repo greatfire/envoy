@@ -2,8 +2,6 @@ package org.greatfire.envoy
 
 import android.net.Uri
 import android.util.Log
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.greatfire.envoy.transport.DirectTransport
@@ -13,6 +11,12 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.SocketTimeoutException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import kotlin.random.Random
 
 
 class EnvoyInterceptor : Interceptor {
@@ -141,6 +145,7 @@ class EnvoyInterceptor : Interceptor {
         val builder = req.newBuilder()
 
         // rewrite the request for an Envoy proxy
+<<<<<<< HEAD
         if (!state.activeService!!.proxyUrl.isNullOrEmpty()) {
             Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
             val t = System.currentTimeMillis()
@@ -149,6 +154,31 @@ class EnvoyInterceptor : Interceptor {
                 addHeader("Host-Orig", url.host)
                 addHeader("Url-Orig", url.toString())
                 url(state.activeService!!.proxyUrl + "?test=" + t)
+=======
+        if (envoyRewrite) {
+            if (!state.activeService!!.proxyUrl.isNullOrEmpty()) {
+                Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
+                // add param to create unique url and avoid cached response
+                // method based on patched cronet code in url_request_http_job.cc
+                val url = req.url
+
+                var salt = Random.Default.nextBytes(16).decodeToString()
+                // check for existing salt param
+                url.queryParameter("salt")?.let {
+                   salt = it
+                }
+
+                val uniqueString = url.toString() + salt
+                val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
+                val encodedString = URLEncoder.encode(sha256String, "UTF-8")
+                with (builder) {
+                    addHeader("Host-Orig", url.host)
+                    addHeader("Url-Orig", url.toString())
+                    url(state.activeService!!.proxyUrl + "?digest=" + encodedString)
+                }
+            } else {
+                Log.e(TAG, "INTERNAL ERROR, and Envoy proxy is selected but proxyUrl is empty")
+>>>>>>> origin/master
             }
         } else {
             Log.e(TAG, "INTERNAL ERROR, and Envoy proxy is selected but proxyUrl is empty")
