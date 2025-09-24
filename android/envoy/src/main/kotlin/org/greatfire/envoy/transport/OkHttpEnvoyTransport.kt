@@ -9,7 +9,6 @@ import android.util.Log
 import okhttp3.Request
 import java.net.URLEncoder
 import java.security.MessageDigest
-import kotlin.random.Random
 
 
 class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_ENVOY, url) {
@@ -19,13 +18,6 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
         if (host == null) {
             Log.e(TAG, "Test URL has no host!?")
             return false
-        }
-
-        var salt = Random.Default.nextBytes(16).decodeToString()
-        // check for existing salt param
-        val tempUri = Uri.parse(url)
-        tempUri.getQueryParameter("salt")?.let {
-            salt = it
         }
 
         // add param to create unique url and avoid cached response

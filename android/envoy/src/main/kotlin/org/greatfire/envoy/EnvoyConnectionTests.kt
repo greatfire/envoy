@@ -124,6 +124,12 @@ class EnvoyConnectionTests {
                 echTest.proxyUrl = it
             }
 
+            tempUri.getQueryParameter("salt")?.let {
+                okTest.salt = it
+                ctTest.salt = it
+                echTest.salt = it
+            }
+
             with(transports) {
                 add(okTest)
                 add(crTest)

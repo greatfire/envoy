@@ -16,7 +16,6 @@ import kotlinx.coroutines.runBlocking
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import kotlin.random.Random
 
 
 class EnvoyInterceptor : Interceptor {
@@ -150,14 +149,7 @@ class EnvoyInterceptor : Interceptor {
             // add param to create unique url and avoid cached response
             // method based on patched cronet code in url_request_http_job.cc
             val url = req.url
-
-            var salt = Random.Default.nextBytes(16).decodeToString()
-            // check for existing salt param
-            url.queryParameter("salt")?.let {
-               salt = it
-            }
-
-            val uniqueString = url.toString() + salt
+            val uniqueString = url.toString() + state.activeService!!.salt
             val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
             val encodedString = URLEncoder.encode(sha256String, "UTF-8")
             with (builder) {

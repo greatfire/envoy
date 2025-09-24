@@ -67,6 +67,8 @@ open class Transport(
     var address: String? = null
     var resolverRules: String = ""
 
+    var salt: String = Random.Default.nextBytes(16).decodeToString()
+
     // Envoy Global settings and state
     protected val state = EnvoyState.getInstance()
 
