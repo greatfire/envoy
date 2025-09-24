@@ -61,7 +61,7 @@ class EnvoyOkClient {
                 && state.concealedAuthPrivateKey != null
                 && state.concealedAuthPublicKey != null)
             {
-                // We have Cocealed Auth config, so add the Interceptor
+                // We have Concealed Auth config, so add the Interceptor
                 val interceptor = HTTPConcealedAuthInterceptor(
                     state.concealedAuthUser!!,
                     state.concealedAuthPublicKey!!,
