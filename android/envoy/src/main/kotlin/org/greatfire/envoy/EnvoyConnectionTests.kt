@@ -126,7 +126,7 @@ class EnvoyConnectionTests {
 
             tempUri.getQueryParameter("salt")?.let {
                 okTest.salt = it
-                ctTest.salt = it
+                crTest.salt = it
                 echTest.salt = it
             }
 
