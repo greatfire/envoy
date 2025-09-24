@@ -20,7 +20,12 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
             targetUrl: String,
             urlSalt: String) : Request.Builder
         {
-            val host = Uri.parse(testUrl).host
+            var host = Uri.parse(testUrl).host
+            if (host == null) {
+                // this really shouldn't be possible
+                Log.e(TAG, "testUrl has an empty host somehow")
+                host = "www.example.com"
+            }
             // add param to create unique url and avoid cached response
             // method based on patched cronet code in url_request_http_job.cc
             val uniqueString = targetUrl + urlSalt
@@ -28,7 +33,7 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
                 .digest(uniqueString.toByteArray())
                 .decodeToString()
             val encodedString = URLEncoder.encode(sha256String, "UTF-8")
-            val tempUrl = "${url}?digest=${encodedString}"
+            val tempUrl = "${envoyUrl}?digest=${encodedString}"
             return builder
                 .url(tempUrl)
                 .addHeader("Url-Orig", targetUrl)

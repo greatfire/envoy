@@ -2,6 +2,10 @@ package org.greatfire.envoy.transport
 
 import org.greatfire.envoy.EnvoyTransportType
 
+import android.content.Context
+import okhttp3.Request
+
+
 class ConcealedAuthTransport(url: String) : Transport(EnvoyTransportType.HTTPCA_ENVOY, url) {
     override suspend fun startTest(context: Context): Boolean {
         val request = OkHttpEnvoyTransport.envoyProxyRewrite(

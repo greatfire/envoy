@@ -22,6 +22,8 @@ class EnvoyOkClient {
         private val TAG = "EnvoyOkClient"
 
         private fun getClientBuilder(timeout: Long?): OkHttpClient.Builder {
+            val builder = OkHttpClient.Builder()
+
             if (timeout != null) {
                 builder.callTimeout(timeout, TimeUnit.SECONDS)
             }
@@ -39,7 +41,7 @@ class EnvoyOkClient {
             return builder.build()
         }
 
-        fun getConcealedAuthClient(state: EnvoyState, timeout: Long?): OkHttpClient {
+        fun getConcealedAuthClient(state: EnvoyState, timeout: Long? = null): OkHttpClient {
             val builder = getClientBuilder(timeout)
 
             val tm = Conscrypt.getDefaultX509TrustManager()
@@ -67,6 +69,8 @@ class EnvoyOkClient {
 
                 builder.addNetworkInterceptor(interceptor)
             }
+
+            return builder.build()
         }
 
         // extracts the OHTTP URL from the active service
