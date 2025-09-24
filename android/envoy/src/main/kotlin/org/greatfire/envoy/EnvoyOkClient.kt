@@ -21,8 +21,26 @@ class EnvoyOkClient {
     companion object {
         private val TAG = "EnvoyOkClient"
 
-        private fun getClientBuilder(state: EnvoyState, timeout: Long?): OkHttpClient.Builder {
-            val builder = OkHttpClient.Builder()
+        private fun getClientBuilder(timeout: Long?): OkHttpClient.Builder {
+            if (timeout != null) {
+                builder.callTimeout(timeout, TimeUnit.SECONDS)
+            }
+
+            return builder
+        }
+
+        fun getClient(state: EnvoyState, proxy: Proxy? = null, timeout: Long? = null): OkHttpClient {
+            val builder = getClientBuilder(timeout)
+
+            if (proxy != null) {
+                builder.proxy(proxy)
+            }
+
+            return builder.build()
+        }
+
+        fun getConcealedAuthClient(state: EnvoyState, timeout: Long?): OkHttpClient {
+            val builder = getClientBuilder(timeout)
 
             val tm = Conscrypt.getDefaultX509TrustManager()
 
@@ -37,10 +55,6 @@ class EnvoyOkClient {
                 )
                 .sslSocketFactory(sslContext.getSocketFactory(), tm)
 
-            if (timeout != null) {
-                builder.callTimeout(timeout, TimeUnit.SECONDS)
-            }
-
             if (state.concealedAuthUser != ""
                 && state.concealedAuthPrivateKey != null
                 && state.concealedAuthPublicKey != null)
@@ -53,18 +67,6 @@ class EnvoyOkClient {
 
                 builder.addNetworkInterceptor(interceptor)
             }
-
-            return builder
-        }
-
-        fun getClient(state: EnvoyState, proxy: Proxy? = null, timeout: Long? = null): OkHttpClient {
-            val builder = getClientBuilder(state, timeout)
-
-            if (proxy != null) {
-                builder.proxy(proxy)
-            }
-
-            return builder.build()
         }
 
         // extracts the OHTTP URL from the active service
@@ -107,11 +109,7 @@ class EnvoyOkClient {
                     ),
                 )
 
-                val builder = OkHttpClient.Builder()
-
-                if (timeout != null) {
-                    builder.callTimeout(timeout, TimeUnit.SECONDS)
-                }
+                val builder = getClientBuilder(timeout)
 
                 return builder.setupOhttp(
                     // setup OHTTP as the final step
