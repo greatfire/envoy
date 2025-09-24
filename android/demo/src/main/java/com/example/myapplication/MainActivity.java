@@ -115,7 +115,9 @@ public class MainActivity extends FragmentActivity {
 
     private void start() {
 
-        String proxyList = mSecrets.getdefProxy(getPackageName());
+        String packageName = getPackageName();
+
+        String proxyList = mSecrets.getdefProxy(packageName);
         String[] proxyParts = proxyList.split(",");
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
@@ -123,14 +125,13 @@ public class MainActivity extends FragmentActivity {
 
         EnvoyNetworking envoy = new EnvoyNetworking();
 
-        String privKey = "-----BEGIN PRIVATE KEY-----\n" +
-            "FAKEFAKE\n" +
-            "FAKEFAKE=\n" +
-            "-----END PRIVATE KEY-----";
-        String pubKey = "-----BEGIN PUBLIC KEY-----\n" +
-            "ALSOFAKE=\n" +
-            "-----END PUBLIC KEY-----";
-        envoy.configureConcealedaAuth("envoy", pubKey, privKey);
+        String caUser = mSecrets.getConcealedAuthUser(packageName);
+        String privKey = mSecrets.getConcealedAuthPrivateKey(packageName);
+        String pubKey = mSecrets.getConcealedAuthPublicKey(packageName);
+
+        if (caUser != "" && privKey != "" && pubKey != "") {
+            envoy.configureConcealedaAuth(caUser, pubKey, privKey);
+        }
 
         // XXX set the context here
         envoy.setContext(getApplicationContext());
