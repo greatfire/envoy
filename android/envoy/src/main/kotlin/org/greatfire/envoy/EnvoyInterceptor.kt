@@ -141,22 +141,15 @@ class EnvoyInterceptor : Interceptor {
     private fun getEnvoyRequest(
         req: Request): Request
     {
-        val builder = req.newBuilder()
+        var builder = req.newBuilder()
 
         // rewrite the request for an Envoy proxy
         if (!state.activeService!!.proxyUrl.isNullOrEmpty()) {
             Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
             // add param to create unique url and avoid cached response
             // method based on patched cronet code in url_request_http_job.cc
-            val url = req.url
-            val uniqueString = url.toString() + state.activeService!!.salt
-            val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
-            val encodedString = URLEncoder.encode(sha256String, "UTF-8")
-            with (builder) {
-                addHeader("Host-Orig", url.host)
-                addHeader("Url-Orig", url.toString())
-                url(state.activeService!!.proxyUrl + "?digest=" + encodedString)
-            }
+            builder = OkHttpEnvoyTransport.envoyProxyRewrite(
+                buidler, state.activeService!!.proxyUrl, req.url, state.activeService!!.salt)
         } else {
             Log.e(TAG, "INTERNAL ERROR, and Envoy proxy is selected but proxyUrl is empty")
         }
