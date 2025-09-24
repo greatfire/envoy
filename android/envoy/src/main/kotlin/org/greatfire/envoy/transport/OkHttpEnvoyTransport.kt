@@ -34,7 +34,7 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
         val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
         val encodedString = URLEncoder.encode(sha256String, "UTF-8")
         val tempUrl = url + "?digest=" + encodedString
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url(tempUrl)
             // .head()  // a HEAD request is enough to test it works
             .addHeader("Url-Orig", testUrl)
