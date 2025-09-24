@@ -220,7 +220,7 @@ class EnvoyConnectionTests {
                     }
 
                     Log.d(TAG, "concealed auth URL: $tempUrl")
-                    transports.add(HTTPCATransport(tempUrl))
+                    transports.add(ConcealedAuthTransport(tempUrl))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)
