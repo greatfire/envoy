@@ -6,6 +6,7 @@ import androidx.work.*
 import com.example.httpsigauth.common.crypto.CryptoWrapper
 import com.example.httpsigauth.common.crypto.SupportedEncodingFormat
 import com.example.httpsigauth.common.crypto.SupportedKeyType
+import com.example.httpsigauth.exception.CryptoException
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.conscrypt.Conscrypt
 import org.greatfire.envoy.transport.Transport
@@ -108,16 +109,22 @@ class EnvoyNetworking {
     // userID: this is the identifier for the key passed to the server
     // Keys should be PKCS#1 or PKCS#8 encoded PEM
     fun configureConcealedaAuth(userID: String, publicKey: String, privateKey: String): EnvoyNetworking {
-        state.concealedAuthUser = userID
 
-        state.concealedAuthPublicKey = CryptoWrapper.toSpecBytes(
-            SupportedKeyType.Ed25519,
-            SupportedEncodingFormat.PEM,
-            publicKey)
-        state.concealedAuthPrivateKey = CryptoWrapper.loadPrivateKey(
-            SupportedKeyType.Ed25519,
-            SupportedEncodingFormat.PEM,
-            privateKey)
+        try {
+            state.concealedAuthPublicKey = CryptoWrapper.toSpecBytes(
+                SupportedKeyType.Ed25519,
+                SupportedEncodingFormat.PEM,
+                publicKey)
+            state.concealedAuthPrivateKey = CryptoWrapper.loadPrivateKey(
+                SupportedKeyType.Ed25519,
+                SupportedEncodingFormat.PEM,
+                privateKey)
+            // set this last, since we test this one and assume the others
+            // are set if it is
+            state.concealedAuthUser = userID
+        } catch (e: CryptoException) {
+            Log.e(TAG, "Failed to parse Concealed Auth keys")
+        }
         return this
     }
 
