@@ -1,15 +1,11 @@
 package org.greatfire.envoy
 
-import org.greatfire.envoy.transport.DirectTransport
-import org.greatfire.envoy.transport.Transport
-
 import android.net.Uri
 import android.util.Log
-import health.flo.network.ohttp.client.IsOhttpEnabledProvider
-import health.flo.network.ohttp.client.OhttpConfig
-import health.flo.network.ohttp.client.setupOhttp
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.greatfire.envoy.transport.DirectTransport
+import org.greatfire.envoy.transport.OkHttpEnvoyTransport
 import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -17,10 +13,7 @@ import java.net.Proxy
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import kotlin.random.Random
+
 
 class EnvoyInterceptor : Interceptor {
 
@@ -31,6 +24,11 @@ class EnvoyInterceptor : Interceptor {
     private var proxy: Proxy? = null
     private val state = EnvoyState.getInstance()
 
+    // for HTTP Concealed Auth
+    private var concealedClient: OkHttpClient? = null
+    // for HTTP and SOCKS proxies
+    private var proxyClient: OkHttpClient? = null
+    // for OHTTP
     private var OhttpClient: OkHttpClient? = null
 
     @Throws(IOException::class)
@@ -81,6 +79,10 @@ class EnvoyInterceptor : Interceptor {
                         EnvoyTransportType.OHTTP -> {
                             Log.d(TAG, "Passing request to OHTTP")
                             useOhttp(chain.request(), chain)
+                        }
+                        EnvoyTransportType.HTTPCA_ENVOY -> {
+                            Log.d(TAG, "Using Concealed Auth")
+                            concealedAuthToEnvoy(chain)
                         }
                         else -> {
                             Log.e(TAG, "unsupported activeType: " + it.testType)
@@ -134,36 +136,18 @@ class EnvoyInterceptor : Interceptor {
     // Given an OkHttp Request, return a new one pointed at the Envoy
     // URL with the original request moved in to headers
     private fun getEnvoyRequest(
-        req: Request,
-        envoyRewrite: Boolean = false): Request
+        req: Request): Request
     {
-        val builder = req.newBuilder()
+        var builder = req.newBuilder()
 
         // rewrite the request for an Envoy proxy
-        if (envoyRewrite) {
-            if (!state.activeService!!.proxyUrl.isNullOrEmpty()) {
-                Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
-                // add param to create unique url and avoid cached response
-                // method based on patched cronet code in url_request_http_job.cc
-                val url = req.url
+        if (!state.activeService!!.proxyUrl.isNullOrEmpty()) {
+            Log.d(TAG, "Using Envoy proxy ${state.activeService!!.proxyUrl} for url ${req.url}")
 
-                var salt = Random.Default.nextBytes(16).decodeToString()
-                // check for existing salt param
-                url.queryParameter("salt")?.let {
-                   salt = it
-                }
-
-                val uniqueString = url.toString() + salt
-                val sha256String = MessageDigest.getInstance("SHA-256").digest(uniqueString.toByteArray()).decodeToString()
-                val encodedString = URLEncoder.encode(sha256String, "UTF-8")
-                with (builder) {
-                    addHeader("Host-Orig", url.host)
-                    addHeader("Url-Orig", url.toString())
-                    url(state.activeService!!.proxyUrl + "?digest=" + encodedString)
-                }
-            } else {
-                Log.e(TAG, "INTERNAL ERROR, and Envoy proxy is selected but proxyUrl is empty")
-            }
+            builder = OkHttpEnvoyTransport.envoyProxyRewrite(
+                builder, state.activeService!!.proxyUrl, req.url.toString(), state.activeService!!.salt)
+        } else {
+            Log.e(TAG, "INTERNAL ERROR, and Envoy proxy is selected but proxyUrl is empty")
         }
 
         // Add any configured (via envoy:// URL) to the request
@@ -186,7 +170,22 @@ class EnvoyInterceptor : Interceptor {
 
         Log.d(TAG, "okHttpToEnvoy: " + origRequest.url)
 
-        return chain.proceed(getEnvoyRequest(origRequest, true))
+        return chain.proceed(getEnvoyRequest(origRequest))
+    }
+
+    private fun concealedAuthToEnvoy(chain: Interceptor.Chain): Response {
+        val origRequest = chain.request()
+
+        Log.d(TAG, "concealedAuthToEnvoy: " + origRequest.url)
+
+        var newRequest = getEnvoyRequest(origRequest)
+
+        // Make a new client to apply Concealed Auth settings
+        if (concealedClient == null) {
+            concealedClient = EnvoyOkClient.getConcealedAuthClient(state)
+        }
+
+        return concealedClient!!.newCall(newRequest).execute()
     }
 
     // helper to setup the needed Proxy() instance
@@ -236,12 +235,14 @@ class EnvoyInterceptor : Interceptor {
             }
         }
 
-        val client = OkHttpClient.Builder().proxy(proxy).build()
+        if (proxyClient == null) {
+            proxyClient = EnvoyOkClient.getClient(state, proxy)
+        }
 
         Log.d(TAG, "Standard Proxy Request: ${chain.request().url}")
 
         val req = chain.request().newBuilder().build()
-        return client.newCall(req).execute()
+        return proxyClient!!.newCall(req).execute()
     }
 
     // Use cronet without the Envoy request rewrites. Any socks/http/https
@@ -277,53 +278,6 @@ class EnvoyInterceptor : Interceptor {
         return callback.blockForResponse()
     }
 
-    private fun setupOhttp() {
-        state.ctx?.let {
-
-            // does this benefit from a separate cache?
-            // size?
-            val configRequestsCache: Cache = Cache(
-                directory = File(it.cacheDir, "ohttp"),
-                maxSize = 50L * 1024L * 1024L // 50 MiB
-            )
-
-            // we always use OHTTP for this client
-            val isOhttpEnabled: IsOhttpEnabledProvider = IsOhttpEnabledProvider { true }
-
-            val url = state.activeService!!.url
-            val tempUri = Uri.parse(url)
-
-            // remove query params and convert to HttpUrl
-            // yikes :)
-            val relayUrl = tempUri.buildUpon().clearQuery().build().toString().toHttpUrl()
-            Log.d(TAG, "OHTTP URL: $url")
-
-            tempUri.getQueryParameter("key_url")?.let {
-                val keyUrl = Uri.decode(it).toHttpUrl()
-
-                Log.d(TAG, "OHTTP key URL: $keyUrl")
-
-                val ohttpConfig = OhttpConfig(
-                    relayUrl = relayUrl, // relay server
-                    userAgent = "GreatFire Envoy/Guardian Project OHTTP", // user agent for OHTTP requests to the relay server
-                    configServerConfig = OhttpConfig.ConfigServerConfig(
-                        configUrl = keyUrl, // crypto config
-                        configCache = configRequestsCache,
-                    ),
-                )
-
-                OhttpClient = OkHttpClient.Builder()
-                    .setupOhttp( // setup OHTTP as the final step
-                       config=ohttpConfig,
-                       isOhttpEnabled = isOhttpEnabled,
-                    )
-            }
-
-            return
-        }
-
-        Log.e(TAG, "no context for OHTTP")
-    }
 
     // Use OHTTP to service the request
     private fun useOhttp(req: Request, chain: Interceptor.Chain): Response {
@@ -333,11 +287,10 @@ class EnvoyInterceptor : Interceptor {
         // the app (e.g. they only need to apply this Interceptor and not
         // the OHTTP ones)
         if (OhttpClient == null) {
-            setupOhttp()
+            OhttpClient = EnvoyOkClient.getOhttpClient(state)
         }
 
-        if (OhttpClient != null) {
-
+        OhttpClient?.let {
             Log.d(TAG, "🗿Using OHTTP")
 
             val req = chain.request().newBuilder()
@@ -346,9 +299,10 @@ class EnvoyInterceptor : Interceptor {
                 .removeHeader("Accept-Encoding").addHeader("Accept-Encoding", "identity")
                 .build()
             return OhttpClient!!.newCall(req).execute()
-        } else {
-            Log.e(TAG, "OhttpClient is undefined!")
-            return chain.proceed(req)
         }
+
+        // else
+        Log.e(TAG, "OhttpClient is undefined!")
+        return chain.proceed(req)
     }
 }

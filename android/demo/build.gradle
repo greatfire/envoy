@@ -49,12 +49,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = 1.8
-        targetCompatibility = 1.8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     namespace 'com.example.myapplication'
@@ -79,6 +79,7 @@ dependencies {
 
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
+    // required by Cronet
     implementation 'com.google.protobuf:protobuf-javalite:4.31.1'
 
     implementation project(path: ':envoy')
@@ -92,4 +93,14 @@ dependencies {
     releaseApi(name: 'cronet-release', ext: 'aar')
     debugApi(name: 'IEnvoyProxy', ext: 'aar')
     releaseApi(name: 'IEnvoyProxy', ext: 'aar')
+    debugApi(name: 'cronet-debug', ext: 'aar')
+    //releaseApi(name: 'cronet-release', ext: 'aar')
+
+    // // http-concealed-auth requirements
+    implementation 'tech.kwik:kwik:0.8.13'
+    implementation 'org.eclipse.jetty:jetty-util:12.0.7'
+    // https://github.com/guardianproject/http-concealed-auth/tree/main/http-sigauth-java
+    // XXX document build
+    debugApi(name: 'HTTPSigAuth-1.0-SNAPSHOT', ext: 'jar')
+    releaseApi(name: 'HTTPSigAuth-1.0-SNAPSHOT', ext: 'jar')
 }

@@ -1,10 +1,16 @@
 package org.greatfire.envoy
 
-import org.greatfire.envoy.transport.Transport
-
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import com.example.httpsigauth.common.crypto.CryptoWrapper
+import com.example.httpsigauth.common.crypto.SupportedEncodingFormat
+import com.example.httpsigauth.common.crypto.SupportedKeyType
+import com.example.httpsigauth.exception.CryptoException
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.conscrypt.Conscrypt
+import org.greatfire.envoy.transport.Transport
+import java.security.Security
 
 /*
     This object provides an external interface for setting up network connections with Envoy.
@@ -20,6 +26,25 @@ class EnvoyNetworking {
         // requests appear to be working (i.e. returning 200 codes)
         var passivelyTestDirect = true
         var initialized = false
+
+        fun initConcealedAuth() {
+            Security.removeProvider("BC")
+            Security.removeProvider("Conscryptprovider")
+
+            val bouncyCastleProvider: BouncyCastleProvider = BouncyCastleProvider()
+            val conscryptProvider = Conscrypt.newProviderBuilder()
+                .setName("Conscryptprovider")
+                .provideTrustManager(false)
+                .defaultTlsProtocol("TLSv1.3").build()
+
+            Security.insertProviderAt(conscryptProvider, 1)
+            Security.insertProviderAt(bouncyCastleProvider, 2)
+        }
+
+        @JvmStatic
+        fun init() {
+            initConcealedAuth()
+        }
     }
 
     private val state = EnvoyState.getInstance()
@@ -76,6 +101,30 @@ class EnvoyNetworking {
 
     fun setTestAllUrls(testAllUrls: Boolean): EnvoyNetworking {
         state.testAllUrls = testAllUrls
+        return this
+    }
+
+    // XXX assumed to be Ed25519 keys (for now)
+    //
+    // userID: this is the identifier for the key passed to the server
+    // Keys should be PKCS#1 or PKCS#8 encoded PEM
+    fun configureConcealedaAuth(userID: String, publicKey: String, privateKey: String): EnvoyNetworking {
+
+        try {
+            state.concealedAuthPublicKey = CryptoWrapper.toSpecBytes(
+                SupportedKeyType.Ed25519,
+                SupportedEncodingFormat.PEM,
+                publicKey)
+            state.concealedAuthPrivateKey = CryptoWrapper.loadPrivateKey(
+                SupportedKeyType.Ed25519,
+                SupportedEncodingFormat.PEM,
+                privateKey)
+            // set this last, since we test this one and assume the others
+            // are set if it is
+            state.concealedAuthUser = userID
+        } catch (e: CryptoException) {
+            Log.e(TAG, "Failed to parse Concealed Auth keys")
+        }
         return this
     }
 

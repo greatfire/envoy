@@ -1,5 +1,6 @@
 package org.greatfire.envoy.transport
 
+import org.greatfire.envoy.EnvoyOkClient
 import org.greatfire.envoy.EnvoyTransportType
 import org.greatfire.envoy.EnvoyState
 import org.greatfire.envoy.UrlUtil
@@ -9,8 +10,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.ConditionVariable
 import android.util.Log
-import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.OkHttpClient
 import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
@@ -21,6 +22,8 @@ import java.net.Proxy
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
+
 
 // This class represents an Envoy connection: type and URL,
 // and tracks additional information, such as a URL to any
@@ -64,6 +67,8 @@ open class Transport(
     // stash it here in case we can support it with OkHttp
     var address: String? = null
     var resolverRules: String = ""
+
+    var salt: String = Random.Default.nextBytes(16).decodeToString()
 
     // Envoy Global settings and state
     protected val state = EnvoyState.getInstance()
@@ -113,13 +118,9 @@ open class Transport(
     }
 
     // helper, given a request and optional proxy, test the connection
-    protected fun runTest(request: Request, proxy: java.net.Proxy?): Boolean {
-        val builder = OkHttpClient.Builder();
-        if (proxy != null) {
-            builder.proxy(proxy)
-        }
+    protected fun runTest(request: Request, proxy: java.net.Proxy? = null, inClient: OkHttpClient? = null): Boolean {
 
-        val client = builder.callTimeout(20, TimeUnit.SECONDS).build()
+        val client = inClient ?: EnvoyOkClient.getClient(state, proxy, 20)
 
         Log.d(TAG, "testing request to: ${request.url} with proxy $proxy")
 
