@@ -14,6 +14,7 @@ import static org.greatfire.envoy.EnvoyTransportType.V2SRTP;
 import static org.greatfire.envoy.EnvoyTransportType.V2WECHAT;
 import static org.greatfire.envoy.EnvoyTransportType.SHADOWSOCKS;
 import static org.greatfire.envoy.EnvoyTransportType.OHTTP;
+import static org.greatfire.envoy.EnvoyTransportType.HTTPCA_ENVOY;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -184,6 +185,7 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.snowflakeResult).setVisibility(View.GONE);
         findViewById(R.id.meekResult).setVisibility(View.GONE);
         findViewById(R.id.ohttpResult).setVisibility(View.GONE);
+        findViewById(R.id.authResult).setVisibility(View.GONE);
 
         mUrlCount = 0;
         mLogPath = "";
@@ -231,6 +233,10 @@ public class MainActivity extends FragmentActivity {
             findViewById(R.id.ohttpResult).setVisibility(View.VISIBLE);
             findViewById(R.id.ohttpFailure).setVisibility(View.GONE);
             findViewById(R.id.ohttpSuccess).setVisibility(View.GONE);
+        } else if (service.equals(HTTPCA_ENVOY.name())) {
+            findViewById(R.id.authResult).setVisibility(View.VISIBLE);
+            findViewById(R.id.authFailure).setVisibility(View.GONE);
+            findViewById(R.id.authSuccess).setVisibility(View.GONE);
         } else {
             // unsupported service
             Log.w(TAG, "unsupported service (start): " + service);
@@ -320,7 +326,7 @@ public class MainActivity extends FragmentActivity {
                 findViewById(R.id.v2wSuccess).setVisibility(View.GONE);
                 findViewById(R.id.v2wFailure).setVisibility(View.VISIBLE);
             }
-        }else if (service.equals(OHTTP.name())) {
+        } else if (service.equals(OHTTP.name())) {
             findViewById(R.id.ohttpResult).setVisibility(View.VISIBLE);
             if (success) {
                 findViewById(R.id.ohttpSuccess).setVisibility(View.VISIBLE);
@@ -347,6 +353,15 @@ public class MainActivity extends FragmentActivity {
         //         findViewById(R.id.meekSuccess).setVisibility(View.GONE);
         //         findViewById(R.id.meekFailure).setVisibility(View.VISIBLE);
         //     }
+        } else if (service.equals(HTTPCA_ENVOY.name())) {
+            findViewById(R.id.authResult).setVisibility(View.VISIBLE);
+            if (success) {
+                findViewById(R.id.authSuccess).setVisibility(View.VISIBLE);
+                findViewById(R.id.authFailure).setVisibility(View.GONE);
+            } else {
+                findViewById(R.id.authSuccess).setVisibility(View.GONE);
+                findViewById(R.id.authFailure).setVisibility(View.VISIBLE);
+            }
         } else {
             // unsupported service
             Log.w(TAG, "unsupported service (display): " + service);
