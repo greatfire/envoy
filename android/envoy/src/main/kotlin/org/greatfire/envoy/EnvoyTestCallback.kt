@@ -5,6 +5,8 @@ import java.net.URI
 
 interface EnvoyTestCallback {
 
+    fun reportTestStarted(testedUrl: String, testedService: String)
+
     fun reportTestSuccess(testedUrl: String, testedService: String, timeElapsed: Long)
 
     fun reportTestFailure(testedUrl: String, testedService: String, timeElapsed: Long)

@@ -95,8 +95,11 @@ class EnvoyTestUtil() {
 
     fun start(transport: Transport) {
         transport.startTimer()
+
         val count = testCount.incrementAndGet()
         // Log.d(TAG, "TEST COUNT UPDATED: " + count)
+
+        state.callback!!.reportTestStarted(transport.url, transport.testType.name)
     }
 
     // Stop the test, it passed
