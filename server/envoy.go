@@ -108,8 +108,6 @@ func (e *EnvoyProxy) envoyProxyHandler(w http.ResponseWriter, r *http.Request) {
 		// generic 404 on failure
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
-	} else {
-		log.Printf("CA success 🎉\n")
 	}
 
 	// The Url-Orig header is required for us to proxy.
