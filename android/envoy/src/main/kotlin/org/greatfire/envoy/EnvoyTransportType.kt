@@ -3,6 +3,7 @@ package org.greatfire.envoy
 enum class EnvoyTransportType {
     DIRECT,         // direct connection, no proxy
     OKHTTP_ENVOY,   // Use OkHttp via an Envoy proxy
+    HTTPCA_ENVOY,   // Use OkHttp and Concealed Auth via an EnvoyProxy
     CRONET_ENVOY,   // Use Cronet via an Envoy proxy
     OKHTTP_MASQUE,  // Use OkHttp via a MASQUE proxy
     CRONET_MASQUE,  // Use Croent via a MASQUE proxy

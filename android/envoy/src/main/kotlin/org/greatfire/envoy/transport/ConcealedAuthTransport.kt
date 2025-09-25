@@ -1,0 +1,27 @@
+package org.greatfire.envoy.transport
+
+import org.greatfire.envoy.EnvoyOkClient
+import org.greatfire.envoy.EnvoyTransportType
+
+import android.content.Context
+import okhttp3.Request
+
+
+class ConcealedAuthTransport(url: String) : Transport(EnvoyTransportType.HTTPCA_ENVOY, url) {
+    override suspend fun startTest(context: Context): Boolean {
+        val request = OkHttpEnvoyTransport.envoyProxyRewrite(
+            Request.Builder(), url, testUrl, salt).build()
+
+        val client = EnvoyOkClient.getConcealedAuthClient(state, 20)
+
+        val temp = runTest(request, null, client)
+        if (temp == true && this.proxyUrl.isNullOrEmpty()) {
+            this.proxyUrl = url
+        }
+        return temp
+    }
+
+    override fun stopService() {
+        // No service to stop
+    }
+}

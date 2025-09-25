@@ -25,31 +25,43 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.example.myapplication'
+        compileSdk 34
         minSdkVersion 26
         targetSdkVersion 34
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        consumerProguardFiles 'consumer-rules.pro'
+
+        applicationId 'com.example.myapplication'
         versionCode 1
         versionName '1.0'
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
 
         ndk {
             abiFilters = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
         }
     }
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
-        sourceCompatibility = 1.8
-        targetCompatibility = 1.8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
+
     namespace 'com.example.myapplication'
+    buildFeatures {
+        buildConfig true
+    }
+
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
@@ -60,34 +72,35 @@ android {
 }
 
 dependencies {
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
+    // resolves duplicate class error from earlier kotlin bom version
+    implementation(platform('org.jetbrains.kotlin:kotlin-bom:2.1.20'))
 
-    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+
+    // required by Cronet
     implementation 'com.google.protobuf:protobuf-javalite:4.31.1'
 
-    // transitive dependencies can be specified in a pom file when an
-    // aar is published to maven but otherwise must be included here
-    implementation 'tech.relaycorp:doh:1.0.70'
-
-    // OHTTP
-    debugApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
-    releaseApi(name: 'lib-ohttp-plugin-release', ext: 'aar')
-    debugApi(name: 'ok-ohttp-encapsulator-release', ext: 'aar')
-    releaseApi(name: 'ok-ohttp-encapsulator-release', ext: 'aar')
-    debugApi(name: 'lib-bhttp', ext: 'jar')
-    releaseApi(name: 'lib-bhttp', ext: 'jar')
-
     implementation project(path: ':envoy')
-//    implementation 'org.greatfire.envoy:cronet:108.0.5359.195'
-    //implementation 'org.greatfire.envoy:cronet:107.0.5304.150-1'
     implementation 'androidx.viewpager2:viewpager2:1.0.0'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
+    // comment/uncomment depending on whether maven or local files are used
+    // implementation 'org.greatfire.envoy:cronet:108.0.5359.195'
+    debugApi(name: 'cronet-debug', ext: 'aar')
+    releaseApi(name: 'cronet-release', ext: 'aar')
     debugApi(name: 'IEnvoyProxy', ext: 'aar')
     releaseApi(name: 'IEnvoyProxy', ext: 'aar')
     debugApi(name: 'cronet-debug', ext: 'aar')
     //releaseApi(name: 'cronet-release', ext: 'aar')
+
+    // // http-concealed-auth requirements
+    implementation 'tech.kwik:kwik:0.8.13'
+    implementation 'org.eclipse.jetty:jetty-util:12.0.7'
+    // https://github.com/guardianproject/http-concealed-auth/tree/main/http-sigauth-java
+    // XXX document build
+    debugApi(name: 'HTTPSigAuth-1.0-SNAPSHOT', ext: 'jar')
+    releaseApi(name: 'HTTPSigAuth-1.0-SNAPSHOT', ext: 'jar')
 }

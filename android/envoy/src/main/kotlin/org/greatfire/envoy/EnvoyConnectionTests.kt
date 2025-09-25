@@ -26,8 +26,6 @@ class EnvoyConnectionTests {
         // object?
         var transports = mutableListOf<Transport>()
 
-        var cronetThreadPool = Executors.newCachedThreadPool()
-
         // this case is a little complicated, so it has it's own
         // function
         //
@@ -93,13 +91,11 @@ class EnvoyConnectionTests {
                 // support both `resolver` and `address`
                 // the were mutually exclusive in the C++ patches,
                 // but they don't need to be
-                /*
-                if (crTest.resolverRules != null) {
+                if (crTest.resolverRules.isNotEmpty()) {
                     crTest.resolverRules += (',' + rule)
                 } else {
                     crTest.resolverRules = rule
                 }
-                */
 
                 // Our OkHttp code doesn't support these, but maybe in the
                 // future...
@@ -126,6 +122,12 @@ class EnvoyConnectionTests {
                 okTest.proxyUrl = it
                 crTest.proxyUrl = it
                 echTest.proxyUrl = it
+            }
+
+            tempUri.getQueryParameter("salt")?.let {
+                okTest.salt = it
+                crTest.salt = it
+                echTest.salt = it
             }
 
             with(transports) {
@@ -216,6 +218,15 @@ class EnvoyConnectionTests {
                     // key_url and fallback_key params
                     val realUrl = url.replaceFirst("ohttp", "https")
                     transports.add(OhttpTransport(realUrl))
+                }
+                "ca+https" -> {
+                    val tempUrl = when(uri.scheme) {
+                        "ca+https" -> url.replaceFirst("""^ca\+https""".toRegex(), "https")
+                        else -> url
+                    }
+
+                    Log.d(TAG, "concealed auth URL: $tempUrl")
+                    transports.add(ConcealedAuthTransport(tempUrl))
                 }
                 else -> {
                     Log.e(TAG, "Unsupported URL: " + url)

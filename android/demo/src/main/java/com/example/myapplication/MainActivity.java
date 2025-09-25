@@ -38,6 +38,10 @@ public class MainActivity extends FragmentActivity {
     private static final String WIKI_URL = "https://www.wikipedia.org/";
     private static final String TAG = "EnvoyDemoApp";
 
+    static {
+        EnvoyNetworking.init();
+    }
+
     class DemoCallback implements EnvoyTestCallback {
 
         @Override
@@ -130,12 +134,21 @@ public class MainActivity extends FragmentActivity {
 
         resetResults();
 
-        String proxyList = mSecrets.getdefProxy(getPackageName());
+        String packageName = getPackageName();
+        String proxyList = mSecrets.getdefProxy(packageName);
         String[] proxyParts = proxyList.split(",");
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
 
         EnvoyNetworking envoy = new EnvoyNetworking();
+
+        String caUser = mSecrets.getConcealedAuthUser(packageName);
+        String privKey = mSecrets.getConcealedAuthPrivateKey(packageName);
+        String pubKey = mSecrets.getConcealedAuthPublicKey(packageName);
+
+        if (caUser != "" && privKey != "" && pubKey != "") {
+            envoy.configureConcealedaAuth(caUser, pubKey, privKey);
+        }
 
         // XXX set the context here
         envoy.setContext(getApplicationContext());
