@@ -2,14 +2,12 @@ package main
 
 import (
 	"crypto"
-	// "crypto/x509"
-	// "encoding/pem"
 	"log"
 	"net/http"
 	"os"
 	"golang.org/x/crypto/ssh"
 
-	// "github.com/francoismichel/http-signature-auth-go"
+	"github.com/francoismichel/http-signature-auth-go"
 )
 
 func main() {
@@ -33,34 +31,20 @@ func main() {
 		ProxyListen: config.Listen,
 	}
 
-// 	pub_key_raw := []byte(`-----BEGIN PUBLIC KEY-----
-// MCowBQYDK2VwAyEArSM6OHOTdS9oOaxbvv8UittGmD7eLeU6afEgbg5RvQw=
-// -----END PUBLIC KEY-----`)
+	for _, user := range config.Users {
+		temp, _, _, _, err := ssh.ParseAuthorizedKey([]byte(user.Key))
+		if err != nil {
+			log.Printf("Error parsing key for %v: %v\n", user.Name, err)
+		}
 
+		pubKey, ok := temp.(crypto.PublicKey)
+		if !ok {
+			log.Printf("Failed casting key for %v: %v\n", user.Name, err)
+		}
 
-// 	block, _ := pem.Decode(pub_key_raw)
-// 	if block == nil || block.Type != "PUBLIC KEY" {
-// 		log.Fatalln("PEM Decode error")
-// 	}
-
-// 	temp, err := x509.ParsePKIXPublicKey(block.Bytes)
-// 	if err != nil {
-// 		log.Fatalln("Error getting public key")
-// 	}
-
-	pubKeyRaw := []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK0jOjhzk3UvaDmsW77/FIrbRpg+3i3lOmnxIG4OUb0M support@greatfire.org")
-
-	temp, _, _, _, err := ssh.ParseAuthorizedKey(pubKeyRaw)
-	if err != nil {
-		log.Fatalln("can't Parse SSH key")
+		log.Printf("Adding user: %s", user.Name)
+		e.AddKey(http_signature_auth.KeyID(user.Name), pubKey)
 	}
-
-	pubKey, ok := temp.(crypto.PublicKey)
-	if !ok {
-		log.Fatalln("failed to cast PublicKey\n")
-	}
-
-	e.AddKey("envoy", pubKey)
 
 	http.HandleFunc("/", e.envoyProxyHandler)
 
