@@ -46,7 +46,7 @@ object CronetNetworking {
             builder = builder.setProxyUrl(proxyUrl)
         }
         if (resolverRules.isNotEmpty()) {
-            builder = builder.setResolverRules(resolverRules)
+            builder = builder.setExperimentalOptions(resolverRules)
         }
         // XXX TLS options here, if we support them
 
