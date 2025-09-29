@@ -107,18 +107,29 @@ class EnvoyNetworking {
     // XXX assumed to be Ed25519 keys (for now)
     //
     // userID: this is the identifier for the key passed to the server
-    // Keys should be PKCS#1 or PKCS#8 encoded PEM
+    // Keys should be OpenSSH format
     fun configureConcealedaAuth(userID: String, publicKey: String, privateKey: String): EnvoyNetworking {
 
         try {
+            val pubTemp = CryptoWrapper.convertPublic(
+                SupportedKeyType.Ed25519,
+                SupportedEncodingFormat.SSH,
+                SupportedEncodingFormat.PEM,
+                publicKey)
             state.concealedAuthPublicKey = CryptoWrapper.toSpecBytes(
                 SupportedKeyType.Ed25519,
                 SupportedEncodingFormat.PEM,
-                publicKey)
+                pubTemp)
+
+            val privTemp = CryptoWrapper.convertPrivate(
+                SupportedKeyType.Ed25519,
+                SupportedEncodingFormat.SSH,
+                SupportedEncodingFormat.PEM,
+                privateKey)
             state.concealedAuthPrivateKey = CryptoWrapper.loadPrivateKey(
                 SupportedKeyType.Ed25519,
                 SupportedEncodingFormat.PEM,
-                privateKey)
+                privTemp)
             // set this last, since we test this one and assume the others
             // are set if it is
             state.concealedAuthUser = userID
