@@ -160,7 +160,8 @@ func (e *EnvoyProxy) envoyProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	host, _, err := net.SplitHostPort(u.Host)
 	if err != nil {
-		log.Println("error splitting host and port?")
+		log.Printf("error splitting host and port? %s", err)
+		log.Println("u.Host", u.Host)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
