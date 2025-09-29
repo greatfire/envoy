@@ -30,6 +30,8 @@
     <string name="v2w">\tv2ray wechat test</string>
     <string name="snowflake">\tsnowflake test</string>
     <string name="meek">\tmeek test</string>
+    <string name="ohttp">\tohttp test</string>
+    <string name="auth">\tconcealed auth test</string>
     <string name="success">\tsuccess</string>
     <string name="failure">\tfailure</string>
 
