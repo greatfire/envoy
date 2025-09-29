@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "crypto/x509"
+	"crypto/x509"
 	"log"
 	"net/http"
 	"os"
@@ -42,13 +42,18 @@ func main() {
 			continue
 		}
 
-		pubKey := temp.(ssh.CryptoPublicKey).CryptoPublicKey()
+		cryptoPubKey := temp.(ssh.CryptoPublicKey).CryptoPublicKey()
 
-		// pubKey, err := x509.ParsePKIXPublicKey(cryptoPubKey)
-		// if err != nil {
-		// 	log.Printf("Error Parsing PEM")
-		// 	continue
-		// }
+		derBytes, err := x509.MarshalPKIXPublicKey(cryptoPubKey)
+		if err != nil {
+			log.Printf("Error Marshaling DER %s\n", err)
+			continue
+		}
+
+		pubKey, err := x509.ParsePKIXPublicKey(derBytes)
+		if err != nil {
+			log.Printf("Error Parsing DER %s\n", err)
+		}
 
 		log.Printf("Adding user: %s", user.Name)
 		e.AddKey(http_signature_auth.KeyID(user.Name), pubKey)
