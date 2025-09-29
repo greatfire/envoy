@@ -10,9 +10,15 @@ type User struct {
 	Key string
 }
 
+type AllowedHosts struct {
+	Match []string       `yaml:"match"`
+	EndsWith []string `yaml:"ends-with"`
+}
+
 type Config struct {
-	Listen string `yaml:"listen"`
-	Users []User  `yaml:"users"`
+	Listen string                 `yaml:"listen"`
+	Users []User                  `yaml:"users"`
+	AllowedHosts AllowedHosts `yaml:"allowed-hosts"`
 }
 
 

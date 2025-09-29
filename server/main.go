@@ -7,6 +7,7 @@ import (
 	"os"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/elazarl/goproxy"
 	"github.com/francoismichel/http-signature-auth-go"
 )
 
@@ -29,6 +30,7 @@ func main() {
 
 	e := EnvoyProxy{
 		ProxyListen: config.Listen,
+		config: config,
 	}
 
 	for _, user := range config.Users {
@@ -46,13 +48,31 @@ func main() {
 		e.AddKey(http_signature_auth.KeyID(user.Name), pubKey)
 	}
 
-	http.HandleFunc("/", e.envoyProxyHandler)
+	envoyMux := http.NewServeMux()
+
+	envoyMux.HandleFunc("/", e.envoyProxyHandler)
 
 	s := http.Server{
 		Addr:    e.ProxyListen,
+		Handler: envoyMux,
 	}
 
 	log.Printf("Envoy Go proxy listening on: %s\n", e.ProxyListen)
 
-	s.ListenAndServe()
+	go s.ListenAndServe()
+
+	proxy := goproxy.NewProxyHttpServer()
+	concealedHandler := ConcealedAuthHandler{
+		keysDB: e.keysDB,
+		handler: proxy,
+	}
+
+	proxyServer := http.Server{
+		Addr: ":18989",
+		Handler: concealedHandler,
+	}
+
+	log.Printf("MASQUE proxy listening on: :18989\n")
+
+	proxyServer.ListenAndServeTLS("cert.pem", "key.pem")
 }

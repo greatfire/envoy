@@ -5,18 +5,49 @@ import (
 	"encoding/base64"
 	"errors"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 
-	"github.com/francoismichel/http-signature-auth-go"
+	http_signature_auth "github.com/francoismichel/http-signature-auth-go"
 )
 
 type EnvoyProxy struct {
 	ProxyListen string
 	keysDB http_signature_auth.Keys
+	config Config
 }
 
 func (e *EnvoyProxy) AddKey(id http_signature_auth.KeyID, key crypto.PublicKey) crypto.PublicKey {
 	return e.keysDB.AddKey(id, key)
+}
+
+func (e *EnvoyProxy) isRequestAllowed(host string) bool {
+	log.Printf("☑️ host: %s\n", host)
+
+	if len(e.config.AllowedHosts.Match) > 0 {
+		for _, allowedHost := range e.config.AllowedHosts.Match {
+			log.Printf("checking match: %s\n", allowedHost)
+			if host == allowedHost {
+				log.Println("✅")
+				return true
+			}
+		}
+	}
+
+	if len(e.config.AllowedHosts.EndsWith) > 0 {
+		for _, allowedSuffix := range e.config.AllowedHosts.EndsWith {
+			log.Printf("checking suffix: %s", allowedSuffix)
+			if strings.HasSuffix(host, allowedSuffix) {
+				log.Println("✅")
+				return true
+			}
+		}
+	}
+
+	log.Println("❌")
+	return false
 }
 
 func (e *EnvoyProxy) proxyRequest(orig_req *http.Request) (*http.Response, error) {
@@ -113,10 +144,29 @@ func (e *EnvoyProxy) envoyProxyHandler(w http.ResponseWriter, r *http.Request) {
 	// The Url-Orig header is required for us to proxy.
 	// The client should send a "Host-Orig" header as well, but we don't
 	// need that
-	if len(r.Header["Url-Orig"]) == 0 {
+	targetUrl := r.Header["Url-Orig"]
+	if len(targetUrl) == 0 {
 		log.Printf("Request with no proxy headers")
 		// generic 404 on failure
-		http.Error(w, "Not Found", http.StatusBadRequest)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	u, err := url.Parse(targetUrl[0])
+	if err != nil {
+		log.Println("error paring target URL")
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	host, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		log.Println("error splitting host and port?")
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	if !e.isRequestAllowed(host) {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
