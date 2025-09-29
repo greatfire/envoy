@@ -33,6 +33,8 @@ func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		log.Println("🎸 CA success")
 		h.handler.ServeHTTP(w, r)
 		return
+	} else {
+		log.Printf("Method not CONNECT: %s\n")
 	}
 
 	http.Error(w, "Not Found", http.StatusNotFound)
