@@ -41,7 +41,7 @@ func main() {
 
 		pubKey, ok := temp.(crypto.PublicKey)
 		if !ok {
-			log.Printf("Failed casting key for %v: %v\n", user.Name, err)
+			log.Printf("Failed casting key for %v\n", user.Name)
 		}
 
 		log.Printf("Adding user: %s", user.Name)
