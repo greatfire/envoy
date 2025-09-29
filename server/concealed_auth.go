@@ -34,7 +34,7 @@ func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		h.handler.ServeHTTP(w, r)
 		return
 	} else {
-		log.Printf("Method not CONNECT: %s\n")
+		log.Printf("Method not CONNECT: %s\n", r.Method)
 	}
 
 	http.Error(w, "Not Found", http.StatusNotFound)
