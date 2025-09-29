@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto"
+	// "crypto/x509"
 	"log"
 	"net/http"
 	"os"
@@ -34,15 +34,21 @@ func main() {
 	}
 
 	for _, user := range config.Users {
+		// Do this little dance to convert SSH key.
+		// we apparetnly can't just pass an ssh.PrivateKey instance here
 		temp, _, _, _, err := ssh.ParseAuthorizedKey([]byte(user.Key))
 		if err != nil {
 			log.Printf("Error parsing key for %v: %v\n", user.Name, err)
+			continue
 		}
 
-		pubKey, ok := temp.(crypto.PublicKey)
-		if !ok {
-			log.Printf("Failed casting key for %v\n", user.Name)
-		}
+		pubKey := temp.(ssh.CryptoPublicKey).CryptoPublicKey()
+
+		// pubKey, err := x509.ParsePKIXPublicKey(cryptoPubKey)
+		// if err != nil {
+		// 	log.Printf("Error Parsing PEM")
+		// 	continue
+		// }
 
 		log.Printf("Adding user: %s", user.Name)
 		e.AddKey(http_signature_auth.KeyID(user.Name), pubKey)
@@ -75,4 +81,6 @@ func main() {
 	log.Printf("MASQUE proxy listening on: :18989\n")
 
 	proxyServer.ListenAndServeTLS("cert.pem", "key.pem")
+
+	log.Println("Exiting")
 }
