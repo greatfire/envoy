@@ -65,9 +65,6 @@ open class Transport(
     val headers = mutableListOf<Pair<String, String>>()
     // address param creates an resolver rule
     // stash it here in case we can support it with OkHttp
-    // resolver rules in experimental options must be in json format
-    // ie: "{\"resolver_rules\": \"MAP <URL> <IP>, <...> \"}"
-    // TODO: build JSON object and convert to string?
     var address: String? = null
     var resolverRules: String = ""
 
