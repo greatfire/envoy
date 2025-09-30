@@ -5,6 +5,7 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
+	github.com/elazarl/goproxy v1.7.2
 	github.com/francoismichel/http-signature-auth-go v0.0.0-20240702170343-6a6cf8ee5321
 	github.com/goccy/go-yaml v1.18.0
 	golang.org/x/crypto v0.42.0
