@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/net/http2"
 
 	// "github.com/elazarl/goproxy"
 	http_signature_auth "github.com/francoismichel/http-signature-auth-go"
@@ -93,6 +94,10 @@ func main() {
 		Addr: ":18989",
 		Handler: concealedHandler,
 	}
+
+	h2Conf := http2.Server{}
+
+	http2.ConfigureServer(&proxyServer, &h2Conf)
 
 	log.Printf("MASQUE proxy listening on: :18989\n")
 
