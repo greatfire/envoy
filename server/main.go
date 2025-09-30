@@ -83,7 +83,13 @@ func main() {
 		log.Fatalf("Error parsing backend URL: %v\n", err)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(backUrl)
+	// proxy := httputil.NewSingleHostReverseProxy(backUrl)
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(backUrl)
+		},
+		Transport: http2.Transport{},
+	}
 
 	concealedHandler := ConcealedAuthHandler{
 		keysDB: e.keysDB,
