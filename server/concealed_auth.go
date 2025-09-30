@@ -20,9 +20,11 @@ func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Not Found.", http.StatusNotFound)
 	}
 
-	if r.Method == "PRI" {
-		return
+	dump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		log.Fatal("Can't dump request")
 	}
+	log.Println("REQUEST", dump)
 
 	if r.Method == http.MethodConnect {
 		log.Println("verifiying CONNECT signature")
