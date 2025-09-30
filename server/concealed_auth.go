@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"net/http/httputil"
 
 	http_signature_auth "github.com/francoismichel/http-signature-auth-go"
 )
