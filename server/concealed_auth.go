@@ -33,9 +33,19 @@ func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		log.Println("🎸 CA success")
 		h.handler.ServeHTTP(w, r)
 		return
-	} else {
+	} else if r.Method == http.MethodGet ||
+	          r.Method == http.MethodHead ||
+	          r.Method == http.MethodPost ||
+	          r.Method == http.MethodPut ||
+	          r.Method == http.MethodPatch ||
+	          r.Method == http.MethodDelete ||
+	          r.Method == http.MethodOptions ||
+	          r.Method == http.MethodTrace {
 		log.Printf("Method not CONNECT: %s\n", r.Method)
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
 	}
 
-	http.Error(w, "Not Found", http.StatusNotFound)
+	// else, this is HTTP/2 stuff, pass it though
+	h.handler.ServeHTTP(w, r)
 }
