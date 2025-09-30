@@ -46,6 +46,7 @@ func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	log.Printf("Passing HTTP/2 request...")
 	// else, this is HTTP/2 stuff, pass it though
 	h.handler.ServeHTTP(w, r)
 }
