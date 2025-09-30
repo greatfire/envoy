@@ -4,11 +4,13 @@ import (
 	"crypto/x509"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/elazarl/goproxy"
-	"github.com/francoismichel/http-signature-auth-go"
+	// "github.com/elazarl/goproxy"
+	http_signature_auth "github.com/francoismichel/http-signature-auth-go"
 )
 
 func main() {
@@ -72,7 +74,16 @@ func main() {
 
 	go s.ListenAndServe()
 
-	proxy := goproxy.NewProxyHttpServer()
+	// proxy := goproxy.NewProxyHttpServer()
+	// proxy.AllowHTTP2
+
+	backUrl, err := url.Parse("http://localhost:7676/")
+	if err != nil {
+		log.Fatalf("Error parsing backend URL: %v\n", err)
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(backUrl)
+
 	concealedHandler := ConcealedAuthHandler{
 		keysDB: e.keysDB,
 		handler: proxy,
