@@ -83,12 +83,18 @@ func main() {
 		log.Fatalf("Error parsing backend URL: %v\n", err)
 	}
 
+	var protocols http.Protocols
+	protocols.SetUnencryptedHTTP2(true)
+
 	// proxy := httputil.NewSingleHostReverseProxy(backUrl)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(backUrl)
 		},
-		Transport: http2.Transport{},
+		Transport: &http.Transport{
+			ForceAttemptHTTP2: true,
+			Protocols:         &protocols,
+		},
 	}
 
 	concealedHandler := ConcealedAuthHandler{
