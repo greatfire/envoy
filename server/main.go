@@ -4,13 +4,12 @@ import (
 	"crypto/x509"
 	"log"
 	"net/http"
-	// "net/http/httputil"
-	// "net/url"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/http2"
 
-	"github.com/elazarl/goproxy"
 	http_signature_auth "github.com/francoismichel/http-signature-auth-go"
 )
 
@@ -75,27 +74,24 @@ func main() {
 
 	go s.ListenAndServe()
 
-	proxy := goproxy.NewProxyHttpServer()
-	proxy.AllowHTTP2 = true
+	backUrl, err := url.Parse("http://localhost:7676/")
+	if err != nil {
+		log.Fatalf("Error parsing backend URL: %v\n", err)
+	}
 
-	// backUrl, err := url.Parse("http://localhost:7676/")
-	// if err != nil {
-	// 	log.Fatalf("Error parsing backend URL: %v\n", err)
-	// }
-
-	// var protocols http.Protocols
-	// protocols.SetUnencryptedHTTP2(true)
+	var protocols http.Protocols
+	protocols.SetUnencryptedHTTP2(true)
 
 	// proxy := httputil.NewSingleHostReverseProxy(backUrl)
-	// proxy := &httputil.ReverseProxy{
-	// 	Rewrite: func(r *httputil.ProxyRequest) {
-	// 		r.SetURL(backUrl)
-	// 	},
-	// 	Transport: &http.Transport{
-	// 		ForceAttemptHTTP2: true,
-	// 		Protocols:         &protocols,
-	// 	},
-	// }
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(backUrl)
+		},
+		Transport: &http.Transport{
+			ForceAttemptHTTP2: true,
+			Protocols:         &protocols,
+		},
+	}
 
 	concealedHandler := ConcealedAuthHandler{
 		keysDB: e.keysDB,

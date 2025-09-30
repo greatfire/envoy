@@ -13,9 +13,10 @@ type ConcealedAuthHandler struct {
 }
 
 func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("Concdealed Auth Request")
+	log.Println("Concealed Auth Handler", r.Proto)
 
 	if r.Method == http.MethodConnect {
+		log.Println("verifiying CONNECT signature")
 		ok, err := http_signature_auth.VerifySignature(&h.keysDB, r)
 		if err != nil {
 			log.Printf("Signature validation error: %v\n", err)
@@ -46,7 +47,7 @@ func (h ConcealedAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	log.Printf("Passing HTTP/2 request...")
+	log.Printf("Passing HTTP/2 request...", r.Method)
 	// else, this is HTTP/2 stuff, pass it though
 	h.handler.ServeHTTP(w, r)
 }
