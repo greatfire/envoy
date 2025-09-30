@@ -89,6 +89,10 @@ class EnvoyState private constructor() {
             resolverRules = transport.resolverRules,
             cacheSize = 10, // cache size in MB
         )
+
+        // mark cronet cache for deletion
+        // may not work on no-empty directory?
+        cacheDir.deleteOnExit()
     }
 
     fun InitIEnvoyProxy() {
