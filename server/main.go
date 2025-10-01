@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/x509"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -74,7 +75,7 @@ func main() {
 
 	go s.ListenAndServe()
 
-	backUrl, err := url.Parse("http://localhost:7676/")
+	backUrl, err := url.Parse("https://localhost:7676/")
 	if err != nil {
 		log.Fatalf("Error parsing backend URL: %v\n", err)
 	}
@@ -90,6 +91,7 @@ func main() {
 		Transport: &http.Transport{
 			ForceAttemptHTTP2: true,
 			Protocols:         &protocols,
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 		},
 	}
 
