@@ -70,6 +70,9 @@ class EnvoyShadowsocks(val url: String, val context: Context) {
         currentProcess = Runtime.getRuntime().exec(cmdArgs)
         Log.d(TAG, "🗣️ Shadowsocks started")
 
+        // mark plaintext config file for deletion
+        configFile.deleteOnExit()
+
         return LOCAL_PORT
     }
 

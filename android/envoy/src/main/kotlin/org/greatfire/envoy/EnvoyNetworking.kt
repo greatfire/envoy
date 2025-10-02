@@ -159,4 +159,8 @@ class EnvoyNetworking {
 
         return this
     }
+
+    fun cleanup() {
+        state.cleanupCronetCache()
+    }
 }
