@@ -1,0 +1,3 @@
+[submodule "server/http-signature-auth-go"]
+	path = server/http-signature-auth-go
+	url = git@github.com:stevenmcdonald/http-signature-auth-go.git
