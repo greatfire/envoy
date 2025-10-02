@@ -155,10 +155,12 @@ class EnvoyConnectionTests {
         fun addEnvoyUrl(url: String) {
             val uri = Uri.parse(url)
 
-            Log.d(TAG, "&&& addEnvoyUrl type: " + uri.getScheme())
+            Log.d(TAG, "&&& addEnvoyUrl type: " + uri.scheme)
 
-            when (uri.getScheme()) {
+            when (uri.scheme) {
                 "http", "https", "envoy+https" -> {
+
+                    Log.d(TAG, "Adding STANDARD Envoy URL: ")
 
                     // set the scheme to a real one if needed
                     var tempUrl = url
@@ -225,7 +227,7 @@ class EnvoyConnectionTests {
                         else -> url
                     }
 
-                    Log.d(TAG, "concealed auth URL: $tempUrl")
+                    Log.d(TAG, "Adding CONCEALED URL: $tempUrl")
                     transports.add(ConcealedAuthTransport(tempUrl))
                 }
                 else -> {
