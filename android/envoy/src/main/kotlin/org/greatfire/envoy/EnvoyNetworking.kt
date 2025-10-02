@@ -110,32 +110,54 @@ class EnvoyNetworking {
     // Keys should be OpenSSH format
     fun configureConcealedaAuth(userID: String, publicKey: String, privateKey: String): EnvoyNetworking {
 
+        var pubTemp = ""
+        var privTemp = ""
+
         try {
-            val pubTemp = CryptoWrapper.convertPublic(
+            pubTemp = CryptoWrapper.convertPublic(
                 SupportedKeyType.Ed25519,
                 SupportedEncodingFormat.SSH,
                 SupportedEncodingFormat.PEM,
                 publicKey)
+            } catch (e: CryptoException) {
+                Log.e(TAG, "Failed to convert Public SSH to PEM $e")
+                return this
+            }
+
+        try{
             state.concealedAuthPublicKey = CryptoWrapper.toSpecBytes(
                 SupportedKeyType.Ed25519,
                 SupportedEncodingFormat.PEM,
                 pubTemp)
+        } catch (e: CryptoException) {
+            Log.e(TAG, "Failed to parse Public PEM key $e")
+            return this
+        }
 
-            val privTemp = CryptoWrapper.convertPrivate(
+        try {
+            privTemp = CryptoWrapper.convertPrivate(
                 SupportedKeyType.Ed25519,
                 SupportedEncodingFormat.SSH,
                 SupportedEncodingFormat.PEM,
                 privateKey)
+        } catch (e: CryptoException) {
+            Log.e(TAG, "Failed to convert Private SSH to PEM")
+            return this
+        }
+
+        try {
             state.concealedAuthPrivateKey = CryptoWrapper.loadPrivateKey(
                 SupportedKeyType.Ed25519,
                 SupportedEncodingFormat.PEM,
                 privTemp)
-            // set this last, since we test this one and assume the others
-            // are set if it is
-            state.concealedAuthUser = userID
         } catch (e: CryptoException) {
             Log.e(TAG, "Failed to parse Concealed Auth keys")
+            return this
         }
+
+        // set this last, since we test this one and assume the others
+        // are set if it is
+        state.concealedAuthUser = userID
         return this
     }
 
