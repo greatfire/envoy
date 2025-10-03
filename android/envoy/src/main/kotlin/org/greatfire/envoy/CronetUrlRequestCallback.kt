@@ -66,7 +66,7 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
         // redirect is upgradging http -> https: allow
         } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://")) {
             request.followRedirect()
-        } else
+        } else {
             request.followRedirect()
         }
     }
@@ -147,7 +147,10 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
                     Protocol.HTTP_1_1
                 }
                 else -> {
-                    Protocol.HTTP_1_0
+                    // This should be a connection to the Envoy server, if we can't
+                    // figure out the protocol, something very bad has gone wrong.
+                    // This should probably throw an error instead
+                    Protocol.HTTP_1_1
                 }
             }
         }
