@@ -140,7 +140,8 @@ open class Transport(
         }
     }
 
-    inner class TestUrlRequestCallback() : UrlRequest.Callback()
+    inner class TestUrlRequestCallback(
+        private val mOriginalRequest: Request) : UrlRequest.Callback()
     {
         var succeeded = false
         private val requestDone = ConditionVariable()
@@ -149,7 +150,7 @@ open class Transport(
         override fun onRedirectReceived(
             request: UrlRequest,
             info: UrlResponseInfo,
-            newLocationUrl: String?
+            newLocationUrl: String
         ) {
             // we shouldn't get these in testing, but follow it anyway
             if (mRedirectCount > MAX_FOLLOW_COUNT) {
@@ -162,7 +163,7 @@ open class Transport(
             // redirect is upgradging http -> https: allow
             } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://")) {
                 request.followRedirect()
-            } else
+            } else {
                 request.followRedirect()
             }
         }
