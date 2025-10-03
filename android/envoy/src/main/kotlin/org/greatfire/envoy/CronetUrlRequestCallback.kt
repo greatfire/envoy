@@ -60,15 +60,14 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
             request.cancel()
         }
         mRedirectCount += 1
-        val client = OkHttpClient.Builder().build()
-        if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects) {
-            request.followRedirect()
-        } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects) {
-            request.followRedirect()
-        } else if (client.followRedirects) {
-            request.followRedirect()
-        } else {
+        // redirect is downgrading https -> http: reject
+        if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://")) {
             request.cancel()
+        // redirect is upgradging http -> https: allow
+        } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://")) {
+            request.followRedirect()
+        } else
+            request.followRedirect()
         }
     }
 
