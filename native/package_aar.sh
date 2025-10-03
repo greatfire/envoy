@@ -50,8 +50,9 @@ jar cvMf "cronet-$BUILD_VARIANT.aar" -C $build_tmp_dir/ .
 
 # updated Shadowsocks based on research:
 # https://www.opentech.fund/news/exposing-the-great-firewalls-dynamic-blocking-of-fully-encrypted-traffic/
-wget --continue https://github.com/gfw-report/shadowsocks-rust/releases/download/v0.0.1-beta/mobile-universal-release-signed.apk
-unzip -o mobile-universal-release-signed.apk lib/*/libsslocal.so
+#wget --continue https://github.com/gfw-report/shadowsocks-rust/releases/download/v0.0.1-beta/mobile-universal-release-signed.apk
+#unzip -o mobile-universal-release-signed.apk lib/*/libsslocal.so
+unzip -o mobile-universal-release-unsigned.apk lib/*/libsslocal.so
 rsync -avzp lib/ jni/
 jar uvMf "cronet-$BUILD_VARIANT.aar" jni
 
