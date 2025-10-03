@@ -24,6 +24,9 @@ class EnvoyOkClient {
         private fun getClientBuilder(timeout: Long?): OkHttpClient.Builder {
             val builder = OkHttpClient.Builder()
 
+            // use the HTTPSDowngradePreventionInterceptor
+            // builder.followSslRedirects = false
+
             if (timeout != null) {
                 builder.callTimeout(timeout, TimeUnit.SECONDS)
             }

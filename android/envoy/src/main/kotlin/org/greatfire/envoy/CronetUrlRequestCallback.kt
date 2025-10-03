@@ -60,15 +60,14 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
             request.cancel()
         }
         mRedirectCount += 1
-        val client = OkHttpClient.Builder().build()
-        if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://") && client.followSslRedirects) {
-            request.followRedirect()
-        } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://") && client.followSslRedirects) {
-            request.followRedirect()
-        } else if (client.followRedirects) {
+        // redirect is downgrading https -> http: reject
+        if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://")) {
+            request.cancel()
+        // redirect is upgradging http -> https: allow
+        } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://")) {
             request.followRedirect()
         } else {
-            request.cancel()
+            request.followRedirect()
         }
     }
 
@@ -148,7 +147,10 @@ class CronetUrlRequestCallback @JvmOverloads internal constructor(
                     Protocol.HTTP_1_1
                 }
                 else -> {
-                    Protocol.HTTP_1_0
+                    // This should be a connection to the Envoy server, if we can't
+                    // figure out the protocol, something very bad has gone wrong.
+                    // This should probably throw an error instead
+                    Protocol.HTTP_1_1
                 }
             }
         }

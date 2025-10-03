@@ -7,6 +7,8 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import java.util.concurrent.Executors
+import okhttp3.Request
+
 
 class CronetEnvoyTransport(url: String) : Transport(EnvoyTransportType.CRONET_ENVOY, url) {
 
@@ -24,15 +26,25 @@ class CronetEnvoyTransport(url: String) : Transport(EnvoyTransportType.CRONET_EN
             resolverRules = resolverRules,
             cacheSize = 0, // cache size in MB
         )
-        val callback = TestUrlRequestCallback()
+
+        // add the Envoy headers for the real target
+        val targetHost = Uri.parse(Transport.testUrl).host ?: "fake-host"
+
+        val dummyRequest = Request.Builder()
+            // aim at the Envoy proxy instead of the real target
+            .url(url)
+            .addHeader("Host-Orig", targetHost)
+            .addHeader("Url-Orig", Transport.testUrl)
+            .build()
+
+        val callback = TestUrlRequestCallback(dummyRequest)
+
         // aim at the Envoy proxy instead of the real target
         val requestBuilder = cronetEngine.newUrlRequestBuilder(
             url, // Envoy proxy URL
             callback,
             Executors.newCachedThreadPool()
         )
-        // add the Envoy headers for the real target
-        val targetHost = Uri.parse(Transport.testUrl).host
         // XXX cache param
         requestBuilder.addHeader("Host-Orig", targetHost)
         requestBuilder.addHeader("Url-Orig", Transport.testUrl)
