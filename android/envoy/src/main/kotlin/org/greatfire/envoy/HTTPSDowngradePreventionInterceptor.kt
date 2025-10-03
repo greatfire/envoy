@@ -1,5 +1,6 @@
 package org.greatfire.envoy
 
+import android.util.Log
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -13,14 +14,18 @@ import java.io.IOException
 
 class HTTPSDowngradePreventionInterceptor : Interceptor {
 
+    companion object {
+        private const val TAG = "Envoy-HTTPSDowngradePreventionInterceptor"
+    }
+
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
 
         val response = chain.proceed(request)
 
-        if origRequest.isHttps() && response.isRedirect() {
-            if response.request.url.scheme == "https" {
+        if (request.isHttps && response.isRedirect) {
+            if (response.request.url.scheme == "https") {
                 return response
             } else {
                 Log.e(TAG, "Preventing redirect from HTTPS to HTTP")
