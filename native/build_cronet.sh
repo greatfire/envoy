@@ -24,11 +24,14 @@ git checkout .
 
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/01-proxy_support.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02.5-update_api_01_02.patch"
+#api.txt changes are in each patch in the 138 branch rght now
+#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02.5-update_api_01_02.patch"
 # the tls_options patch needs some fixes? cronet requests fail with it applied
 #patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
 #patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-dns_over_https_config.patch"
 #patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/05-update_api.patch"
+
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/98-gn_gen.patch"
 
 # XXX hacky fix of build problem in M128
 if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
@@ -66,12 +69,14 @@ for arch in arm arm64 x86 x64; do
     fi
 
     # XXX how is the default platform broken? 🤦
-    if [[ $arch != "arm64" ]]; then
+    if [[ $arch != "arm64" && $arch != "x64" ]]; then
         "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
     fi
 
     # this defaults to true and errors out (thanks Google)
     sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"
+    # this also defaults to true, and should probably be false for us (?)
+    sed -i 's/is_official_build = true/is_official_build = false/g' "$out_dir/args.gn"
 
     autoninja -C "$out_dir" cronet_package
 
