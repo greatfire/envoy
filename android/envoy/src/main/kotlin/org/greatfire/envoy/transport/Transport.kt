@@ -143,6 +143,7 @@ open class Transport(
     {
         var succeeded = false
         private val requestDone = ConditionVariable()
+        private var mRedirectCount = 0
 
         override fun onRedirectReceived(
             request: UrlRequest?,
@@ -150,7 +151,19 @@ open class Transport(
             newLocationUrl: String?
         ) {
             // we shouldn't get these in testing, but follow it anyway
-            request?.followRedirect()
+            if (mRedirectCount > MAX_FOLLOW_COUNT) {
+                request.cancel()
+            }
+            mRedirectCount += 1
+            // redirect is downgrading https -> http: reject
+            if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://")) {
+                request.cancel()
+            // redirect is upgradging http -> https: allow
+            } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://")) {
+                request.followRedirect()
+            } else
+                request.followRedirect()
+            }
         }
 
         override fun onResponseStarted(
