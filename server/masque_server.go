@@ -9,6 +9,7 @@ with HTTP Concealed Auth support to act as a server
 
 import (
 	"bufio"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -53,7 +54,7 @@ func NewMasqueProxy(keysDB *http_signature_auth.Keys) (* EnvoyMasqueProxyServer)
 		UpstreamPort: 7676,
 		ListenPort: 18989,
 		keysDB: keysDB,
-		insecure: false,
+		insecure: true, // so we can connect to localhost
 		token: "SOME FAKE VALUE",
 	}
 
@@ -61,15 +62,24 @@ func NewMasqueProxy(keysDB *http_signature_auth.Keys) (* EnvoyMasqueProxyServer)
 }
 
 func (p *EnvoyMasqueProxyServer) Start() {
+	// thanks https://github.com/denji/golang-tls
+	cer, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+    if err != nil {
+        log.Printf("Error loading cert %v\n", err)
+        return
+    }
 
-	// Listen for proxy requests
+    // Listen for proxy requests
 	host := fmt.Sprintf(":%d", p.ListenPort)
+	// XXX fix this :)
 	log.Printf("MASQUE proxy listening on %s", host)
-	l, err := net.Listen("tcp", host)
-	if err != nil {
-		log.Printf("Listen error %v", err)
-		return
-	}
+
+    config := &tls.Config{Certificates: []tls.Certificate{cer}}
+    l, err := tls.Listen("tcp", host, config)
+    if err != nil {
+        log.Println(err)
+        return
+    }
 
 	defer func() {
 		if err := l.Close(); err != nil {
