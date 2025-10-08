@@ -13,9 +13,19 @@ import (
 	http_signature_auth "github.com/francoismichel/http-signature-auth-go"
 )
 
+/*
+
+This implemenets an Envoy proxy server similar to the nginx config
+documented here: https://github.com/greatfire/envoy/blob/master/native/README.md
+with HTTP Concealed Auth support
+
+I.e. this server can be used in place of nginx
+
+*/
+
 type EnvoyProxy struct {
 	ProxyListen string
-	keysDB http_signature_auth.Keys
+	keysDB *http_signature_auth.Keys
 	config Config
 }
 
@@ -120,7 +130,7 @@ func (e *EnvoyProxy) validateConcealedAuthHeader(r *http.Request) (bool, error) 
 		return false, errors.New("Missing auth header")
 	}
 
-	return http_signature_auth.VerifySignatureWithMaterial(&e.keysDB, signatureCandidate, &material)
+	return http_signature_auth.VerifySignatureWithMaterial(e.keysDB, signatureCandidate, &material)
 }
 
 //
