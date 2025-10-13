@@ -94,8 +94,8 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
+    EnvoyNetworking envoy;
     Secrets mSecrets;
-    // NetworkIntentService mService;
     boolean mBound = false;
     TextView mOutputTextView;
     int mUrlCount = 0;
@@ -110,6 +110,10 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.runButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (envoy != null) {
+                    // test cache cleanup method
+                    envoy.cleanup();
+                }
                 Log.d(TAG, "button pushed, submit urls");
                 start();
                 findViewById(R.id.runButton).setEnabled(false);
@@ -141,7 +145,9 @@ public class MainActivity extends FragmentActivity {
         ArrayList<String> testUrls = new ArrayList<String>(Arrays.asList(proxyParts));
         ArrayList<String> directUrls = new ArrayList<String>(Arrays.asList(WIKI_URL));
 
-        EnvoyNetworking envoy = new EnvoyNetworking();
+        if (envoy == null) {
+            envoy = new EnvoyNetworking();
+        }
 
         String caUser = mSecrets.getConcealedAuthUser(packageName);
         String privKey = mSecrets.getConcealedAuthPrivateKey(packageName);

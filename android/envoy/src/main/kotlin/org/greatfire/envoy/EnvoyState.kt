@@ -44,6 +44,7 @@ class EnvoyState private constructor() {
 
     // our Cronet engine
     var cronetEngine: CronetEngine? = null
+    var cronetCache: File? = null
 
     // interface with application
     var callback: EnvoyTestCallback? = null
@@ -77,18 +78,28 @@ class EnvoyState private constructor() {
         // running in parallel...
 
         // should this live somewhere else?
-        val cacheDir = File(ctx!!.cacheDir, "cronet-cache")
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
+        cronetCache = File(ctx!!.cacheDir, "cronet-cache")
+        cronetCache?.let{
+            if (!it.exists()) {
+                it.mkdirs()
+            }
         }
 
         cronetEngine = CronetNetworking.buildEngine(
             context = ctx!!,
-            cacheFolder = cacheDir.absolutePath,
+            cacheFolder = cronetCache!!.absolutePath,
             proxyUrl = transport.proxyUrl,
             resolverRules = transport.resolverRules,
             cacheSize = 10, // cache size in MB
         )
+    }
+
+    fun cleanupCronetCache() {
+        cronetCache?.let{
+            if (it.exists()) {
+                it.deleteRecursively()
+            }
+        }
     }
 
     fun InitIEnvoyProxy() {
