@@ -5,6 +5,7 @@ import android.util.Log
 import okhttp3.Request
 import okio.Buffer
 import org.chromium.net.CronetEngine
+import org.chromium.net.ExperimentalCronetEngine
 import org.chromium.net.UploadDataProviders
 import org.chromium.net.UrlRequest
 import java.io.File
@@ -45,12 +46,18 @@ object CronetNetworking {
         if (proxyUrl.isNotEmpty()) {
             builder = builder.setProxyUrl(proxyUrl)
         }
-        if (resolverRules.isNotEmpty()) {
-            builder = builder.setResolverRules(resolverRules)
-        }
-        // XXX TLS options here, if we support them
 
-        return builder.build()
+        if (resolverRules.isNotEmpty()) {
+            // need to wrap resolver rules in json string
+            val resolverJson = "{\"resolver_rules\": \"" + resolverRules + "\"}"
+            val eBuilder = builder as ExperimentalCronetEngine.Builder
+            eBuilder.setExperimentalOptions(resolverJson)
+            return eBuilder.build()
+        } else {
+            return builder.build()
+        }
+
+        // XXX TLS options also require ExperimentalCronetEngine, if we support them
     }
 
     @JvmStatic
