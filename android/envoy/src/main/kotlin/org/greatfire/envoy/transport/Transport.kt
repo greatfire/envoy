@@ -41,6 +41,7 @@ open class Transport(
 ) {
     companion object {
         const val TAG = "Envoy - Transport"
+        private const val MAX_FOLLOW_COUNT = 20
 
         // these are set by helpers in EnvoyNetworking's companion object
         // Target URL/response code for testing
@@ -139,22 +140,36 @@ open class Transport(
         }
     }
 
-    inner class TestUrlRequestCallback() : UrlRequest.Callback()
+    inner class TestUrlRequestCallback(
+        private val mOriginalRequest: Request) : UrlRequest.Callback()
     {
         var succeeded = false
         private val requestDone = ConditionVariable()
+        private var mRedirectCount = 0
 
         override fun onRedirectReceived(
-            request: UrlRequest?,
-            info: UrlResponseInfo?,
-            newLocationUrl: String?
+            request: UrlRequest,
+            info: UrlResponseInfo,
+            newLocationUrl: String
         ) {
             // we shouldn't get these in testing, but follow it anyway
-            request?.followRedirect()
+            if (mRedirectCount > MAX_FOLLOW_COUNT) {
+                request.cancel()
+            }
+            mRedirectCount += 1
+            // redirect is downgrading https -> http: reject
+            if (mOriginalRequest.url.isHttps && newLocationUrl.startsWith("http://")) {
+                request.cancel()
+            // redirect is upgradging http -> https: allow
+            } else if (!mOriginalRequest.url.isHttps && newLocationUrl.startsWith("https://")) {
+                request.followRedirect()
+            } else {
+                request.followRedirect()
+            }
         }
 
         override fun onResponseStarted(
-            request: UrlRequest?,
+            request: UrlRequest,
             info: UrlResponseInfo
         ) {
             // is this the best thing to do with the ignored data?
@@ -162,16 +177,16 @@ open class Transport(
         }
 
         override fun onReadCompleted(
-            request: UrlRequest?,
-            info: UrlResponseInfo?,
-            byteBuffer: ByteBuffer?,
+            request: UrlRequest,
+            info: UrlResponseInfo,
+            byteBuffer: ByteBuffer,
         ) {
             request?.read(byteBuffer)
         }
 
         override fun onSucceeded(
-            request: UrlRequest?,
-            info: UrlResponseInfo?
+            request: UrlRequest,
+            info: UrlResponseInfo
         ) {
             if (info?.httpStatusCode == testResponseCode) {
                 Log.d(TAG, "Cronet worked!")
@@ -183,9 +198,9 @@ open class Transport(
         }
 
         override fun onFailed(
-            request: UrlRequest?,
-            info: UrlResponseInfo?,
-            error: CronetException?,
+            request: UrlRequest,
+            info: UrlResponseInfo,
+            error: CronetException,
         ) {
             Log.e(TAG, "Cronet failed: " + error)
             requestDone.open()
