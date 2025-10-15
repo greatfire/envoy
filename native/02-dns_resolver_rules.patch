@@ -1,42 +1,8 @@
- components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java |  2 ++
- components/cronet/native/sample/main.cc                                                          |  1 +
- components/cronet/url_request_context_config.cc                                                  | 12 ++++++++++++
- net/url_request/url_request_context_builder.cc                                                   | 17 ++++++++++++++++-
- net/url_request/url_request_context_builder.h                                                    |  7 +++++++
- 5 files changed, 38 insertions(+), 1 deletion(-)
+ components/cronet/url_request_context_config.cc | 12 ++++++++++++
+ net/url_request/url_request_context_builder.cc  | 17 ++++++++++++++++-
+ net/url_request/url_request_context_builder.h   |  7 +++++++
+ 3 files changed, 35 insertions(+), 1 deletion(-)
 
-diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-index 87436d5a2d90c..bc714727729cc 100644
---- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-+++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-@@ -24,6 +24,7 @@ public class CronetSampleApplication extends Application {
-         myBuilder
-                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
-                 .enableHttp2(true)
-+                .setExperimentalOptions("{\"resolver_rules\": \"MAP * 65.21.79.229, EXCLUDE *.google.*\"}")
-                 .enableQuic(true);
-         mCronetEngine = myBuilder.build();
-     }
-@@ -62,6 +63,7 @@ public class CronetSampleApplication extends Application {
-                         .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
-                         .enableHttp2(true)
-                         .enableQuic(true)
-+                        .setExperimentalOptions("{\"resolver_rules\": \"MAP * 65.21.79.229, EXCLUDE *.google.*\"}")
-                         .build();
-     }
- }
-diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index fe9ff6f1ee279..25503195fe04c 100644
---- a/components/cronet/native/sample/main.cc
-+++ b/components/cronet/native/sample/main.cc
-@@ -17,6 +17,7 @@ Cronet_EnginePtr CreateCronetEngine() {
-   Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
-   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
-   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
-+  Cronet_EngineParams_experimental_options_set(engine_params, "{\"resolver_rules\": \"MAP * 65.21.79.229, EXCLUDE *.google.*\"}");
-   Cronet_EngineParams_enable_quic_set(engine_params, true);
- 
-   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
 index 8da024badd93a..33b2c57f02391 100644
 --- a/components/cronet/url_request_context_config.cc
@@ -68,17 +34,17 @@ index 8da024badd93a..33b2c57f02391 100644
        LOG(WARNING) << "Unrecognized Cronet experimental option \""
                     << iter->first << "\" with params \"" << iter->second;
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 4ac56ba26747c..98864c9c04ddd 100644
+index 4ac56ba26747c..a397be39ce364 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
-@@ -34,6 +34,7 @@
+@@ -33,6 +33,7 @@
+ #include "net/dns/context_host_resolver.h"
  #include "net/dns/host_resolver.h"
  #include "net/dns/host_resolver_manager.h"
- #include "net/dns/stale_host_resolver.h"
 +#include "net/dns/mapped_host_resolver.h"
+ #include "net/dns/stale_host_resolver.h"
  #include "net/http/http_auth_handler_factory.h"
  #include "net/http/http_cache.h"
- #include "net/http/http_network_layer.h"
 @@ -133,6 +134,10 @@ void URLRequestContextBuilder::set_user_agent(const std::string& user_agent) {
    user_agent_ = user_agent;
  }

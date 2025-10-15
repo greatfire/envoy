@@ -1,46 +1,9 @@
- components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java |  4 ++++
- components/cronet/native/sample/main.cc                                                          |  2 ++
- components/cronet/url_request_context_config.cc                                                  | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- components/cronet/url_request_context_config.h                                                   |  1 +
- net/ssl/ssl_config_service_defaults.cc                                                           |  4 ++++
- net/ssl/ssl_config_service_defaults.h                                                            |  2 ++
- 6 files changed, 72 insertions(+)
+ components/cronet/url_request_context_config.cc | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ components/cronet/url_request_context_config.h  |  1 +
+ net/ssl/ssl_config_service_defaults.cc          |  4 ++++
+ net/ssl/ssl_config_service_defaults.h           |  2 ++
+ 4 files changed, 66 insertions(+)
 
-diff --git a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-index 87436d5a2d90c..7962e1dbd70dc 100644
---- a/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-+++ b/components/cronet/android/sample/src/org/chromium/cronet_sample_apk/CronetSampleApplication.java
-@@ -24,6 +24,8 @@ public class CronetSampleApplication extends Application {
-         myBuilder
-                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
-                 .enableHttp2(true)
-+                // net::SSL_PROTOCOL_VERSION_TLS1_2/3 -> hex value 0x0303/4
-+                .setExperimentalOptions("{\"ssl_config\": {\"disabled_cipher_suites\": \"0xc024,0xc02f,0002\",\"min_ssl_version\": 771,\"max_ssl_version\": 772}}");
-                 .enableQuic(true);
-         mCronetEngine = myBuilder.build();
-     }
-@@ -61,6 +63,8 @@ public class CronetSampleApplication extends Application {
-                         .setDnsOptions(dnsOptionsBuilder)
-                         .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_IN_MEMORY, 100 * 1024)
-                         .enableHttp2(true)
-+                        // net::SSL_PROTOCOL_VERSION_TLS1_2/3 -> hex value 0x0303/4
-+                        .setExperimentalOptions("{\"ssl_config\": {\"disabled_cipher_suites\": \"0xc024,0xc02f,0002\",\"min_ssl_version\": 771,\"max_ssl_version\": 772}}");
-                         .enableQuic(true)
-                         .build();
-     }
-diff --git a/components/cronet/native/sample/main.cc b/components/cronet/native/sample/main.cc
-index fe9ff6f1ee279..32ee3bcded0ac 100644
---- a/components/cronet/native/sample/main.cc
-+++ b/components/cronet/native/sample/main.cc
-@@ -17,6 +17,8 @@ Cronet_EnginePtr CreateCronetEngine() {
-   Cronet_EnginePtr cronet_engine = Cronet_Engine_Create();
-   Cronet_EngineParamsPtr engine_params = Cronet_EngineParams_Create();
-   Cronet_EngineParams_user_agent_set(engine_params, "CronetSample/1");
-+  // net::SSL_PROTOCOL_VERSION_TLS1_2/3 -> hex value 0x0303/4
-+  Cronet_EngineParams_experimental_options_set(engine_params, "{\"ssl_config\": {\"disabled_cipher_suites\": \"0xc024,0xc02f,0002\",\"min_ssl_version\": 771,\"max_ssl_version\": 772}}");
-   Cronet_EngineParams_enable_quic_set(engine_params, true);
- 
-   Cronet_Engine_StartWithParams(cronet_engine, engine_params);
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
 index 8da024badd93a..ffa84da2e9869 100644
 --- a/components/cronet/url_request_context_config.cc
