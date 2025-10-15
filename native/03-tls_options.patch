@@ -1,11 +1,11 @@
- components/cronet/url_request_context_config.cc | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ components/cronet/url_request_context_config.cc | 58 +++++++++++++++++++++++++
  components/cronet/url_request_context_config.h  |  1 +
- net/ssl/ssl_config_service_defaults.cc          |  4 ++++
- net/ssl/ssl_config_service_defaults.h           |  2 ++
- 4 files changed, 66 insertions(+)
+ net/ssl/ssl_config_service_defaults.cc          |  4 ++
+ net/ssl/ssl_config_service_defaults.h           |  2 +
+ 4 files changed, 65 insertions(+)
 
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 8da024badd93a..ffa84da2e9869 100644
+index 2e55b1ac68c38..3314fc8613772 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -37,6 +37,9 @@
@@ -18,9 +18,9 @@ index 8da024badd93a..ffa84da2e9869 100644
  #include "net/ssl/ssl_key_logger_impl.h"
  #include "net/third_party/quiche/src/quiche/quic/core/crypto/crypto_protocol.h"
  #include "net/third_party/quiche/src/quiche/quic/core/quic_packets.h"
-@@ -211,6 +214,9 @@ const char kDisableTlsZeroRtt[] = "disable_tls_zero_rtt";
- // underlying OS.
- const char kSpdyGoAwayOnIpChange[] = "spdy_go_away_on_ip_change";
+@@ -214,6 +217,9 @@ const char kSpdyGoAwayOnIpChange[] = "spdy_go_away_on_ip_change";
+ // DNS options
+ const char kResolverRules[] = "resolver_rules";
  
 +// cipher suite/ssl version options
 +const char kSslConfig[] = "ssl_config";
@@ -28,10 +28,10 @@ index 8da024badd93a..ffa84da2e9869 100644
  // Whether the connection status of all bidirectional streams (created through
  // the Cronet engine) should be monitored.
  // The value must be an integer (> 0) and will be interpreted as a suggestion
-@@ -765,6 +771,59 @@ void URLRequestContextConfig::SetContextBuilderExperimentalOptions(
-         continue;
+@@ -780,6 +786,58 @@ void URLRequestContextConfig::SetContextBuilderExperimentalOptions(
        }
-       session_params->spdy_go_away_on_ip_change = iter->second.GetBool();
+       std::string temp_resolver_rules = iter->second.GetString();
+       context_builder->set_resolver_rules(temp_resolver_rules);
 +    } else if (iter->first == kSslConfig) {
 +      if (!iter->second.is_dict()) {
 +        LOG(ERROR) << "\"" << iter->first << "\" config params \""
@@ -84,12 +84,11 @@ index 8da024badd93a..ffa84da2e9869 100644
 +
 +      auto ssl_config_service_ptr = std::make_unique<net::SSLConfigServiceDefaults>(ssl_context_config);
 +      context_builder->set_ssl_config_service(std::move(ssl_config_service_ptr));
-+
      } else {
        LOG(WARNING) << "Unrecognized Cronet experimental option \""
                     << iter->first << "\" with params \"" << iter->second;
 diff --git a/components/cronet/url_request_context_config.h b/components/cronet/url_request_context_config.h
-index 324525466cf24..b8daa6d8d35f8 100644
+index fe91814bd3df6..493bf0d7af28d 100644
 --- a/components/cronet/url_request_context_config.h
 +++ b/components/cronet/url_request_context_config.h
 @@ -17,6 +17,7 @@
