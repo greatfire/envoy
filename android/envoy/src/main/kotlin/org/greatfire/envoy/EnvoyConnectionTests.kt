@@ -155,13 +155,8 @@ class EnvoyConnectionTests {
         fun addEnvoyUrl(url: String) {
             val uri = Uri.parse(url)
 
-            Log.d(TAG, "&&& addEnvoyUrl type: " + uri.scheme)
-
             when (uri.scheme) {
                 "http", "https", "envoy+https" -> {
-
-                    Log.d(TAG, "Adding STANDARD Envoy URL: ")
-
                     // set the scheme to a real one if needed
                     var tempUrl = url
                     if (uri.scheme == "envoy+https") {
@@ -192,8 +187,6 @@ class EnvoyConnectionTests {
                         // https://github.com/square/okhttp/issues/8373
                         else -> url
                     }
-
-                    Log.d(TAG, "proxy URL: $tempUrl")
 
                     with (transports) {
                         add(OkHttpProxyTransport(tempUrl))
@@ -226,8 +219,6 @@ class EnvoyConnectionTests {
                         "ca+https" -> url.replaceFirst("""^ca\+https""".toRegex(), "https")
                         else -> url
                     }
-
-                    Log.d(TAG, "Adding CONCEALED URL: $tempUrl")
                     transports.add(ConcealedAuthTransport(tempUrl))
                 }
                 else -> {
