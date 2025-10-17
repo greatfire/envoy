@@ -4,7 +4,6 @@ package org.greatfire.envoy
 import android.util.Log
 import kotlinx.coroutines.*
 import tech.relaycorp.doh.DoHClient
-import tech.relaycorp.doh.LookupFailureException
 
 
 class EnvoyDns() {
@@ -130,7 +129,7 @@ class EnvoyDns() {
             try {
                 val ans = doh.lookUp(host, "HTTPS").data
                 echRecord = ans[0]
-            } catch (e: Error) {
+            } catch (e: Exception) {
                 Log.e(TAG, "ECH Config lookup failed for $host $e")
                 // we're probably talking to cloudflare, so try their key
                 return ""
