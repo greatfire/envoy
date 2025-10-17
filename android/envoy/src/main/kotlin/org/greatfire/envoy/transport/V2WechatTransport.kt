@@ -75,6 +75,10 @@ class V2WechatTransport(url: String) : Transport(EnvoyTransportType.V2WECHAT, ur
         val san = UrlQuerySanitizer()
         san.setAllowUnregisteredParamaters(true)
         san.parseUrl(url)
-        return san.getValue("id")
+        if (san.hasParameter("id")) {
+            return san.getValue("id")
+        }
+        Log.e(TAG, "V2Ray WeChat URL doesn't have a UUID")
+        return ""
     }
 }
