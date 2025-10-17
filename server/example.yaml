@@ -3,3 +3,10 @@ listen: localhost:8989
 users:
   - name: example
     key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB6YS3eJZDl8N+Bd+9303s/FskXLJMTxTFyvL1YiYJKI support@greatfire.org
+allowed-hosts:
+  match:
+    - www.google.com
+  ends-with:
+    - .wikipedia.org
+    - .wikimedia.org
+    - .wikidata.org
