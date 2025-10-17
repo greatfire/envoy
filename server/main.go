@@ -35,51 +35,6 @@ func startEnvoyProxy(config Config, keysDB http_signature_auth.Keys) {
 	s.ListenAndServe()
 }
 
-func startMasqueProxy(config Config, keysDB http_signature_auth.Keys) {
-	log.Printf("MASQUE proxy listening on: :18989\n")
-
-	proxy := NewMasqueProxy(&keysDB)
-	proxy.UpstreamServer = "localhost"
-	proxy.UpstreamPort = 7676
-	proxy.Start()
-
-	// backUrl, err := url.Parse("https://localhost:7676/")
-	// if err != nil {
-	// 	log.Fatalf("Error parsing backend URL: %v\n", err)
-	// }
-
-	// var protocols http.Protocols
-	// protocols.SetUnencryptedHTTP2(true)
-
-	// // proxy := httputil.NewSingleHostReverseProxy(backUrl)
-	// proxy := &httputil.ReverseProxy{
-	// 	Rewrite: func(r *httputil.ProxyRequest) {
-	// 		r.SetURL(backUrl)
-	// 	},
-	// 	Transport: &http.Transport{
-	// 		ForceAttemptHTTP2: true,
-	// 		Protocols:         &protocols,
-	// 		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
-	// 	},
-	// }
-
-	// concealedHandler := ConcealedAuthHandler{
-	// 	keysDB: keysDB,
-	// 	handler: proxy,
-	// }
-
-	// proxyServer := http.Server{
-	// 	Addr: ":18989",
-	// 	Handler: concealedHandler,
-	// }
-
-	// h2Conf := http2.Server{}
-
-	// http2.ConfigureServer(&proxyServer, &h2Conf)
-
-	// proxyServer.ListenAndServeTLS("cert.pem", "key.pem")
-}
-
 
 func main() {
 	var keysDB http_signature_auth.Keys;
@@ -126,9 +81,7 @@ func main() {
 		keysDB.AddKey(http_signature_auth.KeyID(user.Name), pubKey)
 	}
 
-	go startEnvoyProxy(config, keysDB)
-
-	startMasqueProxy(config, keysDB)
+	startEnvoyProxy(config, keysDB)
 
 	log.Println("Exiting")
 }
