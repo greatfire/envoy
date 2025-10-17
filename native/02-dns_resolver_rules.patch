@@ -4,7 +4,7 @@
  3 files changed, 35 insertions(+), 1 deletion(-)
 
 diff --git a/components/cronet/url_request_context_config.cc b/components/cronet/url_request_context_config.cc
-index 8da024badd93a..33b2c57f02391 100644
+index 773e643029f7c..2e55b1ac68c38 100644
 --- a/components/cronet/url_request_context_config.cc
 +++ b/components/cronet/url_request_context_config.cc
 @@ -211,6 +211,9 @@ const char kDisableTlsZeroRtt[] = "disable_tls_zero_rtt";
@@ -17,7 +17,7 @@ index 8da024badd93a..33b2c57f02391 100644
  // Whether the connection status of all bidirectional streams (created through
  // the Cronet engine) should be monitored.
  // The value must be an integer (> 0) and will be interpreted as a suggestion
-@@ -765,6 +768,15 @@ void URLRequestContextConfig::SetContextBuilderExperimentalOptions(
+@@ -768,6 +771,15 @@ void URLRequestContextConfig::SetContextBuilderExperimentalOptions(
          continue;
        }
        session_params->spdy_go_away_on_ip_change = iter->second.GetBool();

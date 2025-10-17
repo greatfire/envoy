@@ -8,7 +8,7 @@ export DEPOT_TOOLS_UPDATE=0
 CHROMIUM_SRC_ROOT=${CHROMIUM_SRC_ROOT:-/root/chromium/src}
 DEPOT_TOOLS_ROOT=${DEPOT_TOOLS_ROOT:-/root/depot_tools}
 export PATH="$DEPOT_TOOLS_ROOT:$PATH"
-TAG=${1:-128.0.6613.148}
+TAG=${1:-138.0.7204.180}
 
 cd "$CHROMIUM_SRC_ROOT" || exit 1
 
@@ -27,6 +27,6 @@ cd "$CHROMIUM_SRC_ROOT" || exit 3
 
 gclient sync --nohooks
 # Will prompt for package installation
-build/install-build-deps.sh --android
+build/install-build-deps.sh --arm --lib32 --no-nacl
 gclient runhooks
 

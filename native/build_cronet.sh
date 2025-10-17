@@ -24,22 +24,12 @@ git checkout .
 
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/01-proxy_support.patch"
 patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02-dns_resolver_rules.patch"
-patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/02.5-update_api_01_02.patch"
-# the tls_options patch needs some fixes? cronet requests fail with it applied
-#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
-#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/04-dns_over_https_config.patch"
-#patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/05-update_api.patch"
-
-# XXX hacky fix of build problem in M128
-if [[ ! -L "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang" ]]; then
-    ln -s "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/linux//chromium-browser-clang" "$CHROMIUM_SRC_ROOT/buildtools/reclient_cfgs/chromium-browser-clang"
-fi
+patch --fuzz=0 --no-backup-if-mismatch --forward --strip=1 --reject-file=- <"$PATCH_DIR/03-tls_options.patch"
 
 # Build the linux version
 # build cronet only(without java jni)
-# this is failing in M138
-#gn gen out/Cronet-Desktop
-#autoninja -C out/Cronet-Desktop cronet # cronet_sample
+gn gen out/Cronet-Desktop
+autoninja -C out/Cronet-Desktop cronet # cronet_sample
 
 # Build the various Android versions
 for arch in arm arm64 x86 x64; do
@@ -48,8 +38,6 @@ for arch in arm arm64 x86 x64; do
     if [[ -d "${out_dir}/cronet" ]]; then
         rm -r "${out_dir}/cronet"
     fi
-    # do we still need this workaround?
-    # mkdir -p "${out_dir}/cronet/javadoc"
 
     gn_args="--out_dir=$out_dir"
     if [[ $BUILD_VARIANT == release ]]; then
@@ -66,12 +54,17 @@ for arch in arm arm64 x86 x64; do
     fi
 
     # XXX how is the default platform broken? 🤦
-    if [[ $arch != "arm64" ]]; then
+    # this currently fails for arm64 debug and release and x64/x86 release 🤷
+    if [[ $arch == "arm64" || ($BUILD_VARIANT == release && ($arch == "x64" || $arch == "x86")) ]]; then
+        echo "these don't work in M138"
+    else
         "$CHROMIUM_SRC_ROOT/components/cronet/tools/cr_cronet.py" gn $gn_args
     fi
 
     # this defaults to true and errors out (thanks Google)
     sed -i 's/use_remoteexec = true/use_remoteexec = false/g' "$out_dir/args.gn"
+    # this also defaults to true, and should probably be false for us (?)
+    sed -i 's/is_official_build = true/is_official_build = false/g' "$out_dir/args.gn"
 
     autoninja -C "$out_dir" cronet_package
 
