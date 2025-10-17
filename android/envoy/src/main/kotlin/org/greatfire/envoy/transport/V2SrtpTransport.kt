@@ -71,6 +71,10 @@ class V2SrtpTransport(url: String) : Transport(EnvoyTransportType.V2SRTP, url) {
         val san = UrlQuerySanitizer()
         san.setAllowUnregisteredParamaters(true)
         san.parseUrl(url)
-        return san.getValue("id")
+        if (san.hasParameter("id")) {
+            return san.getValue("id")
+        }
+        Log.e(TAG, "V2Ray SRTP URL doesn't have a UUID")
+        return ""
     }
 }
