@@ -1,5 +1,6 @@
- components/cronet/android/api.txt                  |  4 +-
+ components/cronet/android/api.txt                  |  6 ++-
  .../api/src/org/chromium/net/CronetEngine.java     | 10 +++++
+ .../org/chromium/net/ExperimentalCronetEngine.java |  6 +++
  .../src/org/chromium/net/ICronetEngineBuilder.java |  2 +
  components/cronet/android/api_version.txt          |  2 +-
  .../cronet/android/cronet_context_adapter.cc       | 11 ++++++
@@ -30,10 +31,10 @@
  components/cronet/url_request_context_config.h     |  9 +++++
  net/proxy_resolution/proxy_config_service.cc       | 43 ++++++++++++++++++++++
  net/proxy_resolution/proxy_config_service.h        |  6 +++
- 32 files changed, 279 insertions(+), 15 deletions(-)
+ 33 files changed, 287 insertions(+), 15 deletions(-)
 
 diff --git a/components/cronet/android/api.txt b/components/cronet/android/api.txt
-index dd438268ceb94..c7c09db066010 100644
+index dd438268ceb94..99b79eb0ff5eb 100644
 --- a/components/cronet/android/api.txt
 +++ b/components/cronet/android/api.txt
 @@ -99,6 +99,7 @@ public class org.chromium.net.CronetEngine$Builder {
@@ -44,7 +45,23 @@ index dd438268ceb94..c7c09db066010 100644
    public org.chromium.net.CronetEngine$Builder setQuicOptions(org.chromium.net.QuicOptions$Builder);
    public org.chromium.net.CronetEngine$Builder setQuicOptions(org.chromium.net.QuicOptions);
    public org.chromium.net.CronetEngine$Builder setStoragePath(java.lang.String);
-@@ -323,6 +324,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
+@@ -234,6 +235,7 @@ public class org.chromium.net.ExperimentalCronetEngine$Builder extends org.chrom
+   public org.chromium.net.CronetEngine$Builder setConnectionMigrationOptions(org.chromium.net.ConnectionMigrationOptions);
+   public org.chromium.net.CronetEngine$Builder setDnsOptions(org.chromium.net.DnsOptions);
+   public org.chromium.net.CronetEngine$Builder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
++  public org.chromium.net.CronetEngine$Builder setProxyUrl(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setQuicOptions(org.chromium.net.QuicOptions);
+   public org.chromium.net.CronetEngine$Builder setStoragePath(java.lang.String);
+   public org.chromium.net.CronetEngine$Builder setThreadPriority(int);
+@@ -251,6 +253,7 @@ public class org.chromium.net.ExperimentalCronetEngine$Builder extends org.chrom
+   public org.chromium.net.ExperimentalCronetEngine$Builder setDnsOptions(org.chromium.net.DnsOptions);
+   public org.chromium.net.ExperimentalCronetEngine$Builder setExperimentalOptions(java.lang.String);
+   public org.chromium.net.ExperimentalCronetEngine$Builder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
++  public org.chromium.net.ExperimentalCronetEngine$Builder setProxyUrl(java.lang.String);
+   public org.chromium.net.ExperimentalCronetEngine$Builder setQuicOptions(org.chromium.net.QuicOptions);
+   public org.chromium.net.ExperimentalCronetEngine$Builder setStoragePath(java.lang.String);
+   public org.chromium.net.ExperimentalCronetEngine$Builder setThreadPriority(int);
+@@ -323,6 +326,7 @@ public abstract class org.chromium.net.ICronetEngineBuilder {
    public abstract org.chromium.net.ICronetEngineBuilder enableSdch(boolean);
    public abstract org.chromium.net.ICronetEngineBuilder setExperimentalOptions(java.lang.String);
    public abstract org.chromium.net.ICronetEngineBuilder setLibraryLoader(org.chromium.net.CronetEngine$Builder$LibraryLoader);
@@ -52,12 +69,12 @@ index dd438268ceb94..c7c09db066010 100644
    public abstract org.chromium.net.ICronetEngineBuilder setStoragePath(java.lang.String);
    public abstract org.chromium.net.ICronetEngineBuilder setUserAgent(java.lang.String);
    public org.chromium.net.ICronetEngineBuilder enableBrotli(boolean);
-@@ -640,4 +642,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
+@@ -640,4 +644,4 @@ public class org.chromium.net.apihelpers.UrlRequestCallbacks {
    public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<java.lang.String, org.chromium.net.apihelpers.StringCronetCallback> forStringBody(org.chromium.net.apihelpers.RedirectHandler);
    public static org.chromium.net.apihelpers.UrlRequestCallbacks$CallbackAndResponseFuturePair<org.json.JSONObject, org.chromium.net.apihelpers.JsonCronetCallback> forJsonBody(org.chromium.net.apihelpers.RedirectHandler);
  }
 -Stamp: ded30b9fbe22dff6cc175cd483aa1e4b
-+Stamp: 77c7e1b163bf63684a4a0fedc6505679
++Stamp: c2b2ab2181334066184c9a730f08e798
 diff --git a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java b/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
 index 69794dee12b5c..c7c9f946ecc25 100644
 --- a/components/cronet/android/api/src/org/chromium/net/CronetEngine.java
@@ -79,6 +96,23 @@ index 69794dee12b5c..c7c9f946ecc25 100644
          /**
           * Constructs a {@link Builder} object that facilitates creating a {@link CronetEngine}. The
           * default configuration enables HTTP/2 and QUIC, but disables the HTTP cache.
+diff --git a/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java b/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java
+index ec17ccdbc06fd..5bdeb8823b406 100644
+--- a/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java
++++ b/components/cronet/android/api/src/org/chromium/net/ExperimentalCronetEngine.java
+@@ -236,6 +236,12 @@ public abstract class ExperimentalCronetEngine extends CronetEngine {
+             return this;
+         }
+ 
++        @Override
++        public Builder setProxyUrl(String proxyUrl) {
++            super.setProxyUrl(proxyUrl);
++            return this;
++        }
++
+         @Override
+         public ExperimentalCronetEngine build() {
+             return buildExperimental();
 diff --git a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java b/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
 index f340a87dc2ee1..427d0d0c224f6 100644
 --- a/components/cronet/android/api/src/org/chromium/net/ICronetEngineBuilder.java
