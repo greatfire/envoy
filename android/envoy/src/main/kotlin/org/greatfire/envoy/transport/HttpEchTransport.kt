@@ -32,12 +32,12 @@ class HttpEchTransport(url: String) : Transport(EnvoyTransportType.HTTP_ECH, url
         // if it comes back, it's tested and working
         val echUrl = getEchUrl()
 
-        if (url.isNullOrEmpty()) {
+        if (echUrl.isNullOrEmpty()) {
             return false
         }
 
         this.proxyUrl = echUrl
-        Log.d(TAG, "IEP Ech URL: " + proxyUrl)
+        Log.d(TAG, "IEP Ech URL: ${proxyUrl}")
         return true
     }
 
