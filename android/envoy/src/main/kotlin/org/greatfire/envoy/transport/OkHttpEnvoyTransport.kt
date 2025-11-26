@@ -20,10 +20,10 @@ class OkHttpEnvoyTransport(url: String) : Transport(EnvoyTransportType.OKHTTP_EN
             targetUrl: String,
             urlSalt: String) : Request.Builder
         {
-            var host = Uri.parse(testUrl).host
+            var host = Uri.parse(targetUrl).host
             if (host == null) {
                 // this really shouldn't be possible
-                Log.e(TAG, "testUrl has an empty host somehow")
+                Log.e(TAG, "targetUrl has an empty host somehow")
                 host = "www.example.com"
             }
             // add param to create unique url and avoid cached response
