@@ -116,7 +116,7 @@ class EnvoyDns() {
         // wait for a working server to be found
         // this is hacky, and should have a timeout XXX
         while (serverUrl.isNullOrEmpty()) {
-            Log.e(TAG, "getECHConfig called when serverUrl is null")
+            Log.d(TAG, "getECHConfig called when serverUrl is null")
             delay(100)
         }
 
@@ -153,8 +153,9 @@ class EnvoyDns() {
 
         // fall back to one of the servers, a last ditch effort
         if (chosenServer.isNullOrEmpty()) {
-            Log.e(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
+            Log.w(TAG, "Failed to find a working DoH server, using default $FALLBACK_DNS_SERVER")
             chosenServer = FALLBACK_DNS_SERVER
+            serverUrl = "https://$chosenServer/dns-query"
         }
 
     }
